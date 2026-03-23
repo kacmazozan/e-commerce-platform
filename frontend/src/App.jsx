@@ -6,6 +6,7 @@ import HomePage from './pages/home/HomePage'
 import CartPage from './pages/cart/CartPage'
 import WishlistPage from './pages/wishlist/WishlistPage'
 import CategoryPage from './pages/category/CategoryPage'
+import AccountSettingsPage from './pages/account/AccountSettingsPage'
 import './App.css'
 
 function App() {
@@ -45,6 +46,10 @@ function App() {
 
   if (view === 'category') {
     return <CategoryPage category={selectedCategory} onBack={() => setView('home')} />
+  }
+
+  if (view === 'account-settings') {
+    return <AccountSettingsPage onBack={() => setView('home')} />
   }
 
   return (

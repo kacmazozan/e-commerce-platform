@@ -257,7 +257,7 @@ export default function HomePage({ onNavigate, onLogout }) {
 
                   <div className="dropdown-divider" />
 
-                  <button className="dropdown-item">
+                  <button className="dropdown-item" onClick={() => { setAvatarOpen(false); onNavigate('account-settings') }}>
                     <SettingsIcon /> Account Settings
                   </button>
                   <button className="dropdown-item">
@@ -369,7 +369,6 @@ export default function HomePage({ onNavigate, onLogout }) {
                 <span className="release-placeholder" style={{ color: `hsl(${product.hue},70%,70%)` }}>
                   {product.name[0]}
                 </span>
-                <span className="release-badge">NEW</span>
               </div>
               <div className="release-info">
                 <span className="release-category">{product.category}</span>
