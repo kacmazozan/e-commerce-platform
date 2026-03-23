@@ -251,7 +251,7 @@ export default function HomePage({ onNavigate, onLogout }) {
 
                   <div className="dropdown-divider" />
 
-                  <button className="dropdown-item">
+                  <button className="dropdown-item" onClick={() => { setAvatarOpen(false); onNavigate('orders') }}>
                     <OrdersIcon /> My Orders
                   </button>
 
