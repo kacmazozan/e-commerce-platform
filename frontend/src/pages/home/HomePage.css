@@ -8,6 +8,110 @@
   text-align: left;
 }
 
+/* ── Sale announcement bar ── */
+.sale-banner {
+  position: relative;
+  overflow: hidden;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(90deg, #7c12d4 0%, #c026d3 30%, #ff3b8a 55%, #ff7c3b 75%, #c026d3 90%, #7c12d4 100%);
+  background-size: 200% 100%;
+  animation: banner-shift 6s linear infinite;
+}
+
+@keyframes banner-shift {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+.sale-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 28s linear infinite;
+}
+
+.sale-banner:hover .sale-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.sale-marquee-list {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  list-style: none;
+  margin: 0;
+  padding: 0 24px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.sale-marquee-list strong {
+  background: rgba(255,255,255,0.25);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+}
+
+.sale-banner-close {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.2);
+  border: none;
+  color: #fff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  z-index: 1;
+}
+
+.sale-banner-close:hover {
+  background: rgba(0,0,0,0.4);
+}
+
+/* ── Sale nav button ── */
+.sale-nav-btn {
+  padding: 6px 12px;
+  background: linear-gradient(90deg, #ff3b8a, #ff7c3b);
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  animation: sale-pulse 2s ease-in-out infinite;
+  transition: opacity 0.15s;
+}
+
+.sale-nav-btn:hover {
+  opacity: 0.88;
+  animation-play-state: paused;
+}
+
+@keyframes sale-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,59,138,0.5); }
+  50%       { box-shadow: 0 0 18px rgba(255,59,138,0.9), 0 0 30px rgba(255,124,59,0.4); }
+}
+
 /* ── Navbar ── */
 .navbar {
   position: sticky;

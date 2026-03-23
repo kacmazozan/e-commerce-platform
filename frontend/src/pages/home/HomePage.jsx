@@ -169,6 +169,7 @@ export default function HomePage({ onNavigate, onLogout }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [heroIndex, setHeroIndex] = useState(0)
   const [transitioning, setTransitioning] = useState(false)
+  const [saleBannerVisible, setSaleBannerVisible] = useState(true)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const avatarRef = useRef(null)
 
@@ -205,6 +206,37 @@ export default function HomePage({ onNavigate, onLogout }) {
 
   return (
     <div className="home">
+      {/* Sale announcement bar */}
+      {saleBannerVisible && (
+        <div className="sale-banner">
+          <div className="sale-marquee-track">
+            {[0, 1].map(copy => (
+              <ul key={copy} className="sale-marquee-list" aria-hidden={copy === 1}>
+                <li>🔥 SUMMER SALE — UP TO 50% OFF</li>
+                <li>·</li>
+                <li>FREE SHIPPING ON ORDERS OVER £50</li>
+                <li>·</li>
+                <li>USE CODE <strong>SUMMER25</strong> FOR 25% OFF YOUR FIRST ORDER</li>
+                <li>·</li>
+                <li>NEW ARRIVALS DROPPING EVERY WEEK</li>
+                <li>·</li>
+                <li>LIMITED TIME ONLY — DON'T MISS OUT</li>
+                <li>·</li>
+              </ul>
+            ))}
+          </div>
+          <button
+            className="sale-banner-close"
+            onClick={() => setSaleBannerVisible(false)}
+            aria-label="Dismiss sale banner"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Navbar */}
       <header className="navbar">
         <div className="navbar-inner">
@@ -221,6 +253,7 @@ export default function HomePage({ onNavigate, onLogout }) {
           </div>
 
           <nav className="nav-actions">
+            <button className="sale-nav-btn">SALE</button>
             <button className="icon-btn" aria-label="Wishlist" onClick={() => onNavigate('wishlist')}>
               <WishlistIcon />
               {wishlistCount > 0 && <span className="badge">{wishlistCount}</span>}
