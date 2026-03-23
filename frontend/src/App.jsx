@@ -5,12 +5,19 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import HomePage from './pages/home/HomePage'
 import CartPage from './pages/cart/CartPage'
 import WishlistPage from './pages/wishlist/WishlistPage'
+import CategoryPage from './pages/category/CategoryPage'
 import './App.css'
 
 function App() {
   const [token, setToken] = useState('dev')
   const [page, setPage] = useState('login')
   const [view, setView] = useState('home')
+  const [selectedCategory, setSelectedCategory] = useState(null)
+
+  function handleNavigate(nextView, data) {
+    if (nextView === 'category') setSelectedCategory(data)
+    setView(nextView)
+  }
 
   if (!token) {
     if (page === 'register') {
@@ -36,9 +43,13 @@ function App() {
     return <WishlistPage onBack={() => setView('home')} />
   }
 
+  if (view === 'category') {
+    return <CategoryPage category={selectedCategory} onBack={() => setView('home')} />
+  }
+
   return (
     <HomePage
-      onNavigate={setView}
+      onNavigate={handleNavigate}
       onLogout={() => { setToken(null); setPage('login'); setView('home') }}
     />
   )

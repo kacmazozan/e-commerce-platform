@@ -103,7 +103,7 @@ export default function HomePage({ onNavigate, onLogout }) {
         <h2 className="section-title">Browse Categories</h2>
         <div className="category-grid">
           {CATEGORIES.map(cat => (
-            <button key={cat.id} className="category-card">
+            <button key={cat.id} className="category-card" onClick={() => onNavigate('category', cat)}>
               {/* Image placeholder — will be replaced with branded model photography */}
               <div className="card-image-placeholder">
                 <span className="placeholder-label">{cat.title[0]}</span>
