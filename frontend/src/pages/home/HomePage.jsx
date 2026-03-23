@@ -293,7 +293,7 @@ export default function HomePage({ onNavigate, onLogout }) {
                   <button className="dropdown-item" onClick={() => { setAvatarOpen(false); onNavigate('account-settings') }}>
                     <SettingsIcon /> Account Settings
                   </button>
-                  <button className="dropdown-item">
+                  <button className="dropdown-item" onClick={() => { setAvatarOpen(false); onNavigate('help') }}>
                     <HelpIcon /> Help & Support
                   </button>
 
