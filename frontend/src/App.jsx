@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import LoginPage from './LoginPage'
-import RegisterPage from './RegisterPage'
-import ForgotPasswordPage from './ForgotPasswordPage'
-import HomePage from './HomePage'
-import CartPage from './CartPage'
+import LoginPage from './pages/auth/LoginPage'
+import RegisterPage from './pages/auth/RegisterPage'
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
+import HomePage from './pages/home/HomePage'
+import CartPage from './pages/cart/CartPage'
+import WishlistPage from './pages/wishlist/WishlistPage'
 import './App.css'
 
 function App() {
@@ -29,6 +30,10 @@ function App() {
 
   if (view === 'cart') {
     return <CartPage onBack={() => setView('home')} />
+  }
+
+  if (view === 'wishlist') {
+    return <WishlistPage onBack={() => setView('home')} />
   }
 
   return (

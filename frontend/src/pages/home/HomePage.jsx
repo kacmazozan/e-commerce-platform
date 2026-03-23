@@ -62,7 +62,7 @@ export default function HomePage({ onNavigate, onLogout }) {
           </div>
 
           <nav className="nav-actions">
-            <button className="icon-btn" aria-label="Wishlist">
+            <button className="icon-btn" aria-label="Wishlist" onClick={() => onNavigate('wishlist')}>
               <WishlistIcon />
               {wishlistCount > 0 && <span className="badge">{wishlistCount}</span>}
             </button>

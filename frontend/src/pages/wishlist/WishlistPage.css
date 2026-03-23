@@ -1,0 +1,119 @@
+.wishlist-page {
+  width: 100%;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* ── Header ── */
+.wishlist-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+}
+
+.wishlist-header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.wishlist-header .back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.wishlist-header .back-btn:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.wishlist-header .brand {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--text-h);
+  margin-left: auto;
+}
+
+/* ── Main ── */
+.wishlist-main {
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 48px 24px 64px;
+  box-sizing: border-box;
+}
+
+.wishlist-title {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-h);
+  margin: 0 0 40px;
+}
+
+/* ── Empty state ── */
+.wishlist-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.wishlist-empty .empty-icon {
+  color: var(--accent);
+  opacity: 0.5;
+  margin-bottom: 8px;
+}
+
+.wishlist-empty .empty-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.wishlist-empty .empty-sub {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0 0 16px;
+}
+
+.wishlist-empty .cta-btn {
+  padding: 12px 28px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.wishlist-empty .cta-btn:hover {
+  opacity: 0.88;
+}
