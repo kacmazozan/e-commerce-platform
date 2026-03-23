@@ -138,8 +138,61 @@
   display: flex;
   align-items: center;
   padding: 72px 24px;
-  background:
-    linear-gradient(135deg, #0d0d1a 0%, #1a1030 40%, #2a1040 70%, #0d1a2e 100%);
+  background: #0d0d1a;
+  isolation: isolate;
+}
+
+/* Animated background layer (sits behind ::before/::after via z-index: -1) */
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 1;
+  transition: opacity 0.35s ease;
+}
+
+.hero-bg--fading {
+  opacity: 0;
+}
+
+/* ── Hero arrow controls ── */
+.hero-arrows {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.hero-banner:hover .hero-arrows {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hero-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.hero-arrow:hover {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.08);
 }
 
 /* Pinstripe texture overlay */
