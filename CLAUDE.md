@@ -23,6 +23,17 @@ node server.js    # Start Express server (default port 3000)
 
 No test runner is configured yet in either package.
 
+### Docker
+```bash
+docker compose up --build   # First run, or after package.json changes
+docker compose up           # Subsequent runs
+docker compose down         # Stop and remove containers
+```
+
+Services: frontend → http://localhost:5173, backend → http://localhost:3000, PostgreSQL → localhost:5432
+
+Each service has a `Dockerfile` (production) and `Dockerfile.dev` (development). `docker-compose.yml` uses the dev Dockerfiles with volume mounts for hot reload.
+
 ## Architecture
 
 **Frontend:** React 19 + Vite. Entry point: `src/main.jsx` → `src/App.jsx`. Styling via CSS custom properties in `src/index.css` (supports light/dark mode). ESLint uses the modern flat config format (`eslint.config.js`).
