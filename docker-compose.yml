@@ -39,6 +39,10 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-
+  mailserver:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web interface port
 volumes:
   postgres_data:
