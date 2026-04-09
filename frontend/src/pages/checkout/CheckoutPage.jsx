@@ -97,12 +97,14 @@ const inputErrCls =
   'w-full rounded-lg border border-red-400/50 bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--text-h)] outline-none transition-[border-color] focus:border-red-400/70 placeholder:text-[var(--text)]/35'
 const labelCls = 'mb-1.5 block text-xs font-semibold tracking-[0.4px] text-[var(--text)]'
 
-function Field({ label, error, children }) {
+function Field({ label, required, children }) {
   return (
     <div>
-      <label className={labelCls}>{label}</label>
+      <label className={labelCls}>
+        {label}
+        {required && <span className="ml-0.5 text-red-400">*</span>}
+      </label>
       {children}
-      {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
     </div>
   )
 }
@@ -157,6 +159,13 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
   // ── Submit state ───────────────────────────────────
   const [confirming, setConfirming] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+
+  function clearShippingError(field) {
+    setShippingErrors((p) => ({ ...p, [field]: undefined }))
+  }
+  function clearPaymentError(field) {
+    setPaymentErrors((p) => ({ ...p, [field]: undefined }))
+  }
 
   const total = cartItems.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0)
   const shippingCost = total >= 50 ? 0 : 4.99
@@ -233,7 +242,7 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => {})
-    navigate('/cart')
+    navigate('/cart', { replace: true })
   }
 
   // ── Expired screen ─────────────────────────────────
@@ -278,17 +287,10 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
       </header>
 
       <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-10 pb-20">
-        <div className="mb-6 flex items-end justify-between">
+        <div className="mb-6">
           <h1 className="m-0 text-[32px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
             Checkout
           </h1>
-          {/* Timer pill */}
-          <div
-            className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-[13px] font-semibold tabular-nums ${isUrgent ? 'border-red-400/30 bg-red-400/8 text-red-400' : 'border-purple-400/25 bg-purple-400/8 text-purple-400'}`}
-          >
-            <ClockIcon size={14} />
-            {timeStr} {isUrgent ? '— hurry!' : 'remaining'}
-          </div>
         </div>
 
         <div className="grid [grid-template-columns:1fr_360px] items-start gap-8 max-[900px]:[grid-template-columns:1fr]">
@@ -304,27 +306,33 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
               </h2>
               <div className="grid grid-cols-2 gap-4 max-[560px]:grid-cols-1">
                 <div className="col-span-2 max-[560px]:col-span-1">
-                  <Field label="Full Name" error={shippingErrors.fullName}>
+                  <Field label="Full Name" required>
                     <input
                       className={shippingErrors.fullName ? inputErrCls : inputCls}
                       placeholder="Jane Smith"
                       value={shipping.fullName}
-                      onChange={(e) => setShipping((p) => ({ ...p, fullName: e.target.value }))}
+                      onChange={(e) => {
+                        setShipping((p) => ({ ...p, fullName: e.target.value }))
+                        clearShippingError('fullName')
+                      }}
                     />
                   </Field>
                 </div>
                 <div className="col-span-2 max-[560px]:col-span-1">
-                  <Field label="Address Line 1" error={shippingErrors.address1}>
+                  <Field label="Address Line 1" required>
                     <input
                       className={shippingErrors.address1 ? inputErrCls : inputCls}
                       placeholder="123 Main Street"
                       value={shipping.address1}
-                      onChange={(e) => setShipping((p) => ({ ...p, address1: e.target.value }))}
+                      onChange={(e) => {
+                        setShipping((p) => ({ ...p, address1: e.target.value }))
+                        clearShippingError('address1')
+                      }}
                     />
                   </Field>
                 </div>
                 <div className="col-span-2 max-[560px]:col-span-1">
-                  <Field label="Address Line 2 (optional)" error={null}>
+                  <Field label="Address Line 2">
                     <input
                       className={inputCls}
                       placeholder="Apt, suite, floor…"
@@ -333,36 +341,48 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
                     />
                   </Field>
                 </div>
-                <Field label="City" error={shippingErrors.city}>
+                <Field label="City" required>
                   <input
                     className={shippingErrors.city ? inputErrCls : inputCls}
                     placeholder="Berlin"
                     value={shipping.city}
-                    onChange={(e) => setShipping((p) => ({ ...p, city: e.target.value }))}
+                    onChange={(e) => {
+                      setShipping((p) => ({ ...p, city: e.target.value }))
+                      clearShippingError('city')
+                    }}
                   />
                 </Field>
-                <Field label="State / Province" error={shippingErrors.state}>
+                <Field label="State / Province" required>
                   <input
                     className={shippingErrors.state ? inputErrCls : inputCls}
                     placeholder="Bavaria"
                     value={shipping.state}
-                    onChange={(e) => setShipping((p) => ({ ...p, state: e.target.value }))}
+                    onChange={(e) => {
+                      setShipping((p) => ({ ...p, state: e.target.value }))
+                      clearShippingError('state')
+                    }}
                   />
                 </Field>
-                <Field label="ZIP / Postal Code" error={shippingErrors.zip}>
+                <Field label="ZIP / Postal Code" required>
                   <input
                     className={shippingErrors.zip ? inputErrCls : inputCls}
                     placeholder="10115"
                     value={shipping.zip}
-                    onChange={(e) => setShipping((p) => ({ ...p, zip: e.target.value }))}
+                    onChange={(e) => {
+                      setShipping((p) => ({ ...p, zip: e.target.value }))
+                      clearShippingError('zip')
+                    }}
                   />
                 </Field>
-                <Field label="Country" error={shippingErrors.country}>
+                <Field label="Country" required>
                   <input
                     className={shippingErrors.country ? inputErrCls : inputCls}
                     placeholder="Germany"
                     value={shipping.country}
-                    onChange={(e) => setShipping((p) => ({ ...p, country: e.target.value }))}
+                    onChange={(e) => {
+                      setShipping((p) => ({ ...p, country: e.target.value }))
+                      clearShippingError('country')
+                    }}
                   />
                 </Field>
               </div>
@@ -422,46 +442,46 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
 
               <div className="grid grid-cols-2 gap-4 max-[560px]:grid-cols-1">
                 <div className="col-span-2 max-[560px]:col-span-1">
-                  <Field label="Cardholder Name" error={paymentErrors.cardName}>
+                  <Field label="Cardholder Name" required>
                     <input
                       className={paymentErrors.cardName ? inputErrCls : inputCls}
                       placeholder="Jane Smith"
                       value={payment.cardName}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setPayment((p) => ({ ...p, cardName: e.target.value.toUpperCase() }))
-                      }
+                        clearPaymentError('cardName')
+                      }}
                     />
                   </Field>
                 </div>
                 <div className="col-span-2 max-[560px]:col-span-1">
-                  <Field label="Card Number" error={paymentErrors.cardNumber}>
+                  <Field label="Card Number" required>
                     <input
                       className={paymentErrors.cardNumber ? inputErrCls : inputCls}
                       placeholder="1234 5678 9012 3456"
                       value={payment.cardNumber}
                       inputMode="numeric"
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setPayment((p) => ({ ...p, cardNumber: formatCardNumber(e.target.value) }))
-                      }
+                        clearPaymentError('cardNumber')
+                      }}
                     />
                   </Field>
                 </div>
-                <Field label="Expiry Date" error={paymentErrors.expiry}>
+                <Field label="Expiry Date" required>
                   <input
                     className={paymentErrors.expiry ? inputErrCls : inputCls}
                     placeholder="MM/YY"
                     value={payment.expiry}
                     inputMode="numeric"
                     maxLength={5}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setPayment((p) => ({ ...p, expiry: formatExpiry(e.target.value) }))
-                    }
+                      clearPaymentError('expiry')
+                    }}
                   />
                 </Field>
-                <Field
-                  label={`CVV${cardType === 'AMEX' ? ' (4 digits)' : ''}`}
-                  error={paymentErrors.cvv}
-                >
+                <Field label={`CVV${cardType === 'AMEX' ? ' (4 digits)' : ''}`} required>
                   <input
                     className={paymentErrors.cvv ? inputErrCls : inputCls}
                     placeholder={cardType === 'AMEX' ? '1234' : '123'}
@@ -469,14 +489,15 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
                     inputMode="numeric"
                     maxLength={cardType === 'AMEX' ? 4 : 3}
                     type="password"
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setPayment((p) => ({
                         ...p,
                         cvv: e.target.value
                           .replace(/\D/g, '')
                           .slice(0, cardType === 'AMEX' ? 4 : 3),
                       }))
-                    }
+                      clearPaymentError('cvv')
+                    }}
                   />
                 </Field>
               </div>
