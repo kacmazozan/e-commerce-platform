@@ -109,9 +109,16 @@ function App() {
   })
 
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem('adminToken'))
-  const [salesManagerToken, setSalesManagerToken] = useState(() =>
-    localStorage.getItem('salesManagerToken')
-  )
+  const [salesManagerToken, setSalesManagerToken] = useState(() => {
+    const t = localStorage.getItem('salesManagerToken')
+    if (!t) return null
+    const payload = decodeJwtPayload(t)
+    if (!payload || payload.role !== 'sales_manager') {
+      localStorage.removeItem('salesManagerToken')
+      return null
+    }
+    return t
+  })
   const [cart, setCart] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('guest_cart') || '[]')

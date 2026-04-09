@@ -14,8 +14,9 @@ if (!EMAIL || !PASSWORD || !NAME) {
 }
 
 async function seedSalesManager() {
-  const client = await pool.connect()
+  let client
   try {
+    client = await pool.connect()
     const existing = await client.query('SELECT id, role FROM auth.users WHERE email = $1', [EMAIL])
 
     if (existing.rows.length > 0) {
@@ -24,7 +25,7 @@ async function seedSalesManager() {
         console.error(
           `Error: "${EMAIL}" already exists with role "${user.role}", not "sales_manager". Aborting.`
         )
-        process.exit(1)
+        return 1
       }
       const profile = await client.query(
         'SELECT sales_manager_id FROM auth.sales_managers WHERE sales_manager_id = $1',
@@ -39,7 +40,7 @@ async function seedSalesManager() {
         )
         console.log(`Repaired missing profile row for sales manager "${EMAIL}" (id: ${user.id}).`)
       }
-      process.exit(0)
+      return 0
     }
 
     await client.query('BEGIN')
@@ -54,16 +55,15 @@ async function seedSalesManager() {
       NAME,
     ])
     await client.query('COMMIT')
-
     console.log('Sales manager created:', result.rows[0])
-    process.exit(0)
+    return 0
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {})
+    if (client) await client.query('ROLLBACK').catch(() => {})
     console.error('Failed to seed sales manager:', err.message)
-    process.exit(1)
+    return 1
   } finally {
-    client.release()
+    if (client) client.release()
   }
 }
 
-seedSalesManager()
+seedSalesManager().then((code) => process.exit(code))
