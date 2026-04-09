@@ -2,13 +2,13 @@ require('dotenv').config()
 const bcrypt = require('bcrypt')
 const pool = require('../db')
 
-const EMAIL = process.env.MANAGER_EMAIL
-const PASSWORD = process.env.MANAGER_PASSWORD
-const NAME = process.env.MANAGER_NAME
+const EMAIL = process.env.SALES_MANAGER_EMAIL
+const PASSWORD = process.env.SALES_MANAGER_PASSWORD
+const NAME = process.env.SALES_MANAGER_NAME
 
 if (!EMAIL || !PASSWORD || !NAME) {
   console.error(
-    'Error: MANAGER_EMAIL, MANAGER_PASSWORD, and MANAGER_NAME environment variables must be set.'
+    'Error: SALES_MANAGER_EMAIL, SALES_MANAGER_PASSWORD, and SALES_MANAGER_NAME environment variables must be set.'
   )
   process.exit(1)
 }

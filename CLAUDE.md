@@ -106,7 +106,7 @@ Both env vars are required — the script exits if either is missing.
 ### Seeding a sales manager user
 
 ```bash
-MANAGER_EMAIL=sm@example.com MANAGER_PASSWORD=yourpassword MANAGER_NAME="Jane Doe" node backend/scripts/seed-sales-manager.js
+SALES_MANAGER_EMAIL=sm@example.com SALES_MANAGER_PASSWORD=yourpassword SALES_MANAGER_NAME="Jane Doe" node backend/scripts/seed-sales-manager.js
 ```
 
 All three env vars are required. The script inserts into both `auth.users` (role=`sales_manager`) and `auth.sales_managers` (name). Sales managers log in through the regular `/login` page.
