@@ -26,7 +26,7 @@ describe('CategoryPage', () => {
   })
 
   it('shows loading state initially', () => {
-    globalThis.fetch = vi.fn().mockReturnValue(new Promise(() => {}))
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
 
     renderPage()
 
@@ -34,10 +34,13 @@ describe('CategoryPage', () => {
   })
 
   it('renders category title and subtitle', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ products: [] }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ products: [] }),
+      })
+    )
 
     renderPage()
 
@@ -49,12 +52,15 @@ describe('CategoryPage', () => {
   })
 
   it('renders product cards with name and price after fetch', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        products: [{ id: 1, name: 'Widget', price: '19.99', stock: 10, available_stock: 10 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [{ id: 1, name: 'Widget', price: '19.99', stock: 10, available_stock: 10 }],
+        }),
+      })
+    )
 
     renderPage()
 
@@ -66,12 +72,15 @@ describe('CategoryPage', () => {
   })
 
   it('shows "n in stock" badge when available_stock >= 10', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        products: [{ id: 1, name: 'Widget', price: '9.99', stock: 15, available_stock: 15 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 15, available_stock: 15 }],
+        }),
+      })
+    )
 
     renderPage()
 
@@ -79,12 +88,15 @@ describe('CategoryPage', () => {
   })
 
   it('shows "Only n left" badge when available_stock is between 1 and 9', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        products: [{ id: 1, name: 'Widget', price: '9.99', stock: 5, available_stock: 5 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 5, available_stock: 5 }],
+        }),
+      })
+    )
 
     renderPage()
 
@@ -92,12 +104,15 @@ describe('CategoryPage', () => {
   })
 
   it('shows "Out of stock" badge when available_stock is 0', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        products: [{ id: 1, name: 'Widget', price: '9.99', stock: 0, available_stock: 0 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 0, available_stock: 0 }],
+        }),
+      })
+    )
 
     renderPage()
 
@@ -105,12 +120,15 @@ describe('CategoryPage', () => {
   })
 
   it('disables cart button and shows "Out of Stock" when available_stock is 0', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        products: [{ id: 1, name: 'Widget', price: '9.99', stock: 0, available_stock: 0 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 0, available_stock: 0 }],
+        }),
+      })
+    )
 
     renderPage()
 
@@ -120,12 +138,15 @@ describe('CategoryPage', () => {
 
   it('calls onAddToCart when "Add to Cart" is clicked for in-stock product', async () => {
     const onAddToCart = vi.fn()
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
+        }),
+      })
+    )
 
     renderPage({ onAddToCart })
 
@@ -136,12 +157,15 @@ describe('CategoryPage', () => {
   })
 
   it('shows "Remove from Cart" when product is already in cart', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
+        }),
+      })
+    )
 
     renderPage({ cartItems: [{ id: 1, name: 'Widget' }] })
 
@@ -150,12 +174,15 @@ describe('CategoryPage', () => {
 
   it('calls onRemoveFromCart when "Remove from Cart" is clicked', async () => {
     const onRemoveFromCart = vi.fn()
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
+        }),
+      })
+    )
 
     renderPage({ cartItems: [{ id: 1, name: 'Widget' }], onRemoveFromCart })
 
@@ -166,12 +193,15 @@ describe('CategoryPage', () => {
 
   it('calls onAddToWishlist when wishlist button is clicked for item not in wishlist', async () => {
     const onAddToWishlist = vi.fn()
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
+        }),
+      })
+    )
 
     renderPage({ onAddToWishlist })
 
@@ -182,12 +212,15 @@ describe('CategoryPage', () => {
 
   it('calls onRemoveFromWishlist when wishlist button is clicked for item in wishlist', async () => {
     const onRemoveFromWishlist = vi.fn()
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
+        }),
+      })
+    )
 
     renderPage({ wishlistItems: [{ id: 1, name: 'Widget' }], onRemoveFromWishlist })
 
@@ -197,7 +230,7 @@ describe('CategoryPage', () => {
   })
 
   it('renders empty product grid (no cards) on fetch error', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')))
 
     renderPage()
 
@@ -209,10 +242,13 @@ describe('CategoryPage', () => {
 
   it('calls onBack when Back button is clicked', async () => {
     const onBack = vi.fn()
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ products: [] }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ products: [] }),
+      })
+    )
 
     renderPage({ onBack })
 
@@ -222,10 +258,13 @@ describe('CategoryPage', () => {
   })
 
   it('fetches products using the category title in the URL', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ products: [] }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ products: [] }),
+      })
+    )
 
     renderPage({ category: { title: 'Books', subtitle: 'All books' } })
 

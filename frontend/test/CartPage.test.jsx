@@ -94,7 +94,7 @@ describe('CartPage', () => {
   })
 
   it('shows "Reserving stock" while reserve request is in flight', async () => {
-    globalThis.fetch = vi.fn().mockReturnValue(new Promise(() => {}))
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
 
     renderPage()
 
@@ -104,7 +104,7 @@ describe('CartPage', () => {
   })
 
   it('disables checkout button while reserving', async () => {
-    globalThis.fetch = vi.fn().mockReturnValue(new Promise(() => {}))
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
 
     renderPage()
 
@@ -115,13 +115,16 @@ describe('CartPage', () => {
   })
 
   it('shows unavailable item error message on 409 response', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      json: async () => ({
-        error: 'Some items are out of stock',
-        unavailable: [{ name: 'Widget', available: 2, requested: 5, product_id: 1 }],
-      }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({
+          error: 'Some items are out of stock',
+          unavailable: [{ name: 'Widget', available: 2, requested: 5, product_id: 1 }],
+        }),
+      })
+    )
 
     renderPage()
 
@@ -131,10 +134,13 @@ describe('CartPage', () => {
   })
 
   it('shows generic error message on failed reserve without unavailable list', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      json: async () => ({ error: 'Cart is empty' }),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: 'Cart is empty' }),
+      })
+    )
 
     renderPage()
 
@@ -144,7 +150,7 @@ describe('CartPage', () => {
   })
 
   it('shows network error message when fetch throws', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')))
 
     renderPage()
 

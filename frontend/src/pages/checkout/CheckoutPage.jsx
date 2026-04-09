@@ -68,7 +68,15 @@ function getCardType(number) {
 }
 
 function formatCardNumber(value) {
-  const digits = value.replace(/\D/g, '').slice(0, 16)
+  const raw = value.replace(/\D/g, '')
+  const isAmex = /^3[47]/.test(raw)
+  if (isAmex) {
+    const digits = raw.slice(0, 15)
+    return digits.replace(/^(\d{0,4})(\d{0,6})(\d{0,5})$/, (_, a, b, c) =>
+      [a, b, c].filter(Boolean).join(' ')
+    )
+  }
+  const digits = raw.slice(0, 16)
   return digits.replace(/(.{4})/g, '$1 ').trim()
 }
 
@@ -190,8 +198,9 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
     const pe = {}
     if (!payment.cardName.trim()) pe.cardName = 'Required'
     const rawCard = payment.cardNumber.replace(/\s/g, '')
+    const expectedLen = cardType === 'AMEX' ? 15 : 16
     if (!rawCard) pe.cardNumber = 'Required'
-    else if (rawCard.length !== 16) pe.cardNumber = 'Must be 16 digits'
+    else if (rawCard.length !== expectedLen) pe.cardNumber = `Must be ${expectedLen} digits`
     if (!payment.expiry) pe.expiry = 'Required'
     else if (!validateExpiry(payment.expiry)) pe.expiry = 'Invalid or expired date'
     const cvvLen = cardType === 'AMEX' ? 4 : 3
