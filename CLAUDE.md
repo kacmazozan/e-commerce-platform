@@ -111,6 +111,23 @@ docker compose exec -e SALES_MANAGER_EMAIL=sm@example.com -e SALES_MANAGER_PASSW
 
 Must be run via `docker compose exec` so the container's `DATABASE_URL` is available. All three env vars are required. The script inserts into both `auth.users` (role=`sales_manager`) and `auth.sales_managers` (name). Sales managers log in at `/sales-manager/login`.
 
+### Seeding products
+
+```bash
+docker compose exec backend node scripts/seed-products.js
+```
+
+Inserts 56 products across all 8 categories. The script is safe to run multiple times — it exits early if the table already has rows.
+
+To wipe and re-seed:
+
+```bash
+docker compose exec db psql -U postgres -d ecommerce -c "TRUNCATE products RESTART IDENTITY CASCADE;"
+docker compose exec backend node scripts/seed-products.js
+```
+
+`RESTART IDENTITY` resets the `id` sequence back to 1. `CASCADE` also truncates `cart_items` (which foreign-keys into `products`). `order_items` is now protected by `ON DELETE RESTRICT` — if any orders exist, you must delete them first before truncating products.
+
 ## Architecture
 
 ### Backend
@@ -122,6 +139,7 @@ Must be run via `docker compose exec` so the container's `DATABASE_URL` is avail
 Route files live in `backend/routes/`:
 
 - `auth.js` — `POST /api/auth/register`, `POST /api/auth/login`, and password reset endpoints
+- `products.js` — public `GET /api/products` (no auth); supports `?category=` and `?limit=` query params; results ordered by `created_at DESC`
 - `admin.js` — user CRUD at `/api/admin/users` and `GET /api/admin/me`
 - `admin-products.js` — product CRUD at `/api/admin/products`
 - `admin-orders.js` — order management at `/api/admin/orders`
@@ -151,9 +169,13 @@ Auth state (`token`, `user`), admin auth state (`adminToken`), and sales manager
 
 Each role has a fully isolated session. Sales manager pages live in `src/pages/sales-manager/`.
 
-`src/api.js` exports `API_BASE` read from `import.meta.env.VITE_API_BASE_URL`, falling back to `http://localhost:3000`. Every admin page imports this; set `VITE_API_BASE_URL` in `frontend/.env` when deploying.
+`src/api.js` exports `API_BASE` read from `import.meta.env.VITE_API_BASE_URL`, falling back to `http://localhost:3000`. Every page that calls the backend imports this; set `VITE_API_BASE_URL` in `frontend/.env` when deploying.
 
 Pages are colocated with their CSS under `src/pages/<section>/`. Admin pages live in `src/pages/admin/` and are self-contained (own CSS, inline SVG icons).
+
+**Product data is fetched from the API, not hardcoded:**
+- `CategoryPage` — fetches `GET /api/products?category={category.title}` on mount; shows a loading state while the request is in flight
+- `HomePage` new releases — fetches `GET /api/products?limit=8` on mount; the 8 most recently added products are shown as new releases (insertion order drives this — no explicit "featured" flag exists)
 
 ### Database schema
 

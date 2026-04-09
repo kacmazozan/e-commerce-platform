@@ -1,3 +1,6 @@
+import { useState, useEffect } from 'react'
+import API_BASE from '../../api'
+
 function BackIcon() {
   return (
     <svg
@@ -52,73 +55,6 @@ function HeartIcon({ filled }) {
   )
 }
 
-const PRODUCTS = {
-  1: [
-    { id: 1, name: 'Floral Wrap Dress', price: 89.99 },
-    { id: 2, name: 'Linen Blazer', price: 129.99 },
-    { id: 3, name: 'Ribbed Knit Top', price: 44.99 },
-    { id: 4, name: 'Wide-Leg Trousers', price: 74.99 },
-    { id: 5, name: 'Silk Cami Blouse', price: 59.99 },
-    { id: 6, name: 'Tailored Mini Skirt', price: 54.99 },
-  ],
-  2: [
-    { id: 7, name: 'Oxford Button-Down', price: 64.99 },
-    { id: 8, name: 'Slim Chinos', price: 69.99 },
-    { id: 9, name: 'Merino Crew Sweater', price: 89.99 },
-    { id: 10, name: 'Relaxed Linen Shirt', price: 59.99 },
-    { id: 11, name: 'Tapered Joggers', price: 54.99 },
-    { id: 12, name: 'Classic Polo', price: 49.99 },
-  ],
-  3: [
-    { id: 13, name: 'Double-Breasted Coat', price: 219.99 },
-    { id: 14, name: 'Quilted Puffer Jacket', price: 159.99 },
-    { id: 15, name: 'Trench Coat', price: 189.99 },
-    { id: 16, name: 'Leather Biker Jacket', price: 249.99 },
-    { id: 17, name: 'Wool Duffle Coat', price: 199.99 },
-    { id: 18, name: 'Windbreaker', price: 119.99 },
-  ],
-  4: [
-    { id: 19, name: 'Leather Chelsea Boots', price: 149.99 },
-    { id: 20, name: 'White Leather Sneakers', price: 99.99 },
-    { id: 21, name: 'Block Heel Mules', price: 89.99 },
-    { id: 22, name: 'Running Trainers', price: 119.99 },
-    { id: 23, name: 'Strappy Sandals', price: 69.99 },
-    { id: 24, name: 'Suede Loafers', price: 109.99 },
-  ],
-  5: [
-    { id: 25, name: 'Leather Tote Bag', price: 129.99 },
-    { id: 26, name: 'Silk Scarf', price: 49.99 },
-    { id: 27, name: 'Structured Bucket Hat', price: 34.99 },
-    { id: 28, name: 'Leather Belt', price: 44.99 },
-    { id: 29, name: 'Gold Hoop Earrings', price: 29.99 },
-    { id: 30, name: 'Sunglasses', price: 59.99 },
-  ],
-  6: [
-    { id: 31, name: 'High-Waist Leggings', price: 64.99 },
-    { id: 32, name: 'Sports Bra', price: 39.99 },
-    { id: 33, name: 'Zip-Up Hoodie', price: 74.99 },
-    { id: 34, name: 'Cycling Shorts', price: 44.99 },
-    { id: 35, name: 'Mesh Running Vest', price: 34.99 },
-    { id: 36, name: 'Sweat-Wicking Tee', price: 29.99 },
-  ],
-  7: [
-    { id: 37, name: 'Tailored Blazer', price: 199.99 },
-    { id: 38, name: 'Pleated Dress Trousers', price: 109.99 },
-    { id: 39, name: 'Satin Evening Gown', price: 289.99 },
-    { id: 40, name: 'Classic Tuxedo Shirt', price: 89.99 },
-    { id: 41, name: 'Pencil Skirt', price: 79.99 },
-    { id: 42, name: 'Tie & Pocket Square', price: 39.99 },
-  ],
-  8: [
-    { id: 43, name: 'Denim Dungarees', price: 34.99 },
-    { id: 44, name: 'Striped Onesie Set', price: 24.99 },
-    { id: 45, name: 'Puffer Vest', price: 44.99 },
-    { id: 46, name: 'Jersey Dress', price: 29.99 },
-    { id: 47, name: 'Canvas Trainers', price: 34.99 },
-    { id: 48, name: 'Knitted Cardigan', price: 39.99 },
-  ],
-}
-
 export default function CategoryPage({
   category,
   onBack,
@@ -129,7 +65,30 @@ export default function CategoryPage({
   cartItems = [],
   wishlistItems = [],
 }) {
-  const products = PRODUCTS[category.id] ?? []
+  const [products, setProducts] = useState([])
+  const [loadedCategory, setLoadedCategory] = useState(null)
+  const loading = loadedCategory !== category.title
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) {
+          setProducts(data.products ?? [])
+          setLoadedCategory(category.title)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProducts([])
+          setLoadedCategory(category.title)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [category.title])
 
   const cartIds = new Set(cartItems.map((i) => i.id))
   const wishlistIds = new Set(wishlistItems.map((i) => i.id))
@@ -161,10 +120,13 @@ export default function CategoryPage({
           <p className="m-0 text-[15px] text-[var(--text)]">{category.subtitle}</p>
         </div>
 
+        {loading && <p className="text-[var(--text)] opacity-60">Loading products…</p>}
         <div className="grid [grid-template-columns:repeat(4,1fr)] gap-5 max-[1024px]:[grid-template-columns:repeat(3,1fr)] max-[720px]:[grid-template-columns:repeat(2,1fr)] max-[720px]:gap-3.5 max-[420px]:[grid-template-columns:1fr]">
           {products.map((product) => {
             const inCart = cartIds.has(product.id)
             const inWishlist = wishlistIds.has(product.id)
+            const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
+            const outOfStock = availableStock === 0
             return (
               <div
                 key={product.id}
@@ -178,23 +140,42 @@ export default function CategoryPage({
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2.5">
                   <span className="text-sm font-semibold text-[var(--text-h)]">{product.name}</span>
                   <span className="text-[15px] font-bold text-purple-400">
-                    ${product.price.toFixed(2)}
+                    ${parseFloat(product.price).toFixed(2)}
+                  </span>
+                  <span
+                    className={
+                      availableStock < 10
+                        ? 'text-[11px] font-semibold text-red-400'
+                        : 'text-[11px] text-[var(--text)] opacity-50'
+                    }
+                  >
+                    {availableStock === 0
+                      ? 'Out of stock'
+                      : availableStock < 10
+                        ? `Only ${availableStock} left`
+                        : `${availableStock} in stock`}
                   </span>
                 </div>
                 <div className="flex gap-2 px-3 pb-3.5">
                   <button
                     className={
-                      inCart
-                        ? 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-400 bg-transparent px-3 py-2.5 text-[13px] font-semibold text-purple-400 transition-opacity hover:opacity-88'
-                        : 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-none bg-purple-400 px-3 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88'
+                      outOfStock
+                        ? 'flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-transparent px-3 py-2.5 text-[13px] font-semibold text-[var(--text)] opacity-40'
+                        : inCart
+                          ? 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-400 bg-transparent px-3 py-2.5 text-[13px] font-semibold text-purple-400 transition-opacity hover:opacity-88'
+                          : 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-none bg-purple-400 px-3 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88'
                     }
+                    disabled={outOfStock && !inCart}
                     onClick={() =>
-                      inCart
-                        ? onRemoveFromCart && onRemoveFromCart(product.id)
-                        : onAddToCart && onAddToCart(product)
+                      outOfStock
+                        ? undefined
+                        : inCart
+                          ? onRemoveFromCart && onRemoveFromCart(product.id)
+                          : onAddToCart && onAddToCart(product)
                     }
                   >
-                    <CartIcon /> {inCart ? 'Remove from Cart' : 'Add to Cart'}
+                    <CartIcon />{' '}
+                    {outOfStock ? 'Out of Stock' : inCart ? 'Remove from Cart' : 'Add to Cart'}
                   </button>
                   <button
                     className={

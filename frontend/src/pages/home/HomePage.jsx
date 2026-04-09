@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { MiniCartIcon, StarRating } from '../../components/icons'
 import Navbar from './components/Navbar'
 import HeroBanner from './components/HeroBanner'
 import Footer from './components/Footer'
+import API_BASE from '../../api'
 
 const CATEGORIES = [
   { id: 1, title: "Women's Clothing", subtitle: 'New arrivals every week', hue: 280 },
@@ -15,16 +16,16 @@ const CATEGORIES = [
   { id: 8, title: 'Kids & Baby', subtitle: 'Adorable styles for little ones', hue: 20 },
 ]
 
-const NEW_RELEASES = [
-  { id: 101, name: 'Oversized Linen Shirt', category: "Women's", price: 79.99, hue: 280 },
-  { id: 102, name: 'Slim Fit Chinos', category: "Men's", price: 69.99, hue: 210 },
-  { id: 103, name: 'Leather Moto Jacket', category: 'Outerwear', price: 249.99, hue: 200 },
-  { id: 104, name: 'Platform Loafers', category: 'Footwear', price: 119.99, hue: 160 },
-  { id: 105, name: 'Structured Tote', category: 'Accessories', price: 139.99, hue: 40 },
-  { id: 106, name: 'Ribbed Midi Dress', category: "Women's", price: 94.99, hue: 340 },
-  { id: 107, name: 'Merino Polo', category: "Men's", price: 89.99, hue: 190 },
-  { id: 108, name: 'Cropped Blazer', category: 'Formal', price: 179.99, hue: 260 },
-]
+const CATEGORY_HUE = {
+  "Women's Clothing": 280,
+  "Men's Clothing": 210,
+  Outerwear: 200,
+  Footwear: 160,
+  Accessories: 40,
+  Activewear: 340,
+  Formal: 260,
+  'Kids & Baby': 20,
+}
 
 const REVIEWS = [
   {
@@ -104,7 +105,15 @@ export default function HomePage({
   onAddToCart,
 }) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [newReleases, setNewReleases] = useState([])
   const releasesRef = useRef(null)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/products?limit=8`)
+      .then((r) => r.json())
+      .then((data) => setNewReleases(data.products ?? []))
+      .catch(() => setNewReleases([]))
+  }, [])
 
   function scrollReleases(dir) {
     const el = releasesRef.current
@@ -224,46 +233,69 @@ export default function HomePage({
           ref={releasesRef}
           className="-mt-2 flex [scroll-snap-type:x_mandatory] gap-[18px] overflow-x-auto scroll-smooth pt-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {NEW_RELEASES.map((product) => (
-            <div
-              key={product.id}
-              className="flex w-[210px] shrink-0 [scroll-snap-align:start] flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
-            >
+          {newReleases.map((product) => {
+            const hue = CATEGORY_HUE[product.category] ?? 280
+            const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
+            const outOfStock = availableStock === 0
+            return (
               <div
-                className="relative flex aspect-[2/3] w-full items-center justify-center border-b border-[var(--glass-border)]"
-                style={{
-                  background: `linear-gradient(160deg, hsl(${product.hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${product.hue},50%,var(--cat-bg-l2,20%)) 100%)`,
-                }}
+                key={product.id}
+                className="flex w-[210px] shrink-0 [scroll-snap-align:start] flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
               >
-                <span
-                  className="text-[56px] font-bold opacity-40 select-none"
-                  style={{ color: `hsl(${product.hue},70%,var(--cat-text-l,70%))` }}
+                <div
+                  className="relative flex aspect-[2/3] w-full items-center justify-center border-b border-[var(--glass-border)]"
+                  style={{
+                    background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
+                  }}
                 >
-                  {product.name[0]}
-                </span>
-              </div>
-              <div className="flex flex-col gap-[3px] px-3.5 pt-3 pb-3.5">
-                <span className="text-[11px] font-semibold tracking-[1.5px] text-[var(--text)] uppercase">
-                  {product.category}
-                </span>
-                <span className="text-[13px] leading-[1.3] font-semibold text-[var(--text-h)]">
-                  {product.name}
-                </span>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-[15px] font-bold text-purple-400">
-                    ${product.price.toFixed(2)}
-                  </span>
-                  <button
-                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text)] transition-[background,color,border-color] hover:border-purple-400 hover:bg-purple-400 hover:text-white"
-                    aria-label="Add to cart"
-                    onClick={() => onAddToCart && onAddToCart(product)}
+                  <span
+                    className="text-[56px] font-bold opacity-40 select-none"
+                    style={{ color: `hsl(${hue},70%,var(--cat-text-l,70%))` }}
                   >
-                    <MiniCartIcon />
-                  </button>
+                    {product.name[0]}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-[3px] px-3.5 pt-3 pb-3.5">
+                  <span className="text-[11px] font-semibold tracking-[1.5px] text-[var(--text)] uppercase">
+                    {product.category}
+                  </span>
+                  <span className="text-[13px] leading-[1.3] font-semibold text-[var(--text-h)]">
+                    {product.name}
+                  </span>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-[15px] font-bold text-purple-400">
+                      ${parseFloat(product.price).toFixed(2)}
+                    </span>
+                    <button
+                      className={
+                        outOfStock
+                          ? 'flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg border border-[var(--border)] bg-transparent text-[var(--text)] opacity-30'
+                          : 'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text)] transition-[background,color,border-color] hover:border-purple-400 hover:bg-purple-400 hover:text-white'
+                      }
+                      aria-label="Add to cart"
+                      disabled={outOfStock}
+                      onClick={() => !outOfStock && onAddToCart && onAddToCart(product)}
+                    >
+                      <MiniCartIcon />
+                    </button>
+                  </div>
+                  <span
+                    className={
+                      availableStock < 10
+                        ? 'text-[11px] font-semibold text-red-400'
+                        : 'text-[11px] text-[var(--text)] opacity-50'
+                    }
+                  >
+                    {availableStock === 0
+                      ? 'Out of stock'
+                      : availableStock < 10
+                        ? `Only ${availableStock} left`
+                        : `${availableStock} in stock`}
+                  </span>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </section>
 
