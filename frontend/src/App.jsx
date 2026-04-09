@@ -8,16 +8,6 @@ import {
   useNavigationType,
 } from 'react-router-dom'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
-import API_BASE from './api'
-
-function ScrollToTop() {
-  const { pathname } = useLocation()
-  const navType = useNavigationType()
-  useEffect(() => {
-    if (navType !== 'POP') window.scrollTo(0, 0)
-  }, [pathname, navType])
-  return null
-}
 import AdminDashboard from './pages/admin/AdminDashboard'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
@@ -31,6 +21,7 @@ import CategoryPage from './pages/category/CategoryPage'
 import AccountSettingsPage from './pages/account/AccountSettingsPage'
 import OrdersPage from './pages/orders/OrdersPage'
 import HelpPage from './pages/help/HelpPage'
+import API_BASE from './api'
 
 function decodeJwtPayload(token) {
   try {
@@ -231,10 +222,12 @@ function App() {
     }).catch(() => null)
     const data = await res?.json().catch(() => null)
 
-    localStorage.removeItem('guest_cart')
     setToken(t)
     setUser({ email: payload.email })
-    setCart(data?.items ?? [])
+    if (data?.items) {
+      localStorage.removeItem('guest_cart')
+      setCart(data.items)
+    }
     navigate('/')
   }
 
@@ -251,10 +244,10 @@ function App() {
   }
 
   function handleLogout() {
+    localStorage.setItem('guest_cart', JSON.stringify(cart))
     localStorage.removeItem('token')
     setToken(null)
     setUser(null)
-    setCart([])
     navigate('/')
   }
 
