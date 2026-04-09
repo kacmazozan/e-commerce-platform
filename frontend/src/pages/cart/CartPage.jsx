@@ -65,18 +65,24 @@ export default function CartPage({
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = await res.json()
+      let data
+      try {
+        data = await res.json()
+      } catch {
+        setReserveError('Reservation failed. Please try again.')
+        return
+      }
       if (!res.ok) {
         const msg = data.unavailable
           ? data.unavailable.map((u) => `${u.name}: only ${u.available} left`).join(', ')
-          : data.error
+          : data.error ?? 'Reservation failed. Please try again.'
         setReserveError(msg)
-        setReserving(false)
         return
       }
       navigate('/checkout', { state: { expiresAt: data.expires_at } })
     } catch {
       setReserveError('Network error. Please try again.')
+    } finally {
       setReserving(false)
     }
   }
