@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
   let idx = 1
 
   if (category) {
-    where.push(`category = $${idx}`)
+    where.push(`p.category = $${idx}`)
     params.push(category)
     idx++
   }
@@ -21,9 +21,13 @@ router.get('/', async (req, res) => {
   const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : ''
 
   const result = await pool.query(
-    `SELECT id, name, description, price, stock, category, image_url, created_at
-     FROM products ${whereClause}
-     ORDER BY created_at DESC
+    `SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.image_url, p.created_at,
+            GREATEST(0, p.stock - COALESCE(SUM(sr.quantity), 0)) AS available_stock
+     FROM products p
+     LEFT JOIN stock_reservations sr ON sr.product_id = p.id AND sr.expires_at > NOW()
+     ${whereClause}
+     GROUP BY p.id
+     ORDER BY p.created_at DESC
      LIMIT $${idx}`,
     [...params, limit]
   )

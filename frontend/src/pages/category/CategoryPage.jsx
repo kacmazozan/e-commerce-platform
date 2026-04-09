@@ -124,6 +124,8 @@ export default function CategoryPage({
           {products.map((product) => {
             const inCart = cartIds.has(product.id)
             const inWishlist = wishlistIds.has(product.id)
+            const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
+            const outOfStock = availableStock === 0
             return (
               <div
                 key={product.id}
@@ -139,21 +141,40 @@ export default function CategoryPage({
                   <span className="text-[15px] font-bold text-purple-400">
                     ${parseFloat(product.price).toFixed(2)}
                   </span>
+                  <span
+                    className={
+                      availableStock < 10
+                        ? 'text-[11px] font-semibold text-red-400'
+                        : 'text-[11px] text-[var(--text)] opacity-50'
+                    }
+                  >
+                    {availableStock === 0
+                      ? 'Out of stock'
+                      : availableStock < 10
+                        ? `Only ${availableStock} left`
+                        : `${availableStock} in stock`}
+                  </span>
                 </div>
                 <div className="flex gap-2 px-3 pb-3.5">
                   <button
                     className={
-                      inCart
-                        ? 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-400 bg-transparent px-3 py-2.5 text-[13px] font-semibold text-purple-400 transition-opacity hover:opacity-88'
-                        : 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-none bg-purple-400 px-3 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88'
+                      outOfStock
+                        ? 'flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-transparent px-3 py-2.5 text-[13px] font-semibold text-[var(--text)] opacity-40'
+                        : inCart
+                          ? 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-400 bg-transparent px-3 py-2.5 text-[13px] font-semibold text-purple-400 transition-opacity hover:opacity-88'
+                          : 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-none bg-purple-400 px-3 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88'
                     }
+                    disabled={outOfStock}
                     onClick={() =>
-                      inCart
-                        ? onRemoveFromCart && onRemoveFromCart(product.id)
-                        : onAddToCart && onAddToCart(product)
+                      outOfStock
+                        ? undefined
+                        : inCart
+                          ? onRemoveFromCart && onRemoveFromCart(product.id)
+                          : onAddToCart && onAddToCart(product)
                     }
                   >
-                    <CartIcon /> {inCart ? 'Remove from Cart' : 'Add to Cart'}
+                    <CartIcon />{' '}
+                    {outOfStock ? 'Out of Stock' : inCart ? 'Remove from Cart' : 'Add to Cart'}
                   </button>
                   <button
                     className={

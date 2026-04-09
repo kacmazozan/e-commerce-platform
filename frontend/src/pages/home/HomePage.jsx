@@ -235,6 +235,8 @@ export default function HomePage({
         >
           {newReleases.map((product) => {
             const hue = CATEGORY_HUE[product.category] ?? 280
+            const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
+            const outOfStock = availableStock === 0
             return (
               <div
                 key={product.id}
@@ -265,13 +267,31 @@ export default function HomePage({
                       ${parseFloat(product.price).toFixed(2)}
                     </span>
                     <button
-                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text)] transition-[background,color,border-color] hover:border-purple-400 hover:bg-purple-400 hover:text-white"
+                      className={
+                        outOfStock
+                          ? 'flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg border border-[var(--border)] bg-transparent text-[var(--text)] opacity-30'
+                          : 'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text)] transition-[background,color,border-color] hover:border-purple-400 hover:bg-purple-400 hover:text-white'
+                      }
                       aria-label="Add to cart"
-                      onClick={() => onAddToCart && onAddToCart(product)}
+                      disabled={outOfStock}
+                      onClick={() => !outOfStock && onAddToCart && onAddToCart(product)}
                     >
                       <MiniCartIcon />
                     </button>
                   </div>
+                  <span
+                    className={
+                      availableStock < 10
+                        ? 'text-[11px] font-semibold text-red-400'
+                        : 'text-[11px] text-[var(--text)] opacity-50'
+                    }
+                  >
+                    {availableStock === 0
+                      ? 'Out of stock'
+                      : availableStock < 10
+                        ? `Only ${availableStock} left`
+                        : `${availableStock} in stock`}
+                  </span>
                 </div>
               </div>
             )
