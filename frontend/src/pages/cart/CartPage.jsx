@@ -75,7 +75,7 @@ export default function CartPage({
       if (!res.ok) {
         const msg = data.unavailable
           ? data.unavailable.map((u) => `${u.name}: only ${u.available} left`).join(', ')
-          : data.error ?? 'Reservation failed. Please try again.'
+          : (data.error ?? 'Reservation failed. Please try again.')
         setReserveError(msg)
         return
       }

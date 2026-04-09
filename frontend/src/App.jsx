@@ -23,6 +23,15 @@ import OrdersPage from './pages/orders/OrdersPage'
 import HelpPage from './pages/help/HelpPage'
 import API_BASE from './api'
 
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  const navType = useNavigationType()
+  useEffect(() => {
+    if (navType !== 'POP') window.scrollTo(0, 0)
+  }, [pathname, navType])
+  return null
+}
+
 function decodeJwtPayload(token) {
   try {
     const parts = token.split('.')
@@ -203,10 +212,29 @@ function App() {
       localStorage.removeItem('token')
       return
     }
-
     localStorage.setItem('token', t)
 
-    // Merge any guest cart items into the server cart
+    // Login: discard guest cart and load the server cart
+    const res = await fetch(`${API_BASE}/api/cart`, {
+      headers: { Authorization: `Bearer ${t}` },
+    }).catch(() => null)
+    const data = await res?.json().catch(() => null)
+
+    setToken(t)
+    setUser({ email: payload.email })
+    if (data?.items) {
+      localStorage.removeItem('guest_cart')
+      setCart(data.items)
+    }
+    navigate('/')
+  }
+
+  async function handleSignup(t) {
+    const payload = decodeJwtPayload(t)
+    if (!payload) return
+    localStorage.setItem('token', t)
+
+    // Signup: merge guest cart items into the new (empty) server cart
     const guestItems = cart.filter((item) => item.id)
     for (const item of guestItems) {
       await fetch(`${API_BASE}/api/cart`, {
@@ -216,7 +244,7 @@ function App() {
       }).catch(() => {})
     }
 
-    // Fetch the final merged cart from the server
+    // Fetch the merged cart from the server
     const res = await fetch(`${API_BASE}/api/cart`, {
       headers: { Authorization: `Bearer ${t}` },
     }).catch(() => null)
@@ -292,7 +320,10 @@ function App() {
             />
           }
         />
-        <Route path="/register" element={<RegisterPage onBack={() => navigate('/login')} />} />
+        <Route
+          path="/register"
+          element={<RegisterPage onBack={() => navigate('/login')} onSignup={handleSignup} />}
+        />
         <Route
           path="/forgot-password"
           element={<ForgotPasswordPage onBack={() => navigate('/login')} />}

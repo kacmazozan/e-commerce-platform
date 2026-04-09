@@ -66,23 +66,23 @@ export default function CategoryPage({
   wishlistItems = [],
 }) {
   const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loadedCategory, setLoadedCategory] = useState(null)
+  const loading = loadedCategory !== category.title
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
     fetch(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}`)
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
-          setLoading(false)
+          setLoadedCategory(category.title)
         }
       })
       .catch(() => {
         if (!cancelled) {
           setProducts([])
-          setLoading(false)
+          setLoadedCategory(category.title)
         }
       })
     return () => {

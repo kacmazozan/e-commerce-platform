@@ -4,15 +4,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useTheme } from '../../context/ThemeContext'
 import { SunIcon, MoonIcon } from '../../components/icons'
+import API_BASE from '../../api'
 
-function RegisterPage({ onBack }) {
+function RegisterPage({ onBack, onSignup }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
   const { theme, toggleTheme } = useTheme()
 
   async function handleSubmit(e) {
@@ -26,7 +26,7 @@ function RegisterPage({ onBack }) {
 
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:3000/api/auth/register', {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
@@ -36,7 +36,7 @@ function RegisterPage({ onBack }) {
       if (!res.ok) {
         setError(data.message || 'Registration failed')
       } else {
-        setSuccess(true)
+        onSignup(data.token)
       }
     } catch {
       setError('Could not connect to server')
@@ -71,26 +71,6 @@ function RegisterPage({ onBack }) {
       {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
     </button>
   )
-
-  if (success) {
-    return (
-      <div className={wrapperCls}>
-        {ambientBg}
-        {themeToggle}
-        <div className={cardCls}>
-          <h1 className="mb-7 text-center text-3xl font-medium text-[var(--text-h)]">
-            Account created
-          </h1>
-          <p className="mb-6 text-[var(--text)]">
-            Your account has been created. You can now sign in.
-          </p>
-          <Button onClick={onBack} className="w-full bg-purple-400 text-white hover:bg-purple-300">
-            Back to sign in
-          </Button>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className={wrapperCls}>
