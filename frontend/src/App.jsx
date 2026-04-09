@@ -251,7 +251,6 @@ function App() {
 
   function handleLogout() {
     localStorage.removeItem('token')
-    localStorage.removeItem('guest_cart')
     setToken(null)
     setUser(null)
     setCart([])
