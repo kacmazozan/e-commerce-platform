@@ -1,3 +1,6 @@
+import { useState, useEffect } from 'react'
+import API_BASE from '../../api'
+
 function BackIcon() {
   return (
     <svg
@@ -52,9 +55,6 @@ function HeartIcon({ filled }) {
   )
 }
 
-import { useState, useEffect } from 'react'
-import API_BASE from '../../api'
-
 export default function CategoryPage({
   category,
   onBack,
@@ -70,6 +70,7 @@ export default function CategoryPage({
 
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
     fetch(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}`)
       .then((r) => r.json())
       .then((data) => {
@@ -164,7 +165,7 @@ export default function CategoryPage({
                           ? 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-400 bg-transparent px-3 py-2.5 text-[13px] font-semibold text-purple-400 transition-opacity hover:opacity-88'
                           : 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-none bg-purple-400 px-3 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88'
                     }
-                    disabled={outOfStock}
+                    disabled={outOfStock && !inCart}
                     onClick={() =>
                       outOfStock
                         ? undefined
