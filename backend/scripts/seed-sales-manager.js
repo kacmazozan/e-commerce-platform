@@ -17,9 +17,7 @@ async function seedSalesManager() {
   try {
     const existing = await pool.query('SELECT id FROM auth.users WHERE email = $1', [EMAIL])
     if (existing.rows.length > 0) {
-      console.log(
-        `Sales manager "${EMAIL}" already exists (id: ${existing.rows[0].id}). Skipping.`
-      )
+      console.log(`Sales manager "${EMAIL}" already exists (id: ${existing.rows[0].id}). Skipping.`)
       process.exit(0)
     }
 
