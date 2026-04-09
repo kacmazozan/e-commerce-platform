@@ -287,10 +287,17 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
       </header>
 
       <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-10 pb-20">
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <h1 className="m-0 text-[32px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
             Checkout
           </h1>
+          <div
+            className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-[13px] font-semibold tabular-nums ${isUrgent ? 'border-red-400/30 bg-red-400/8 text-red-400' : 'border-purple-400/25 bg-purple-400/8 text-purple-400'}`}
+          >
+            <ClockIcon size={14} />
+            Stock reserved for {timeStr}
+            {isUrgent ? ' — hurry!' : ''}
+          </div>
         </div>
 
         <div className="grid [grid-template-columns:1fr_360px] items-start gap-8 max-[900px]:[grid-template-columns:1fr]">
@@ -546,14 +553,6 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
                   <span>Total</span>
                   <span>${(total + shippingCost).toFixed(2)}</span>
                 </div>
-              </div>
-
-              {/* Timer */}
-              <div
-                className={`mt-4 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-[12px] font-semibold tabular-nums ${isUrgent ? 'bg-red-400/10 text-red-400' : 'bg-purple-400/10 text-purple-400'}`}
-              >
-                <ClockIcon size={13} />
-                Stock reserved for {timeStr}
               </div>
 
               {submitError && (
