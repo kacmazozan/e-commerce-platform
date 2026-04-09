@@ -1,14 +1,20 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code, Codex, and Gemini CLI when working with code in this repository.
 
 ## Project Overview
 
-An e-commerce platform with a React frontend (Vite) and Express.js backend.
+An e-commerce platform (Sabanci University CS308 course project) with a React frontend (Vite) and Express.js backend. Full product requirements are in [`.claude/project_description.md`](.claude/project_description.md) — consult it to ensure all implementations align with the specified role responsibilities and feature scope.
+
+## Git Conventions
+
+- Every commit message must reference the SCRUM item it belongs to (e.g. `SCRUM-66: add middleware`).
+- Do **not** add `Co-Authored-By: Claude ...` trailers to commit messages.
 
 ## Commands
 
 ### Frontend (`frontend/`)
+
 ```bash
 npm run dev           # Start Vite dev server with HMR
 npm run build         # Production build
@@ -21,6 +27,7 @@ npm run test:watch    # Vitest (watch mode)
 ```
 
 ### Backend (`backend/`)
+
 ```bash
 node server.js        # Start Express server (default port 3000)
 npm run lint          # ESLint
@@ -30,6 +37,7 @@ npm test              # Jest (single run)
 ```
 
 ### Running a single test
+
 ```bash
 # Frontend — pass a filename pattern
 cd frontend && npx vitest run LoginPage
@@ -39,13 +47,14 @@ cd backend && npx jest --testNamePattern "returns 201"
 ```
 
 ### Docker
+
 ```bash
 docker compose up --build   # First run, or after package.json changes
 docker compose up           # Subsequent runs
 docker compose down         # Stop and remove containers
 ```
 
-Services: frontend → http://localhost:5173, backend → http://localhost:3000, PostgreSQL → localhost:5432
+Services: frontend → <http://localhost:5173>, backend → <http://localhost:3000>, PostgreSQL → localhost:5432
 
 Each service has a `Dockerfile` (production) and `Dockerfile.dev` (development). `docker-compose.yml` uses the dev Dockerfiles with volume mounts for hot reload.
 
@@ -94,6 +103,14 @@ ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=yourpassword node backend/scripts/s
 
 Both env vars are required — the script exits if either is missing.
 
+### Seeding a sales manager user
+
+```bash
+MANAGER_EMAIL=sm@example.com MANAGER_PASSWORD=yourpassword MANAGER_NAME="Jane Doe" node backend/scripts/seed-sales-manager.js
+```
+
+All three env vars are required. The script inserts into both `auth.users` (role=`sales_manager`) and `auth.sales_managers` (name). Sales managers log in through the regular `/login` page.
+
 ## Architecture
 
 ### Backend
@@ -103,6 +120,7 @@ Both env vars are required — the script exits if either is missing.
 `db.js` exports a single `pg.Pool` instance connected via `DATABASE_URL`.
 
 Route files live in `backend/routes/`:
+
 - `auth.js` — `POST /api/auth/register`, `POST /api/auth/login`, and password reset endpoints
 - `admin.js` — user CRUD at `/api/admin/users` and `GET /api/admin/me`
 - `admin-products.js` — product CRUD at `/api/admin/products`
@@ -110,10 +128,12 @@ Route files live in `backend/routes/`:
 - `admin-settings.js` — system settings + dashboard stats at `/api/admin/settings`
 
 Middleware in `backend/middleware/`:
+
 - `auth.js` — verifies Bearer JWT and sets `req.user` (`{ userId, email, role }`)
 - `admin.js` — requires `req.user.role === 'admin'`; all admin routes stack both middlewares
+- `sales-manager.js` — requires `req.user.role === 'sales_manager'`; stack with `authenticate` the same way as admin routes
 
-All admin routes use `router.use(authenticate); router.use(requireAdmin)` at the top of their file.
+All admin routes use `router.use(authenticate); router.use(requireAdmin)` at the top of their file. Sales manager routes follow the same pattern with `requireSalesManager`.
 
 JWT payload shape: `{ userId, email, role }`. Tokens expire in 7 days.
 
@@ -123,9 +143,13 @@ JWT payload shape: `{ userId, email, role }`. Tokens expire in 7 days.
 
 Auth state (`token`, `user`) and admin auth state (`adminToken`) are held in `App` state, initialised from `localStorage`. The JWT payload is decoded client-side with a local `decodeJwtPayload` helper (no library) to extract email and role — this is used both for initialising state and for the `RequireAdmin` route guard.
 
-**Two separate auth sessions:**
+**Auth sessions and route guards:**
+
 - Regular users: `localStorage.token` → `RequireAuth` guard
-- Admin: `localStorage.adminToken` → `RequireAdmin` guard (also checks `payload.role === 'admin'`)
+- Sales managers: same `localStorage.token` → `RequireSalesManager` guard (checks `payload.role === 'sales_manager'`); they log in through the shared `/login` page
+- Admin: `localStorage.adminToken` → `RequireAdmin` guard (also checks `payload.role === 'admin'`); separate session
+
+Sales manager pages live in `src/pages/sales-manager/`.
 
 `src/api.js` exports `API_BASE` read from `import.meta.env.VITE_API_BASE_URL`, falling back to `http://localhost:3000`. Every admin page imports this; set `VITE_API_BASE_URL` in `frontend/.env` when deploying.
 
@@ -146,6 +170,7 @@ User roles are a PostgreSQL enum `auth.user_role`: `customer`, `sales_manager`, 
 ### CI/CD
 
 `.github/workflows/ci-cd.yml` runs three independent jobs on every push/PR:
+
 1. **Lint & Format** — ESLint + Prettier for both packages
 2. **Test** — Vitest (frontend) + Jest (backend); no database service needed since backend tests mock the DB
 3. **Build** — `npm run build` in `frontend/`
