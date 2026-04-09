@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitForElementToBeRemoved } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import CategoryPage from '../src/pages/category/CategoryPage'
@@ -41,6 +41,9 @@ describe('CategoryPage', () => {
 
     renderPage()
 
+    // Wait for loading to finish to avoid act warnings
+    await waitForElementToBeRemoved(() => screen.queryByText(/loading products/i))
+
     expect(screen.getByText('Electronics')).toBeInTheDocument()
     expect(screen.getByText('Gadgets and gear')).toBeInTheDocument()
   })
@@ -57,6 +60,9 @@ describe('CategoryPage', () => {
 
     expect(await screen.findByText('Widget')).toBeInTheDocument()
     expect(screen.getByText('$19.99')).toBeInTheDocument()
+
+    // Ensure loading is gone
+    expect(screen.queryByText(/loading products/i)).not.toBeInTheDocument()
   })
 
   it('shows "n in stock" badge when available_stock >= 10', async () => {
@@ -196,9 +202,8 @@ describe('CategoryPage', () => {
     renderPage()
 
     // loading disappears, no product cards rendered
-    await vi.waitFor(() => {
-      expect(screen.queryByText(/loading products/i)).not.toBeInTheDocument()
-    })
+    await waitForElementToBeRemoved(() => screen.queryByText(/loading products/i))
+
     expect(screen.queryByRole('button', { name: /add to cart/i })).not.toBeInTheDocument()
   })
 
@@ -227,5 +232,8 @@ describe('CategoryPage', () => {
     await vi.waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('category=Books'))
     })
+
+    // Wait for loading to finish to avoid act warnings
+    await waitForElementToBeRemoved(() => screen.queryByText(/loading products/i))
   })
 })
