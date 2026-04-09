@@ -44,5 +44,19 @@ services:
     ports:
       - "1025:1025" # SMTP port
       - "8025:8025" # Web interface port
+
+  invoice-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.invoice-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SMTP_HOST=mailserver
+    depends_on:
+      - mailserver
+    volumes:
+      - ./backend:/app
+
 volumes:
   postgres_data:
