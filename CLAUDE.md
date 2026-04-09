@@ -106,10 +106,10 @@ Both env vars are required — the script exits if either is missing.
 ### Seeding a sales manager user
 
 ```bash
-SALES_MANAGER_EMAIL=sm@example.com SALES_MANAGER_PASSWORD=yourpassword SALES_MANAGER_NAME="Jane Doe" node backend/scripts/seed-sales-manager.js
+docker compose exec -e SALES_MANAGER_EMAIL=sm@example.com -e SALES_MANAGER_PASSWORD=yourpassword -e "SALES_MANAGER_NAME=Jane Doe" backend node scripts/seed-sales-manager.js
 ```
 
-All three env vars are required. The script inserts into both `auth.users` (role=`sales_manager`) and `auth.sales_managers` (name). Sales managers log in through the regular `/login` page.
+Must be run via `docker compose exec` so the container's `DATABASE_URL` is available. All three env vars are required. The script inserts into both `auth.users` (role=`sales_manager`) and `auth.sales_managers` (name). Sales managers log in through the regular `/login` page.
 
 ## Architecture
 
