@@ -8,6 +8,7 @@ import {
   useNavigationType,
 } from 'react-router-dom'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
+import SalesManagerLoginPage from './pages/sales-manager/SalesManagerLoginPage'
 import SalesManagerDashboard from './pages/sales-manager/SalesManagerDashboard'
 
 function ScrollToTop() {
@@ -48,10 +49,11 @@ function RequireAuth({ token, children }) {
   return children
 }
 
-function RequireSalesManager({ token, children }) {
-  if (!token) return <Navigate to="/login" replace />
-  const payload = decodeJwtPayload(token)
-  if (!payload || payload.role !== 'sales_manager') return <Navigate to="/login" replace />
+function RequireSalesManager({ salesManagerToken, children }) {
+  if (!salesManagerToken) return <Navigate to="/sales-manager/login" replace />
+  const payload = decodeJwtPayload(salesManagerToken)
+  if (!payload || payload.role !== 'sales_manager')
+    return <Navigate to="/sales-manager/login" replace />
   return children
 }
 
@@ -107,6 +109,9 @@ function App() {
   })
 
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem('adminToken'))
+  const [salesManagerToken, setSalesManagerToken] = useState(() =>
+    localStorage.getItem('salesManagerToken')
+  )
   const [cart, setCart] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('guest_cart') || '[]')
@@ -188,6 +193,18 @@ function App() {
     localStorage.removeItem('adminToken')
     setAdminToken(null)
     navigate('/admin/login')
+  }
+
+  function handleSalesManagerLogin(t) {
+    localStorage.setItem('salesManagerToken', t)
+    setSalesManagerToken(t)
+    navigate('/sales-manager')
+  }
+
+  function handleSalesManagerLogout() {
+    localStorage.removeItem('salesManagerToken')
+    setSalesManagerToken(null)
+    navigate('/sales-manager/login')
   }
 
   function requireAuth() {
@@ -301,10 +318,20 @@ function App() {
 
         {/* Sales manager routes */}
         <Route
+          path="/sales-manager/login"
+          element={
+            salesManagerToken ? (
+              <Navigate to="/sales-manager" replace />
+            ) : (
+              <SalesManagerLoginPage onLogin={handleSalesManagerLogin} />
+            )
+          }
+        />
+        <Route
           path="/sales-manager"
           element={
-            <RequireSalesManager token={token}>
-              <SalesManagerDashboard />
+            <RequireSalesManager salesManagerToken={salesManagerToken}>
+              <SalesManagerDashboard onLogout={handleSalesManagerLogout} />
             </RequireSalesManager>
           }
         />

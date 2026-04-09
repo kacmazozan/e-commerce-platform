@@ -98,7 +98,7 @@ The runner tracks applied migrations in a `pgmigrations` table in the database. 
 ### Seeding an admin user
 
 ```bash
-ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=yourpassword node backend/scripts/seed-admin.js
+docker compose exec -e ADMIN_EMAIL=admin@example.com -e ADMIN_PASSWORD=yourpassword backend node scripts/seed-admin.js
 ```
 
 Both env vars are required — the script exits if either is missing.
@@ -141,15 +141,15 @@ JWT payload shape: `{ userId, email, role }`. Tokens expire in 7 days.
 
 `src/main.jsx` wraps `<App>` in `<BrowserRouter>`. All routing is in `src/App.jsx` using React Router v7.
 
-Auth state (`token`, `user`) and admin auth state (`adminToken`) are held in `App` state, initialised from `localStorage`. The JWT payload is decoded client-side with a local `decodeJwtPayload` helper (no library) to extract email and role — this is used both for initialising state and for the `RequireAdmin` route guard.
+Auth state (`token`, `user`), admin auth state (`adminToken`), and sales manager auth state (`salesManagerToken`) are held in `App` state, initialised from `localStorage`. The JWT payload is decoded client-side with a local `decodeJwtPayload` helper (no library) to extract email and role.
 
 **Auth sessions and route guards:**
 
-- Regular users: `localStorage.token` → `RequireAuth` guard
-- Sales managers: same `localStorage.token` → `RequireSalesManager` guard (checks `payload.role === 'sales_manager'`); they log in through the shared `/login` page
-- Admin: `localStorage.adminToken` → `RequireAdmin` guard (also checks `payload.role === 'admin'`); separate session
+- Regular users: `localStorage.token` → `RequireAuth` guard → login at `/login`
+- Sales managers: `localStorage.salesManagerToken` → `RequireSalesManager` guard (checks `payload.role === 'sales_manager'`) → login at `/sales-manager/login`
+- Admin: `localStorage.adminToken` → `RequireAdmin` guard (checks `payload.role === 'admin'`) → login at `/admin/login`
 
-Sales manager pages live in `src/pages/sales-manager/`.
+Each role has a fully isolated session. Sales manager pages live in `src/pages/sales-manager/`.
 
 `src/api.js` exports `API_BASE` read from `import.meta.env.VITE_API_BASE_URL`, falling back to `http://localhost:3000`. Every admin page imports this; set `VITE_API_BASE_URL` in `frontend/.env` when deploying.
 
