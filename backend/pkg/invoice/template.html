@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --primary: #9d7cff; /* FIER Purple */
+            --primary-dark: #7c5dfa;
+            --text-main: #1e1e2d;
+            --text-muted: #777791;
+            --bg: #ffffff;
+            --surface: #fcfcff;
+            --border: #e2e2ed;
+        }
+        html, body { 
+            height: 100%;
+            margin: 0; padding: 0; 
+            background: var(--bg);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            -webkit-print-color-adjust: exact;
+        }
+        .container { 
+            max-width: 800px;
+            margin: auto;
+            background: var(--bg);
+            padding: 50px 60px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .header { 
+            display: flex; justify-content: space-between; align-items: flex-start;
+            border-bottom: 2px solid var(--border); padding-bottom: 30px; margin-bottom: 30px;
+        }
+        .logo { font-size: 32px; font-weight: 900; letter-spacing: 5px; color: var(--text-main); margin: 0; }
+        .invoice-label { 
+            color: var(--primary); font-size: 14px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 40px; }
+        .info-col h3 { color: var(--text-muted); font-size: 10px; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; font-weight: 700; }
+        .info-col p { margin: 4px 0; font-size: 14px; color: var(--text-main); }
+        .info-col strong { color: #000; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+        th { text-align: left; padding: 12px 15px; border-bottom: 2px solid var(--text-main); color: var(--text-main); font-size: 11px; text-transform: uppercase; font-weight: 800; }
+        td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-main); }
+        
+        .totals-container { display: flex; justify-content: flex-end; }
+        .totals { width: 250px; }
+        .total-row { display: flex; justify-content: space-between; margin: 12px 0; color: var(--text-muted); font-size: 14px; }
+        .grand-total { font-size: 20px; font-weight: 900; color: var(--primary); margin-top: 15px; border-top: 2px solid var(--primary); padding-top: 15px; }
+        
+        .footer { margin-top: 80px; text-align: center; color: var(--text-muted); font-size: 11px; border-top: 1px solid var(--border); padding-top: 20px; }
+        .accent-bar { width: 60px; height: 6px; background: var(--primary); margin-bottom: 20px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="accent-bar"></div>
+        <div class="header">
+            <div>
+                <h1 class="logo">FIER</h1>
+                <p style="color: var(--text-muted); font-size: 12px; margin-top: 5px; font-weight: 500;">Premium Fashion for Every Individual</p>
+            </div>
+            <div style="text-align: right;">
+                <div class="invoice-label">Invoice</div>
+                <p style="margin-top: 8px; font-weight: 800; font-size: 16px;">#{{ number }}</p>
+                <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">Order No: {{ order_id }}</p>
+                <p style="color: var(--text-muted); font-size: 12px; font-weight: 600; margin-top: 2px;">{{ date_str }}</p>
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-col">
+                <h3>Billed To</h3>
+                <p><strong>{{ customer_name }}</strong></p>
+                <p>{{ customer_address }}</p>
+                <p>{{ customer_email }}</p>
+            </div>
+            <div class="info-col" style="text-align: right;">
+                <h3>Issued By</h3>
+                <p><strong>FIER Store</strong></p>
+                <p>support@fier.com</p>
+                <p>www.fier.com</p>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th style="text-align: right;">Price</th>
+                    <th style="text-align: right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td style="font-weight: 600;">{{ item.description }}</td>
+                    <td style="text-align: center;">{{ item.quantity }}</td>
+                    <td style="text-align: right;">${{ "{:,.2f}".format(item.unit_price) }}</td>
+                    <td style="text-align: right; font-weight: 600;">${{ "{:,.2f}".format(item.total) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="totals-container">
+            <div class="totals">
+                <div class="total-row"><span>Subtotal</span><span>${{ "{:,.2f}".format(subtotal) }}</span></div>
+                <div class="total-row"><span>Tax ({{ "{:.0f}".format(tax_rate * 100) }}%)</span><span>${{ "{:,.2f}".format(tax_amount) }}</span></div>
+                <div class="total-row grand-total"><span>Total</span><span>${{ "{:,.2f}".format(total) }}</span></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Thank you for choosing FIER. We hope you enjoy your purchase!</p>
+            <p style="margin-top: 5px;">This is a computer-generated invoice. No signature required.</p>
+        </div>
+    </div>
+</body>
+</html>
