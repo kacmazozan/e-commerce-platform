@@ -25,6 +25,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import HomePage from './pages/home/HomePage'
 import CartPage from './pages/cart/CartPage'
+import CheckoutPage from './pages/checkout/CheckoutPage'
 import WishlistPage from './pages/wishlist/WishlistPage'
 import CategoryPage from './pages/category/CategoryPage'
 import AccountSettingsPage from './pages/account/AccountSettingsPage'
@@ -316,7 +317,23 @@ function App() {
               onRemove={removeFromCart}
               onUpdateQuantity={updateCartQuantity}
               isLoggedIn={!!token}
+              token={token}
             />
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <RequireAuth token={token}>
+              <CheckoutPage
+                cartItems={cart}
+                token={token}
+                onOrderConfirmed={() => {
+                  setCart([])
+                  navigate('/orders')
+                }}
+              />
+            </RequireAuth>
           }
         />
         <Route

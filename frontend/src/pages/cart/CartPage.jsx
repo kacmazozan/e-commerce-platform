@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import API_BASE from '../../api'
 
 function BackIcon() {
   return (
@@ -38,15 +40,45 @@ function TrashIcon() {
   )
 }
 
-export default function CartPage({ onBack, cartItems, onRemove, onUpdateQuantity, isLoggedIn }) {
+export default function CartPage({
+  onBack,
+  cartItems,
+  onRemove,
+  onUpdateQuantity,
+  isLoggedIn,
+  token,
+}) {
   const navigate = useNavigate()
   const total = cartItems.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0)
+  const [reserving, setReserving] = useState(false)
+  const [reserveError, setReserveError] = useState(null)
 
-  function handleCheckout() {
+  async function handleCheckout() {
     if (!isLoggedIn) {
       navigate('/login')
+      return
     }
-    // logged-in checkout will be implemented later
+    setReserving(true)
+    setReserveError(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/checkout/reserve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        const msg = data.unavailable
+          ? data.unavailable.map((u) => `${u.name}: only ${u.available} left`).join(', ')
+          : data.error
+        setReserveError(msg)
+        setReserving(false)
+        return
+      }
+      navigate('/checkout', { state: { expiresAt: data.expires_at } })
+    } catch {
+      setReserveError('Network error. Please try again.')
+      setReserving(false)
+    }
   }
 
   if (cartItems.length === 0) {
@@ -198,11 +230,21 @@ export default function CartPage({ onBack, cartItems, onRemove, onUpdateQuantity
                 Add ${(50 - total).toFixed(2)} more for free shipping
               </p>
             )}
+            {reserveError && (
+              <p className="m-0 rounded-lg bg-red-400/8 px-3 py-2 text-center text-xs text-red-400">
+                {reserveError}
+              </p>
+            )}
             <button
-              className="mt-1 cursor-pointer rounded-[10px] border-none bg-purple-400 px-7 py-3.5 text-[15px] font-semibold tracking-[0.5px] text-white transition-opacity hover:opacity-88"
+              className="mt-1 cursor-pointer rounded-[10px] border-none bg-purple-400 px-7 py-3.5 text-[15px] font-semibold tracking-[0.5px] text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleCheckout}
+              disabled={reserving}
             >
-              {isLoggedIn ? 'Proceed to Checkout' : 'Login to Checkout'}
+              {reserving
+                ? 'Reserving stock…'
+                : isLoggedIn
+                  ? 'Proceed to Checkout'
+                  : 'Login to Checkout'}
             </button>
             {!isLoggedIn && (
               <p className="-mt-1 text-center text-xs text-[var(--text)]">
