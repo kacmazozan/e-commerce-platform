@@ -8,6 +8,7 @@ import {
   useNavigationType,
 } from 'react-router-dom'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
+import SalesManagerDashboard from './pages/sales-manager/SalesManagerDashboard'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -44,6 +45,13 @@ function decodeJwtPayload(token) {
 
 function RequireAuth({ token, children }) {
   if (!token) return <Navigate to="/login" replace />
+  return children
+}
+
+function RequireSalesManager({ token, children }) {
+  if (!token) return <Navigate to="/login" replace />
+  const payload = decodeJwtPayload(token)
+  if (!payload || payload.role !== 'sales_manager') return <Navigate to="/login" replace />
   return children
 }
 
@@ -290,6 +298,16 @@ function App() {
           }
         />
         <Route path="/help" element={<HelpPage onBack={() => navigate(-1)} />} />
+
+        {/* Sales manager routes */}
+        <Route
+          path="/sales-manager"
+          element={
+            <RequireSalesManager token={token}>
+              <SalesManagerDashboard />
+            </RequireSalesManager>
+          }
+        />
 
         {/* Admin routes */}
         <Route
