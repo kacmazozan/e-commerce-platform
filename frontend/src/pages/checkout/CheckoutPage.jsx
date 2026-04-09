@@ -242,7 +242,7 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => {})
-    navigate('/cart', { replace: true })
+    navigate(-1)
   }
 
   // ── Expired screen ─────────────────────────────────
