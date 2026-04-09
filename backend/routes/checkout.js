@@ -109,25 +109,18 @@ router.post('/confirm', async (req, res) => {
   const userId = req.user.userId
   const address = (req.body.address || '').trim() || null
 
+  // Use reservations joined with products as the single source of truth for both
+  // stock decrement and order item creation — avoids cart/reservation divergence.
   const reservations = await pool.query(
-    'SELECT product_id, quantity FROM stock_reservations WHERE user_id = $1 AND expires_at > NOW()',
+    `SELECT sr.product_id, sr.quantity, p.name, p.price
+     FROM stock_reservations sr
+     JOIN products p ON p.id = sr.product_id
+     WHERE sr.user_id = $1 AND sr.expires_at > NOW()`,
     [userId]
   )
 
   if (reservations.rows.length === 0) {
     return res.status(409).json({ error: 'Reservation expired. Please restart checkout.' })
-  }
-
-  const cartResult = await pool.query(
-    `SELECT ci.product_id, ci.quantity, p.name, p.price
-     FROM cart_items ci
-     JOIN products p ON p.id = ci.product_id
-     WHERE ci.user_id = $1`,
-    [userId]
-  )
-
-  if (cartResult.rows.length === 0) {
-    return res.status(400).json({ error: 'Cart is empty' })
   }
 
   const client = await pool.connect()
@@ -141,7 +134,7 @@ router.post('/confirm', async (req, res) => {
       )
     }
 
-    const total = cartResult.rows.reduce(
+    const total = reservations.rows.reduce(
       (sum, item) => sum + parseFloat(item.price) * item.quantity,
       0
     )
@@ -152,7 +145,7 @@ router.post('/confirm', async (req, res) => {
     )
     const orderId = orderResult.rows[0].id
 
-    for (const item of cartResult.rows) {
+    for (const item of reservations.rows) {
       await client.query(
         'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)',
         [orderId, item.product_id, item.quantity, item.price]

@@ -229,27 +229,11 @@ describe('POST /api/checkout/confirm', () => {
     expect(res.body.error).toContain('Reservation expired')
   })
 
-  it('returns 400 when cart is empty', async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [{ product_id: 1, quantity: 2 }] }) // valid reservation
-      .mockResolvedValueOnce({ rows: [] }) // cart is empty
-
-    const res = await request(app)
-      .post('/api/checkout/confirm')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ address: '123 Main St' })
-
-    expect(res.status).toBe(400)
-    expect(res.body.error).toBe('Cart is empty')
-  })
-
   it('returns { order_id } on success and clears cart and reservations', async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [{ product_id: 1, quantity: 2 }] }) // reservations
-      .mockResolvedValueOnce({
-        // cart items
-        rows: [{ product_id: 1, quantity: 2, name: 'Widget', price: '9.99' }],
-      })
+    pool.query.mockResolvedValueOnce({
+      // reservations joined with products (single source of truth)
+      rows: [{ product_id: 1, quantity: 2, name: 'Widget', price: '9.99' }],
+    })
 
     const client = makeClient([
       { rows: [] }, // BEGIN
@@ -273,11 +257,9 @@ describe('POST /api/checkout/confirm', () => {
   })
 
   it('accepts confirm without address', async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [{ product_id: 1, quantity: 1 }] })
-      .mockResolvedValueOnce({
-        rows: [{ product_id: 1, quantity: 1, name: 'Widget', price: '5.00' }],
-      })
+    pool.query.mockResolvedValueOnce({
+      rows: [{ product_id: 1, quantity: 1, name: 'Widget', price: '5.00' }],
+    })
 
     const client = makeClient([
       { rows: [] },
