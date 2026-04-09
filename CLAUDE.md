@@ -109,7 +109,7 @@ docker compose exec db psql -U postgres -d ecommerce -c "TRUNCATE products RESTA
 docker compose exec backend node scripts/seed-products.js
 ```
 
-`RESTART IDENTITY` resets the `id` sequence back to 1. `CASCADE` also truncates `order_items` (which foreign-keys into `products`) — be aware of this if the database has real order data.
+`RESTART IDENTITY` resets the `id` sequence back to 1. `CASCADE` also truncates `cart_items` (which foreign-keys into `products`). `order_items` is now protected by `ON DELETE RESTRICT` — if any orders exist, you must delete them first before truncating products.
 
 ## Architecture
 
