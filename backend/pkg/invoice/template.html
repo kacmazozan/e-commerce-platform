@@ -18,7 +18,7 @@
             margin: 0; padding: 0; 
             background: var(--bg);
             color: var(--text-main);
-            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            font-family: "Inter", -apple-system, system-ui, sans-serif;
             -webkit-print-color-adjust: exact;
         }
         .container { 
@@ -33,27 +33,101 @@
             display: flex; justify-content: space-between; align-items: flex-start;
             border-bottom: 2px solid var(--border); padding-bottom: 30px; margin-bottom: 30px;
         }
-        .logo { font-size: 32px; font-weight: 900; letter-spacing: 5px; color: var(--text-main); margin: 0; }
-        .invoice-label { 
-            color: var(--primary); font-size: 14px; font-weight: 800; text-transform: uppercase;
+        .logo {
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: 5px;
+            color: var(--text-main);
+            margin: 0;
+        }
+        .invoice-label {
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
             letter-spacing: 2px;
         }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 40px; }
-        .info-col h3 { color: var(--text-muted); font-size: 10px; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; font-weight: 700; }
-        .info-col p { margin: 4px 0; font-size: 14px; color: var(--text-main); }
-        .info-col strong { color: #000; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            margin-bottom: 40px;
+        }
+        .info-col h3 {
+            color: var(--text-muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+        .info-col p {
+            margin: 4px 0;
+            font-size: 14px;
+            color: var(--text-main);
+        }
+        .info-col strong {
+            color: #000;
+        }
 
-        table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-        th { text-align: left; padding: 12px 15px; border-bottom: 2px solid var(--text-main); color: var(--text-main); font-size: 11px; text-transform: uppercase; font-weight: 800; }
-        td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-main); }
-        
-        .totals-container { display: flex; justify-content: flex-end; }
-        .totals { width: 250px; }
-        .total-row { display: flex; justify-content: space-between; margin: 12px 0; color: var(--text-muted); font-size: 14px; }
-        .grand-total { font-size: 20px; font-weight: 900; color: var(--primary); margin-top: 15px; border-top: 2px solid var(--primary); padding-top: 15px; }
-        
-        .footer { margin-top: 80px; text-align: center; color: var(--text-muted); font-size: 11px; border-top: 1px solid var(--border); padding-top: 20px; }
-        .accent-bar { width: 60px; height: 6px; background: var(--primary); margin-bottom: 20px; border-radius: 3px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+        }
+        th {
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 2px solid var(--text-main);
+            color: var(--text-main);
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 800;
+        }
+        td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            color: var(--text-main);
+        }
+
+        .totals-container {
+            display: flex;
+            justify-content: flex-end;
+        }
+        .totals {
+            width: 250px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px 0;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        .grand-total {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--primary);
+            margin-top: 15px;
+            border-top: 2px solid var(--primary);
+            padding-top: 15px;
+        }
+
+        .footer {
+            margin-top: 80px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 11px;
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+        }
+        .accent-bar {
+            width: 60px;
+            height: 6px;
+            background: var(--primary);
+            margin-bottom: 20px;
+            border-radius: 3px;
+        }
     </style>
 </head>
 <body>
