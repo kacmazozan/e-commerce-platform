@@ -1,11 +1,14 @@
 import pdfkit
 import os
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 class InvoiceGenerator:
     def __init__(self, template_dir):
         self.template_dir = template_dir
-        self.jinja_env = Environment(loader=FileSystemLoader(template_dir))
+        self.jinja_env = Environment(
+            loader=FileSystemLoader(template_dir),
+            autoescape=select_autoescape(["html"]),
+        )
 
     def generate_pdf(self, invoice_data) -> bytes:
         template = self.jinja_env.get_template("template.html")
