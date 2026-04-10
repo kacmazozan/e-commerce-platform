@@ -449,7 +449,10 @@ function App() {
           path="/sales-manager"
           element={
             <RequireSalesManager salesManagerToken={salesManagerToken}>
-              <SalesManagerDashboard onLogout={handleSalesManagerLogout} />
+              <SalesManagerDashboard
+                token={salesManagerToken}
+                onLogout={handleSalesManagerLogout}
+              />
             </RequireSalesManager>
           }
         />

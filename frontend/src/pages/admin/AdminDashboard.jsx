@@ -5,6 +5,7 @@ import ProductManagement from './ProductManagement'
 import OrderManagement from './OrderManagement'
 import SettingsManagement from './SettingsManagement'
 import DashboardHome from './DashboardHome'
+import DashboardLayout from '../../components/DashboardLayout'
 
 function AdminDashboard({ token, onLogout }) {
   const [admin, setAdmin] = useState(null)
@@ -38,69 +39,26 @@ function AdminDashboard({ token, onLogout }) {
   ]
 
   return (
-    <div className="flex min-h-svh bg-[var(--bg)]">
-      <aside className="box-border flex w-60 min-w-[240px] flex-col border-r border-[var(--border)] bg-[rgba(var(--background-rgb),0.4)] py-6 backdrop-blur-xl">
-        <h2 className="m-0 border-b border-[var(--border)] px-6 pb-6 text-xl font-semibold text-purple-400">
-          FIER Admin
-        </h2>
-        <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
-          {sections.map((s) => (
-            <button
-              key={s.key}
-              className={`flex cursor-pointer items-center gap-2.5 rounded-md border-none px-3 py-2.5 text-left font-[inherit] text-[15px] transition-all duration-150 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 ${
-                activeSection === s.key
-                  ? 'border-l-2 border-purple-400 bg-purple-400/15 font-medium text-purple-400'
-                  : 'bg-transparent text-[var(--text)] hover:bg-purple-400/10 hover:text-[var(--text-h)]'
-              }`}
-              onClick={() => setActiveSection(s.key)}
-            >
-              {s.icon}
-              {s.label}
-            </button>
-          ))}
-        </nav>
-        <div className="border-t border-[var(--border)] px-3 py-4">
-          <button
-            className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border-none bg-transparent px-3 py-2.5 text-left font-[inherit] text-[15px] text-[var(--text)] transition-all duration-150 hover:bg-red-500/10 hover:text-red-400 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0"
-            onClick={onLogout}
-          >
-            <LogoutIcon />
-            Sign out
-          </button>
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.4)] px-8 py-4 backdrop-blur-xl">
-          <h1 className="m-0 text-lg font-medium text-[var(--text-h)]">
-            {sections.find((s) => s.key === activeSection)?.label}
-          </h1>
-          <div className="flex items-center gap-3 text-sm text-[var(--text)]">
-            <span>{admin?.email}</span>
-            <button
-              className="cursor-pointer rounded-md border border-[var(--border)] bg-transparent px-3.5 py-1.5 font-[inherit] text-[13px] text-[var(--text)] transition-all duration-150 hover:border-purple-400 hover:text-purple-400"
-              onClick={onLogout}
-            >
-              Logout
-            </button>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-8">
-          {activeSection === 'dashboard' && (
-            <DashboardHome token={token} onNavigate={setActiveSection} />
-          )}
-          {activeSection === 'users' && <UserManagement token={token} />}
-          {activeSection === 'products' && <ProductManagement token={token} />}
-          {activeSection === 'orders' && <OrderManagement token={token} />}
-          {activeSection === 'settings' && <SettingsManagement token={token} />}
-        </main>
-      </div>
-    </div>
+    <DashboardLayout
+      title="FIER Admin"
+      sections={sections}
+      activeSection={activeSection}
+      onSectionChange={setActiveSection}
+      onLogout={onLogout}
+      userEmail={admin?.email}
+    >
+      {activeSection === 'dashboard' && (
+        <DashboardHome token={token} onNavigate={setActiveSection} />
+      )}
+      {activeSection === 'users' && <UserManagement token={token} />}
+      {activeSection === 'products' && <ProductManagement token={token} />}
+      {activeSection === 'orders' && <OrderManagement token={token} />}
+      {activeSection === 'settings' && <SettingsManagement token={token} />}
+    </DashboardLayout>
   )
 }
 
-/* Inline SVG icons — keeps admin self-contained, consistent with project pattern */
+/* Inline SVG icons — nav-section specific, stay with AdminDashboard */
 
 function DashboardIcon() {
   return (
@@ -186,23 +144,6 @@ function SettingsIcon() {
     >
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  )
-}
-
-function LogoutIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   )
 }
