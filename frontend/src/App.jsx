@@ -24,6 +24,7 @@ import AccountSettingsPage from './pages/account/AccountSettingsPage'
 import OrdersPage from './pages/orders/OrdersPage'
 import HelpPage from './pages/help/HelpPage'
 import API_BASE from './api'
+import { decodeJwtPayload } from './utils/jwt'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -32,18 +33,6 @@ function ScrollToTop() {
     if (navType !== 'POP') window.scrollTo(0, 0)
   }, [pathname, navType])
   return null
-}
-
-function decodeJwtPayload(token) {
-  try {
-    const parts = token.split('.')
-    if (parts.length < 3) return null
-    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
-    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
-    return JSON.parse(atob(padded))
-  } catch {
-    return null
-  }
 }
 
 function RequireAuth({ token, children }) {

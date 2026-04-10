@@ -3,6 +3,7 @@ import API_BASE from '../../api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { decodeJwtPayload } from '../../utils/jwt'
 
 function AdminLoginPage({ onLogin }) {
   const [email, setEmail] = useState('')
@@ -111,18 +112,6 @@ function AdminLoginPage({ onLogin }) {
       </div>
     </div>
   )
-}
-
-function decodeJwtPayload(token) {
-  try {
-    const parts = token.split('.')
-    if (parts.length < 3) return null
-    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
-    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
-    return JSON.parse(atob(padded))
-  } catch {
-    return null
-  }
 }
 
 export default AdminLoginPage

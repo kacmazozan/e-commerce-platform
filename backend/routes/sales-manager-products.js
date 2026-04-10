@@ -30,7 +30,11 @@ router.get('/', async (req, res) => {
 
 // PATCH /api/sales-manager/products/:id/price — update price only
 router.patch('/:id/price', async (req, res) => {
-  const productId = req.params.id
+  const productId = parseInt(req.params.id, 10)
+  if (isNaN(productId) || productId <= 0) {
+    return res.status(400).json({ error: 'Invalid product ID' })
+  }
+
   const { price } = req.body
 
   if (price == null) {

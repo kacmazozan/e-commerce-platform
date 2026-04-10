@@ -15,6 +15,10 @@ const jwt = require('jsonwebtoken')
 const smToken = jwt.sign({ userId: 1, email: 'sm@test.com', role: 'sales_manager' }, 'test-secret')
 const customerToken = jwt.sign({ userId: 2, email: 'c@test.com', role: 'customer' }, 'test-secret')
 const adminToken = jwt.sign({ userId: 3, email: 'a@test.com', role: 'admin' }, 'test-secret')
+const productManagerToken = jwt.sign(
+  { userId: 4, email: 'pm@test.com', role: 'product_manager' },
+  'test-secret'
+)
 
 describe('GET /api/sales-manager/products', () => {
   beforeEach(() => jest.clearAllMocks())
@@ -35,6 +39,13 @@ describe('GET /api/sales-manager/products', () => {
     const res = await request(app)
       .get('/api/sales-manager/products')
       .set('Authorization', `Bearer ${adminToken}`)
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 with product manager token', async () => {
+    const res = await request(app)
+      .get('/api/sales-manager/products')
+      .set('Authorization', `Bearer ${productManagerToken}`)
     expect(res.status).toBe(403)
   })
 
@@ -72,6 +83,14 @@ describe('PATCH /api/sales-manager/products/:id/price', () => {
     const res = await request(app)
       .patch('/api/sales-manager/products/1/price')
       .set('Authorization', `Bearer ${customerToken}`)
+      .send({ price: 29.99 })
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 with product manager token', async () => {
+    const res = await request(app)
+      .patch('/api/sales-manager/products/1/price')
+      .set('Authorization', `Bearer ${productManagerToken}`)
       .send({ price: 29.99 })
     expect(res.status).toBe(403)
   })
