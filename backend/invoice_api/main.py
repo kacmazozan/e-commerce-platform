@@ -60,9 +60,6 @@ def process_invoice(request: InvoiceRequest):
 
         # 3. Send Email
         mailer = MailerClient()
-        # Ensure host is correct for current environment
-        os.environ['SMTP_HOST'] = SMTP_HOST 
-        
         subject = f"FIER - Invoice for your order {invoice_data.number}"
         body = f"""
         <h2>Hello {invoice_data.customer_name}!</h2>

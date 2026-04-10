@@ -48,7 +48,7 @@ def main():
     print("Sending via MailHog...")
     subject = f"FIER - Invoice for your order {mock_invoice.number}"
     body = f"""
-    <h2>Hello {mock_invoice.name if hasattr(mock_invoice, 'name') else mock_invoice.customer_name}!</h2>
+    <h2>Hello {mock_invoice.customer_name}!</h2>
     <p>Thank you for your order with FIER. Please find your invoice attached below.</p>
     <p>Warm regards,<br>The FIER Team</p>
     """

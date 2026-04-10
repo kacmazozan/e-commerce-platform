@@ -6,3 +6,8 @@ coverage/
 
 # remove screenshot folder
 .screenshots/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
