@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+jinja2
+pdfkit
+email-validator
+pytest
+pytest-mock
+httpx
+python-dotenv

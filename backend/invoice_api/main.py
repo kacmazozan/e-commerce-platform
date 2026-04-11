@@ -1,17 +1,22 @@
 import os
 import sys
+import html
 from typing import List, Optional
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel, EmailStr
 
-# Add project root to path for imports
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from pkg.mailer.mailer import MailerClient
-from pkg.invoice.models import InvoiceData, InvoiceItem
-from pkg.invoice.generator import InvoiceGenerator
+try:
+    from pkg.mailer.mailer import MailerClient
+    from pkg.invoice.models import InvoiceData, InvoiceItem
+    from pkg.invoice.generator import InvoiceGenerator
+except ImportError:
+    # Fallback for local development if PYTHONPATH is not set
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    from pkg.mailer.mailer import MailerClient
+    from pkg.invoice.models import InvoiceData, InvoiceItem
+    from pkg.invoice.generator import InvoiceGenerator
 
 app = FastAPI(title="FIER Invoice API")
 
@@ -64,8 +69,10 @@ def process_invoice(request: InvoiceRequest):
         os.environ['SMTP_HOST'] = SMTP_HOST 
         
         subject = f"FIER - Invoice for your order {invoice_data.number}"
+        
+        safe_name = html.escape(invoice_data.customer_name)
         body = f"""
-        <h2>Hello {invoice_data.customer_name}!</h2>
+        <h2>Hello {safe_name}!</h2>
         <p>Thank you for your order with FIER. Please find your invoice attached below.</p>
         <p>Warm regards,<br>The FIER Team</p>
         """

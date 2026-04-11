@@ -10,8 +10,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy requirements if any (currently manual install via tool, but for production use requirements.txt)
-RUN pip install --no-cache-dir fastapi uvicorn pydantic jinja2 pdfkit email-validator
+# Copy requirements and install
+COPY requirements-invoice.txt .
+RUN pip install --no-cache-dir -r requirements-invoice.txt
 
 # Copy the entire backend directory to include pkg
 COPY . /app

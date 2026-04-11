@@ -12,6 +12,7 @@ class MailerClient:
         self.user = os.getenv("SMTP_USER", "")
         self.password = os.getenv("SMTP_PASS", "")
         self.sender = os.getenv("SENDER_EMAIL", "invoices@fier.com")
+        self.timeout = int(os.getenv("SMTP_TIMEOUT", 10))
 
     def send(
         self,
@@ -42,7 +43,7 @@ class MailerClient:
 
         # Send
         try:
-            with smtplib.SMTP(self.host, self.port) as server:
+            with smtplib.SMTP(self.host, self.port, timeout=self.timeout) as server:
                 if self.user:
                     server.login(self.user, self.password)
                 server.sendmail(self.sender, to, msg.as_string())

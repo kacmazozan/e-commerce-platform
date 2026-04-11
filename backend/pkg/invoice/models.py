@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List
+from decimal import Decimal, ROUND_HALF_UP
 
 @dataclass
 class InvoiceItem:
@@ -10,7 +11,11 @@ class InvoiceItem:
     total: float = 0.0
 
     def calculate_total(self):
-        self.total = self.quantity * self.unit_price
+        # Use Decimal for monetary calculations
+        qty = Decimal(str(self.quantity))
+        price = Decimal(str(self.unit_price))
+        res = (qty * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.total = float(res)
         return self.total
 
 @dataclass
@@ -28,6 +33,15 @@ class InvoiceData:
     total: float = 0.0
 
     def calculate_totals(self):
-        self.subtotal = sum(item.calculate_total() for item in self.items)
-        self.tax_amount = self.subtotal * self.tax_rate
-        self.total = self.subtotal + self.tax_amount
+        sub = Decimal("0.00")
+        for item in self.items:
+            sub += Decimal(str(item.calculate_total()))
+        
+        self.subtotal = float(sub.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        
+        tax_r = Decimal(str(self.tax_rate))
+        tax_amt = (sub * tax_r).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.tax_amount = float(tax_amt)
+        
+        total_val = (sub + tax_amt).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.total = float(total_val)
