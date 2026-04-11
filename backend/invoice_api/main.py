@@ -1,17 +1,20 @@
 import os
+import re
 import sys
 import html
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from pydantic import BaseModel, EmailStr
+from fastapi import FastAPI, BackgroundTasks
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 try:
     from pkg.mailer.mailer import MailerClient
     from pkg.invoice.models import InvoiceData, InvoiceItem
     from pkg.invoice.generator import InvoiceGenerator
-except ImportError:
+except ModuleNotFoundError as e:
+    if "pkg" not in (e.name or ""):
+        raise
     # Fallback for local development if PYTHONPATH is not set
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     from pkg.mailer.mailer import MailerClient
@@ -20,15 +23,12 @@ except ImportError:
 
 app = FastAPI(title="FIER Invoice API")
 
-# Initialize global clients
-# In Docker, SMTP_HOST will be 'mailserver' (from docker-compose)
-SMTP_HOST = os.getenv("SMTP_HOST", "mailserver")
 TEMPLATE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../pkg/invoice'))
 
 class ItemRequest(BaseModel):
     description: str
-    quantity: int
-    unit_price: float
+    quantity: int = Field(ge=1)
+    unit_price: float = Field(ge=0)
 
 class InvoiceRequest(BaseModel):
     invoice_number: str
@@ -37,6 +37,13 @@ class InvoiceRequest(BaseModel):
     customer_email: EmailStr
     customer_address: str
     items: List[ItemRequest]
+
+    @field_validator("invoice_number")
+    @classmethod
+    def validate_invoice_number(cls, v: str) -> str:
+        if not re.match(r'^[A-Za-z0-9._\-]+$', v):
+            raise ValueError("invoice_number may only contain letters, digits, dots, hyphens, and underscores")
+        return v
 
 def process_invoice(request: InvoiceRequest):
     """

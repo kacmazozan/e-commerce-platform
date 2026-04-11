@@ -32,7 +32,7 @@ class MailerClient:
         msg["Subject"] = subject
 
         # Attach body
-        msg.attach(MIMEText(body, "html" if is_html else "plain"))
+        msg.attach(MIMEText(body, "html" if is_html else "plain", "utf-8"))
 
         # Attach files
         if attachments:
@@ -41,13 +41,8 @@ class MailerClient:
                 part.add_header("Content-Disposition", "attachment", filename=att["name"])
                 msg.attach(part)
 
-        # Send
-        try:
-            with smtplib.SMTP(self.host, self.port, timeout=self.timeout) as server:
-                if self.user:
-                    server.login(self.user, self.password)
-                server.sendmail(self.sender, to, msg.as_string())
-            return True
-        except Exception as e:
-            print(f"Failed to send email: {e}")
-            raise
+        # Send — raises on failure
+        with smtplib.SMTP(self.host, self.port, timeout=self.timeout) as server:
+            if self.user:
+                server.login(self.user, self.password)
+            server.sendmail(self.sender, to, msg.as_string())

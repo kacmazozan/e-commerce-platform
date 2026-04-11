@@ -1,6 +1,5 @@
-import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from invoice_api.main import app
 
 client = TestClient(app)
@@ -55,7 +54,7 @@ def test_invalid_email_validation():
     
     response = client.post("/api/invoices/generate", json=invalid_payload)
     
-    assert response.status_code == 422 # Unprocessable Entity
-    # Pydantic should indicate email issue
-    error_msg = response.json()["detail"][0]["msg"]
-    assert "value is not a valid email address" in error_msg.lower()
+    assert response.status_code == 422
+    # Pydantic validation error should point to the email field
+    detail = response.json()["detail"]
+    assert any("customer_email" in str(err.get("loc", "")) for err in detail)

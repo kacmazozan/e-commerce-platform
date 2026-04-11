@@ -53,21 +53,20 @@ def main():
     <p>Warm regards,<br>The FIER Team</p>
     """
     
-    success = mailer.send(
-        to=[mock_invoice.customer_email],
-        subject=subject,
-        body=body,
-        is_html=True,
-        attachments=[{
-            "name": f"Invoice_{mock_invoice.number}.pdf",
-            "content": pdf_content
-        }]
-    )
-
-    if success:
+    try:
+        mailer.send(
+            to=[mock_invoice.customer_email],
+            subject=subject,
+            body=body,
+            is_html=True,
+            attachments=[{
+                "name": f"Invoice_{mock_invoice.number}.pdf",
+                "content": pdf_content
+            }]
+        )
         print("Done! Check your local mail at http://localhost:8025")
-    else:
-        print("Failed to send email.")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
 
 if __name__ == "__main__":
     main()
