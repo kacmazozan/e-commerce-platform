@@ -21,21 +21,29 @@ def main():
     # 2. Setup Generator and Mailer
     template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../pkg/invoice'))
     generator = InvoiceGenerator(template_dir)
+    
+    # Force environmental variables for the script to use Gmail directly
+    # Note: These credentials are for the whole project/group. 
+    # The account owner is not responsible for group members' actions.
+    os.environ['SMTP_HOST'] = 'smtp.gmail.com'
+    os.environ['SMTP_PORT'] = '587'
+    os.environ['SMTP_USER'] = 'invoice.fier@gmail.com'
+    os.environ['SMTP_PASS'] = 'zyis qnxu djvz mdws'
+    os.environ['SENDER_EMAIL'] = 'invoice.fier@gmail.com'
+    
     mailer = MailerClient()
 
     # 3. MOCK PARAMETERS (Usually from your team member's API logic)
     items = [
-        InvoiceItem("Oversized Black Hoodie", 1, 85.00),
-        InvoiceItem("Straight Fit Jeans", 2, 60.00),
-        InvoiceItem("Silver Chain Necklace", 1, 25.00)
+        InvoiceItem("Nvidia RTX 5090", 1, 4000.00),
     ]
     
     mock_invoice = InvoiceData(
-        number="INV-2026-001",
-        order_id="ORD-984-ABC", # Added Order No
-        customer_name="John Doe",
-        customer_email="john@example.com",
-        customer_address="123 Fashion Ave, London, UK", # Added address
+        number="INV-2026-5090",
+        order_id="ORD-5090-PRANK", # Added Order No
+        customer_name="Harun Yilmaz",
+        customer_email="harun.yilmaz@sabanciuniv.edu",
+        customer_address="Sabanci University Dorms, Istanbul", # Added address
         items=items,
         date=datetime.now()
     )
@@ -45,7 +53,7 @@ def main():
     pdf_content = generator.generate_pdf(mock_invoice)
     
     # 5. Send via Mail Server
-    print("Sending via MailHog...")
+    print(f"Sending via Gmail to {mock_invoice.customer_email}...")
     subject = f"FIER - Invoice for your order {mock_invoice.number}"
     body = f"""
     <h2>Hello {mock_invoice.customer_name}!</h2>
@@ -64,7 +72,7 @@ def main():
                 "content": pdf_content
             }]
         )
-        print("Done! Check your local mail at http://localhost:8025")
+        print(f"Done! Check {mock_invoice.customer_email}")
     except Exception as e:
         print(f"Failed to send email: {e}")
 

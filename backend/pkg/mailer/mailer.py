@@ -43,6 +43,8 @@ class MailerClient:
 
         # Send — raises on failure
         with smtplib.SMTP(self.host, self.port, timeout=self.timeout) as server:
+            if self.port == 587:
+                server.starttls()
             if self.user:
                 server.login(self.user, self.password)
             server.sendmail(self.sender, to, msg.as_string())
