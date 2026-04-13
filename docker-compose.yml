@@ -58,9 +58,14 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SMTP_HOST=mailserver
-    depends_on:
-      - mailserver
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      # This Gmail account is provided for the entire project and all group members.
+      # The provider of this account is not responsible for any actions taken by 
+      # group members using these credentials.
+      - SMTP_USER=invoice.fier@gmail.com
+      - SMTP_PASS=zyis qnxu djvz mdws
+      - SENDER_EMAIL=invoice.fier@gmail.com
     volumes:
       - ./backend:/app
 
