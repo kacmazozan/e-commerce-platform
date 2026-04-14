@@ -347,6 +347,93 @@ describe('GET /api/product-manager/orders/:id', () => {
   })
 })
 
+// ─── PATCH /api/product-manager/orders/:id/status ────────────────────────────
+
+describe('PATCH /api/product-manager/orders/:id/status', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns 401 with no token', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/1/status')
+      .send({ status: 'shipped' })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 403 with customer token', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/1/status')
+      .set('Authorization', `Bearer ${customerToken}`)
+      .send({ status: 'shipped' })
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 400 for invalid status', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/1/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'pending' })
+    expect(res.status).toBe(400)
+    expect(res.body).toHaveProperty('error')
+  })
+
+  it('returns 400 when status is missing', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/1/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({})
+    expect(res.status).toBe(400)
+    expect(res.body).toHaveProperty('error')
+  })
+
+  it('returns 400 for non-numeric order ID', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/abc/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'shipped' })
+    expect(res.status).toBe(400)
+    expect(res.body).toHaveProperty('error')
+  })
+
+  it('returns 404 when order not found', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    const res = await request(app)
+      .patch('/api/product-manager/orders/9999/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'shipped' })
+
+    expect(res.status).toBe(404)
+  })
+
+  it('updates order status successfully', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [{ id: 1, status: 'shipped', updated_at: new Date().toISOString() }],
+    })
+
+    const res = await request(app)
+      .patch('/api/product-manager/orders/1/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'shipped' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.order.status).toBe('shipped')
+  })
+
+  it('marks order as delivered successfully', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [{ id: 2, status: 'delivered', updated_at: new Date().toISOString() }],
+    })
+
+    const res = await request(app)
+      .patch('/api/product-manager/orders/2/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'delivered' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.order.status).toBe('delivered')
+  })
+})
+
 // ─── GET /api/product-manager/comments ───────────────────────────────────────
 
 describe('GET /api/product-manager/comments', () => {
