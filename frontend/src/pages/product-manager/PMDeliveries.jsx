@@ -32,7 +32,8 @@ function PMDeliveries({ token }) {
   const [orders, setOrders] = useState([])
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 })
   const [search, setSearch] = useState('')
-  // Default to active delivery statuses (exclude delivered/cancelled)
+  const [appliedSearch, setAppliedSearch] = useState('')
+  // Default to pending deliveries
   const [statusFilter, setStatusFilter] = useState('pending')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -45,7 +46,7 @@ function PMDeliveries({ token }) {
       setError('')
       try {
         const params = new URLSearchParams({ page, limit: 10 })
-        if (search) params.set('search', search)
+        if (appliedSearch) params.set('search', appliedSearch)
         if (statusFilter) params.set('status', statusFilter)
         const res = await fetch(`${ORDERS_API}?${params}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -60,7 +61,7 @@ function PMDeliveries({ token }) {
         setLoading(false)
       }
     },
-    [token, search, statusFilter]
+    [token, appliedSearch, statusFilter]
   )
 
   useEffect(() => {
@@ -69,7 +70,7 @@ function PMDeliveries({ token }) {
 
   function handleSearch(e) {
     e.preventDefault()
-    fetchOrders(1)
+    setAppliedSearch(search)
   }
 
   async function viewDetail(orderId) {

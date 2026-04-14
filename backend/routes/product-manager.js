@@ -227,6 +227,10 @@ router.get('/orders', async (req, res) => {
 
 // PATCH /api/product-manager/orders/:id/status
 router.patch('/orders/:id/status', async (req, res) => {
+  const orderId = Number(req.params.id)
+  if (!Number.isInteger(orderId) || orderId <= 0) {
+    return res.status(400).json({ error: 'Invalid order ID' })
+  }
   const { status } = req.body
   const VALID_STATUSES = ['processing', 'shipped', 'delivered', 'cancelled']
   if (!status || !VALID_STATUSES.includes(status)) {
@@ -236,7 +240,7 @@ router.patch('/orders/:id/status', async (req, res) => {
   }
   const result = await pool.query(
     `UPDATE orders SET status = $1::order_status, updated_at = NOW() WHERE id = $2 RETURNING id, status, updated_at`,
-    [status, req.params.id]
+    [status, orderId]
   )
   if (result.rows.length === 0) return res.status(404).json({ error: 'Order not found' })
   res.json({ order: result.rows[0] })

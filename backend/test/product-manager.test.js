@@ -385,6 +385,15 @@ describe('PATCH /api/product-manager/orders/:id/status', () => {
     expect(res.body).toHaveProperty('error')
   })
 
+  it('returns 400 for non-numeric order ID', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/abc/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'shipped' })
+    expect(res.status).toBe(400)
+    expect(res.body).toHaveProperty('error')
+  })
+
   it('returns 404 when order not found', async () => {
     pool.query.mockResolvedValueOnce({ rows: [] })
 
