@@ -37,9 +37,12 @@ describe('GET /api/product-manager/categories', () => {
     expect(res.status).toBe(403)
   })
 
-  it('returns category list for product manager', async () => {
+  it('returns category list with product counts for product manager', async () => {
     pool.query.mockResolvedValueOnce({
-      rows: [{ category: 'Electronics' }, { category: 'Footwear' }],
+      rows: [
+        { name: 'Electronics', product_count: 3 },
+        { name: 'Footwear', product_count: 0 },
+      ],
     })
 
     const res = await request(app)
@@ -48,7 +51,10 @@ describe('GET /api/product-manager/categories', () => {
 
     expect(res.status).toBe(200)
     expect(res.body).toHaveProperty('categories')
-    expect(res.body.categories).toEqual(['Electronics', 'Footwear'])
+    expect(res.body.categories).toEqual([
+      { name: 'Electronics', product_count: 3 },
+      { name: 'Footwear', product_count: 0 },
+    ])
   })
 })
 
