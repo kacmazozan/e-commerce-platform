@@ -13,20 +13,21 @@ import './ProductManagerDashboard.css'
 const PM_API = `${API_BASE}/api/product-manager`
 
 function PMOverview({ token, onNavigate }) {
-  const [stats, setStats] = useState({ products: 0, orders: 0, lowStock: 0 })
+  const [stats, setStats] = useState({ products: 0, orders: 0, lowStock: 0, categories: 0 })
 
   useEffect(() => {
     async function fetchStats() {
       try {
         const headers = { Authorization: `Bearer ${token}` }
-        const [pRes, oRes] = await Promise.all([
+        const [pRes, oRes, cRes] = await Promise.all([
           fetch(`${PM_API}/products?page=1&limit=1`, { headers }),
           fetch(`${PM_API}/orders?page=1&limit=1`, { headers }),
+          fetch(`${PM_API}/categories`, { headers }),
         ])
         const pData = pRes.ok ? await pRes.json() : {}
         const oData = oRes.ok ? await oRes.json() : {}
+        const cData = cRes.ok ? await cRes.json() : {}
 
-        // Fetch low-stock count (stock < 10)
         const lsRes = await fetch(`${PM_API}/products?page=1&limit=1&lowStock=true`, { headers })
         const lsData = lsRes.ok ? await lsRes.json() : {}
 
@@ -34,6 +35,7 @@ function PMOverview({ token, onNavigate }) {
           products: pData.pagination?.total ?? 0,
           orders: oData.pagination?.total ?? 0,
           lowStock: lsData.pagination?.total ?? 0,
+          categories: cData.categories?.length ?? 0,
         })
       } catch {
         // stats stay at 0
@@ -53,6 +55,17 @@ function PMOverview({ token, onNavigate }) {
         </span>
         <span className="text-[13px] tracking-wide text-[var(--text)] uppercase opacity-70">
           Total Products
+        </span>
+      </button>
+      <button
+        className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-purple-400 hover:bg-purple-400/12"
+        onClick={() => onNavigate('categories')}
+      >
+        <span className="text-[28px] font-semibold tracking-tight text-[var(--text-h)]">
+          {stats.categories}
+        </span>
+        <span className="text-[13px] tracking-wide text-[var(--text)] uppercase opacity-70">
+          Total Categories
         </span>
       </button>
       <button
