@@ -165,7 +165,10 @@ function PMCategories({ token }) {
                     </span>
                   </td>
                   <td className={tdClass}>
-                    <button className={btnDanger} onClick={() => setDeleteConfirm(cat)}>
+                    <button
+                      className={cat.product_count > 0 ? btnBase : btnDanger}
+                      onClick={() => setDeleteConfirm(cat)}
+                    >
                       Delete
                     </button>
                   </td>
@@ -229,34 +232,43 @@ function PMCategories({ token }) {
             className="w-full max-w-md rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] p-6 shadow-[var(--shadow)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="mb-3 text-lg font-semibold text-[var(--text-h)]">Delete Category</h2>
-            {deleteConfirm.product_count === 0 ? (
-              <p className="mb-5 text-sm text-[var(--text)]">
-                <span className="font-medium text-amber-400">Warning:</span> You are about to delete
-                the category <strong>{deleteConfirm.name}</strong>. It has no products. This action
-                cannot be undone.
-              </p>
+            {deleteConfirm.product_count > 0 ? (
+              <>
+                <h2 className="mb-3 text-lg font-semibold text-[var(--text-h)]">Cannot Delete Category</h2>
+                <p className="mb-5 text-sm text-[var(--text)]">
+                  <span className="font-medium text-amber-400">Notice:</span> The category{' '}
+                  <strong>{deleteConfirm.name}</strong> contains{' '}
+                  <strong>{deleteConfirm.product_count} product{deleteConfirm.product_count !== 1 ? 's' : ''}</strong>.
+                  Remove or reassign all products before deleting this category.
+                </p>
+                <div className="flex justify-end">
+                  <button className={btnBase} onClick={() => setDeleteConfirm(null)}>
+                    Close
+                  </button>
+                </div>
+              </>
             ) : (
-              <p className="mb-5 text-sm text-[var(--text)]">
-                <span className="font-medium text-red-400">Warning:</span> The category{' '}
-                <strong>{deleteConfirm.name}</strong> has{' '}
-                <strong>{deleteConfirm.product_count} product{deleteConfirm.product_count !== 1 ? 's' : ''}</strong>{' '}
-                belonging to it. Deleting this category will also permanently delete all of those
-                products. This action cannot be undone.
-              </p>
+              <>
+                <h2 className="mb-3 text-lg font-semibold text-[var(--text-h)]">Delete Category</h2>
+                <p className="mb-5 text-sm text-[var(--text)]">
+                  <span className="font-medium text-amber-400">Warning:</span> You are about to delete
+                  the category <strong>{deleteConfirm.name}</strong>. It has no products. This action
+                  cannot be undone.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    className={btnBase}
+                    onClick={() => setDeleteConfirm(null)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </button>
+                  <button className={btnDanger} onClick={handleDelete} disabled={deleting}>
+                    {deleting ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+              </>
             )}
-            <div className="flex justify-end gap-2">
-              <button
-                className={btnBase}
-                onClick={() => setDeleteConfirm(null)}
-                disabled={deleting}
-              >
-                Cancel
-              </button>
-              <button className={btnDanger} onClick={handleDelete} disabled={deleting}>
-                {deleting ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
           </div>
         </div>
       )}
