@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import API_BASE from '../../api'
 
 function BackIcon() {
@@ -105,9 +105,12 @@ export default function CategoryPage({
           >
             <BackIcon /> Back
           </button>
-          <span className="ml-auto text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
+          <Link
+            to="/"
+            className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
+          >
             FIER
-          </span>
+          </Link>
         </div>
       </header>
 

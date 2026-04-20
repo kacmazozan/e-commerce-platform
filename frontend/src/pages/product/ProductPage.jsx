@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { StarRating } from '../../components/icons'
 import API_BASE from '../../api'
 
@@ -689,9 +690,12 @@ function Header({ onBack }) {
         >
           <BackIcon /> Back
         </button>
-        <span className="ml-auto text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
+        <Link
+          to="/"
+          className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
+        >
           FIER
-        </span>
+        </Link>
       </div>
     </header>
   )

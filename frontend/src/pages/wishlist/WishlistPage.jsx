@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 function BackIcon() {
   return (
     <svg
@@ -74,9 +76,12 @@ export default function WishlistPage({
             >
               <BackIcon /> Back
             </button>
-            <span className="ml-auto text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
+            <Link
+              to="/"
+              className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
+            >
               FIER
-            </span>
+            </Link>
           </div>
         </header>
         <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
