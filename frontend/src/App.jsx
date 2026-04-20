@@ -74,6 +74,7 @@ function CategoryRoute({
   onRemoveFromWishlist,
   cartItems,
   wishlistItems,
+  token,
 }) {
   const { state } = useLocation()
   const navigate = useNavigate()
@@ -92,6 +93,7 @@ function CategoryRoute({
       onRemoveFromWishlist={onRemoveFromWishlist}
       cartItems={cartItems}
       wishlistItems={wishlistItems}
+      token={token}
     />
   )
 }
@@ -103,6 +105,7 @@ function SearchRoute({
   onRemoveFromWishlist,
   cartItems,
   wishlistItems,
+  token,
 }) {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -118,6 +121,7 @@ function SearchRoute({
       onRemoveFromWishlist={onRemoveFromWishlist}
       cartItems={cartItems}
       wishlistItems={wishlistItems}
+      token={token}
     />
   )
 }
@@ -514,6 +518,7 @@ function App() {
               onRemoveFromWishlist={removeFromWishlist}
               cartItems={cart}
               wishlistItems={wishlist}
+              token={token}
             />
           }
         />
@@ -527,6 +532,7 @@ function App() {
               onRemoveFromWishlist={removeFromWishlist}
               cartItems={cart}
               wishlistItems={wishlist}
+              token={token}
             />
           }
         />

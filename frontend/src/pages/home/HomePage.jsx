@@ -3,6 +3,7 @@ import { MiniCartIcon, StarRating } from '../../components/icons'
 import Navbar from './components/Navbar'
 import HeroBanner from './components/HeroBanner'
 import Footer from './components/Footer'
+import ProductDetailModal from '../../components/ProductDetailModal'
 import API_BASE from '../../api'
 
 const CATEGORIES = [
@@ -107,6 +108,7 @@ export default function HomePage({
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [newReleases, setNewReleases] = useState([])
+  const [selectedProduct, setSelectedProduct] = useState(null)
   const releasesRef = useRef(null)
 
   useEffect(() => {
@@ -244,11 +246,13 @@ export default function HomePage({
                 key={product.id}
                 className="flex w-[210px] shrink-0 [scroll-snap-align:start] flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
               >
-                <div
-                  className="relative flex aspect-[2/3] w-full items-center justify-center border-b border-[var(--glass-border)]"
+                <button
+                  className="relative flex aspect-[2/3] w-full cursor-pointer items-center justify-center border-b border-[var(--glass-border)] p-0"
                   style={{
                     background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
                   }}
+                  onClick={() => setSelectedProduct(product)}
+                  aria-label={`View details for ${product.name}`}
                 >
                   <span
                     className="text-[56px] font-bold opacity-40 select-none"
@@ -256,7 +260,7 @@ export default function HomePage({
                   >
                     {product.name[0]}
                   </span>
-                </div>
+                </button>
                 <div className="flex flex-col gap-[3px] px-3.5 pt-3 pb-3.5">
                   <span className="text-[11px] font-semibold tracking-[1.5px] text-[var(--text)] uppercase">
                     {product.category}
@@ -357,6 +361,14 @@ export default function HomePage({
       </section>
 
       <Footer />
+
+      {selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          token={token}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </div>
   )
 }

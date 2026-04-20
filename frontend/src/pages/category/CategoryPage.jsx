@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import API_BASE from '../../api'
+import ProductDetailModal from '../../components/ProductDetailModal'
 
 function BackIcon() {
   return (
@@ -64,9 +65,11 @@ export default function CategoryPage({
   onRemoveFromWishlist,
   cartItems = [],
   wishlistItems = [],
+  token = null,
 }) {
   const [products, setProducts] = useState([])
   const [loadedCategory, setLoadedCategory] = useState(null)
+  const [selectedProduct, setSelectedProduct] = useState(null)
   const loading = loadedCategory !== category.title
 
   useEffect(() => {
@@ -132,11 +135,15 @@ export default function CategoryPage({
                 key={product.id}
                 className="flex flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-250 hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
               >
-                <div className="flex aspect-[3/4] w-full items-center justify-center border-b border-[var(--glass-border)] bg-purple-400/12">
+                <button
+                  className="flex aspect-[3/4] w-full cursor-pointer items-center justify-center border-b border-[var(--glass-border)] bg-purple-400/12 p-0"
+                  onClick={() => setSelectedProduct(product)}
+                  aria-label={`View details for ${product.name}`}
+                >
                   <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
                     {product.name[0]}
                   </span>
-                </div>
+                </button>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2.5">
                   <span className="text-sm font-semibold text-[var(--text-h)]">{product.name}</span>
                   {product.discounted_price != null ? (
@@ -212,6 +219,14 @@ export default function CategoryPage({
           })}
         </div>
       </main>
+
+      {selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          token={token}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </div>
   )
 }
