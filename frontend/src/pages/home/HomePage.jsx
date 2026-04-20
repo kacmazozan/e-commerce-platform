@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MiniCartIcon, StarRating } from '../../components/icons'
 import Navbar from './components/Navbar'
 import HeroBanner from './components/HeroBanner'
 import Footer from './components/Footer'
-import ProductDetailModal from '../../components/ProductDetailModal'
 import API_BASE from '../../api'
 
 const CATEGORIES = [
@@ -108,7 +108,7 @@ export default function HomePage({
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [newReleases, setNewReleases] = useState([])
-  const [selectedProduct, setSelectedProduct] = useState(null)
+  const navigate = useNavigate()
   const releasesRef = useRef(null)
 
   useEffect(() => {
@@ -251,7 +251,7 @@ export default function HomePage({
                   style={{
                     background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
                   }}
-                  onClick={() => setSelectedProduct(product)}
+                  onClick={() => navigate(`/product/${product.id}`)}
                   aria-label={`View details for ${product.name}`}
                 >
                   <span
@@ -361,14 +361,6 @@ export default function HomePage({
       </section>
 
       <Footer />
-
-      {selectedProduct && (
-        <ProductDetailModal
-          product={selectedProduct}
-          token={token}
-          onClose={() => setSelectedProduct(null)}
-        />
-      )}
     </div>
   )
 }

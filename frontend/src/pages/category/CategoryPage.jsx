@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import API_BASE from '../../api'
-import ProductDetailModal from '../../components/ProductDetailModal'
 
 function BackIcon() {
   return (
@@ -65,11 +65,10 @@ export default function CategoryPage({
   onRemoveFromWishlist,
   cartItems = [],
   wishlistItems = [],
-  token = null,
 }) {
   const [products, setProducts] = useState([])
   const [loadedCategory, setLoadedCategory] = useState(null)
-  const [selectedProduct, setSelectedProduct] = useState(null)
+  const navigate = useNavigate()
   const loading = loadedCategory !== category.title
 
   useEffect(() => {
@@ -137,7 +136,7 @@ export default function CategoryPage({
               >
                 <button
                   className="flex aspect-[3/4] w-full cursor-pointer items-center justify-center border-b border-[var(--glass-border)] bg-purple-400/12 p-0"
-                  onClick={() => setSelectedProduct(product)}
+                  onClick={() => navigate(`/product/${product.id}`)}
                   aria-label={`View details for ${product.name}`}
                 >
                   <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
@@ -219,14 +218,6 @@ export default function CategoryPage({
           })}
         </div>
       </main>
-
-      {selectedProduct && (
-        <ProductDetailModal
-          product={selectedProduct}
-          token={token}
-          onClose={() => setSelectedProduct(null)}
-        />
-      )}
     </div>
   )
 }

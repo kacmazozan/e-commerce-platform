@@ -7,6 +7,7 @@ import {
   useLocation,
   useNavigationType,
   useSearchParams,
+  useParams,
 } from 'react-router-dom'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import SalesManagerLoginPage from './pages/sales-manager/SalesManagerLoginPage'
@@ -27,6 +28,7 @@ import OrdersPage from './pages/orders/OrdersPage'
 import HelpPage from './pages/help/HelpPage'
 
 import ProductManagerDashboard from './pages/product-manager/ProductManagerDashboard'
+import ProductPage from './pages/product/ProductPage'
 import API_BASE from './api'
 import { decodeJwtPayload } from './utils/jwt'
 
@@ -86,6 +88,32 @@ function CategoryRoute({
   return (
     <CategoryPage
       category={state.category}
+      onBack={() => navigate(-1)}
+      onAddToCart={onAddToCart}
+      onRemoveFromCart={onRemoveFromCart}
+      onAddToWishlist={onAddToWishlist}
+      onRemoveFromWishlist={onRemoveFromWishlist}
+      cartItems={cartItems}
+      wishlistItems={wishlistItems}
+      token={token}
+    />
+  )
+}
+
+function ProductRoute({
+  onAddToCart,
+  onRemoveFromCart,
+  onAddToWishlist,
+  onRemoveFromWishlist,
+  cartItems,
+  wishlistItems,
+  token,
+}) {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  return (
+    <ProductPage
+      productId={id}
       onBack={() => navigate(-1)}
       onAddToCart={onAddToCart}
       onRemoveFromCart={onRemoveFromCart}
@@ -505,6 +533,20 @@ function App() {
               onAddToCart={addToCart}
               onRemoveFromCart={removeFromCart}
               cartItems={cart}
+            />
+          }
+        />
+        <Route
+          path="/product/:id"
+          element={
+            <ProductRoute
+              onAddToCart={addToCart}
+              onRemoveFromCart={removeFromCart}
+              onAddToWishlist={addToWishlist}
+              onRemoveFromWishlist={removeFromWishlist}
+              cartItems={cart}
+              wishlistItems={wishlist}
+              token={token}
             />
           }
         />

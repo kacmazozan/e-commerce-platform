@@ -69,7 +69,22 @@ router.get('/products/:id', async (req, res) => {
 
 // POST /api/product-manager/products
 router.post('/products', async (req, res) => {
-  const { name, description, price, stock, category, image_url } = req.body
+  const {
+    name,
+    description,
+    price,
+    stock,
+    category,
+    image_url,
+    country_of_origin,
+    material,
+    model_height,
+    model_chest,
+    model_waist,
+    model_hips,
+    model_size,
+    sizes,
+  } = req.body
   if (!name || price == null) return res.status(400).json({ error: 'Name and price are required' })
   if (parseFloat(price) < 0 || Number.isNaN(parseFloat(price)))
     return res.status(400).json({ error: 'Price must be a non-negative number' })
@@ -83,9 +98,12 @@ router.post('/products', async (req, res) => {
     return res.status(400).json({ error: 'Stock must be a non-negative integer' })
   }
 
+  const sizesArr = Array.isArray(sizes) ? sizes : null
+
   const result = await pool.query(
-    `INSERT INTO products (name, description, price, stock, category, image_url)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    `INSERT INTO products (name, description, price, stock, category, image_url,
+       country_of_origin, material, model_height, model_chest, model_waist, model_hips, model_size, sizes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
     [
       name,
       description || null,
@@ -93,6 +111,14 @@ router.post('/products', async (req, res) => {
       Number.isFinite(parsedStock) ? parsedStock : 0,
       category || null,
       image_url || null,
+      country_of_origin || null,
+      material || null,
+      model_height || null,
+      model_chest || null,
+      model_waist || null,
+      model_hips || null,
+      model_size || null,
+      sizesArr,
     ]
   )
   res.status(201).json({ product: result.rows[0] })
@@ -100,7 +126,22 @@ router.post('/products', async (req, res) => {
 
 // PUT /api/product-manager/products/:id
 router.put('/products/:id', async (req, res) => {
-  const { name, description, price, stock, category, image_url } = req.body
+  const {
+    name,
+    description,
+    price,
+    stock,
+    category,
+    image_url,
+    country_of_origin,
+    material,
+    model_height,
+    model_chest,
+    model_waist,
+    model_hips,
+    model_size,
+    sizes,
+  } = req.body
   const productId = req.params.id
 
   const existing = await pool.query('SELECT id FROM products WHERE id = $1', [productId])
@@ -144,6 +185,46 @@ router.put('/products/:id', async (req, res) => {
   if (image_url !== undefined) {
     sets.push(`image_url = $${idx}`)
     params.push(image_url)
+    idx++
+  }
+  if (country_of_origin !== undefined) {
+    sets.push(`country_of_origin = $${idx}`)
+    params.push(country_of_origin || null)
+    idx++
+  }
+  if (material !== undefined) {
+    sets.push(`material = $${idx}`)
+    params.push(material || null)
+    idx++
+  }
+  if (model_height !== undefined) {
+    sets.push(`model_height = $${idx}`)
+    params.push(model_height || null)
+    idx++
+  }
+  if (model_chest !== undefined) {
+    sets.push(`model_chest = $${idx}`)
+    params.push(model_chest || null)
+    idx++
+  }
+  if (model_waist !== undefined) {
+    sets.push(`model_waist = $${idx}`)
+    params.push(model_waist || null)
+    idx++
+  }
+  if (model_hips !== undefined) {
+    sets.push(`model_hips = $${idx}`)
+    params.push(model_hips || null)
+    idx++
+  }
+  if (model_size !== undefined) {
+    sets.push(`model_size = $${idx}`)
+    params.push(model_size || null)
+    idx++
+  }
+  if (sizes !== undefined) {
+    sets.push(`sizes = $${idx}`)
+    params.push(Array.isArray(sizes) ? sizes : null)
     idx++
   }
 
