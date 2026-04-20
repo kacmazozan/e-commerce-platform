@@ -113,6 +113,8 @@ export default function ProductPage({
   token = null,
 }) {
   const [product, setProduct] = useState(null)
+  const [images, setImages] = useState([])
+  const [activeImg, setActiveImg] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedSize, setSelectedSize] = useState(null)
@@ -129,12 +131,16 @@ export default function ProductPage({
   useEffect(() => {
     setLoading(true)
     setError('')
+    setActiveImg(0)
     fetch(`${API_BASE}/api/products/${productId}`)
       .then((r) => {
         if (!r.ok) throw new Error('Product not found')
         return r.json()
       })
-      .then((data) => setProduct(data.product))
+      .then((data) => {
+        setProduct(data.product)
+        setImages(data.images || [])
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
   }, [productId])
@@ -236,21 +242,115 @@ export default function ProductPage({
       <Header onBack={onBack} />
 
       <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-10 pb-20">
-        {/* ── Top section: image + info ── */}
+        {/* ── Top section: image gallery + info ── */}
         <div className="grid gap-10 max-[720px]:grid-cols-1 lg:grid-cols-[5fr_7fr]">
-          {/* Product image */}
-          <div
-            className="flex aspect-[3/4] w-full items-center justify-center rounded-2xl border border-[var(--glass-border)] shadow-[var(--shadow)]"
-            style={{
-              background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
-            }}
-          >
-            <span
-              className="text-[120px] font-bold opacity-30 select-none"
-              style={{ color: `hsl(${hue},70%,var(--cat-text-l,70%))` }}
-            >
-              {product.name[0]}
-            </span>
+          {/* Image gallery */}
+          <div className="flex flex-col gap-3">
+            {/* Main image */}
+            <div className="relative overflow-hidden rounded-2xl border border-[var(--glass-border)] shadow-[var(--shadow)]">
+              {images.length > 0 ? (
+                <img
+                  src={images[activeImg].url}
+                  alt={images[activeImg].alt || product.name}
+                  className="aspect-[3/4] w-full object-contain"
+                  style={{
+                    background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
+                  }}
+                />
+              ) : (
+                <div
+                  className="flex aspect-[3/4] w-full items-center justify-center"
+                  style={{
+                    background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
+                  }}
+                >
+                  <span
+                    className="text-[120px] font-bold opacity-30 select-none"
+                    style={{ color: `hsl(${hue},70%,var(--cat-text-l,70%))` }}
+                  >
+                    {product.name[0]}
+                  </span>
+                </div>
+              )}
+              {/* Arrow navigation */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setActiveImg((i) => (i - 1 + images.length) % images.length)}
+                    className="absolute top-1/2 left-3 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-none bg-[var(--card-bg)]/80 text-[var(--text-h)] shadow-md backdrop-blur-sm transition-colors hover:bg-purple-400/20 hover:text-purple-400"
+                    aria-label="Previous image"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setActiveImg((i) => (i + 1) % images.length)}
+                    className="absolute top-1/2 right-3 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-none bg-[var(--card-bg)]/80 text-[var(--text-h)] shadow-md backdrop-blur-sm transition-colors hover:bg-purple-400/20 hover:text-purple-400"
+                    aria-label="Next image"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                </>
+              )}
+            </div>
+            {/* Dot indicators — outside the image so they're always visible */}
+            {images.length > 1 && (
+              <div className="flex justify-center gap-2">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveImg(i)}
+                    className={`cursor-pointer rounded-full border-none transition-all ${i === activeImg ? 'h-2 w-6 bg-purple-400' : 'h-2 w-2 bg-[var(--border)] hover:bg-purple-400/50'}`}
+                    aria-label={`View image ${i + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Thumbnail strip */}
+            {images.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {images.map((img, i) => (
+                  <button
+                    key={img.id}
+                    onClick={() => setActiveImg(i)}
+                    className={`shrink-0 cursor-pointer overflow-hidden rounded-xl border-2 p-0 transition-all ${i === activeImg ? 'border-purple-400 shadow-[0_0_0_1px_rgba(192,132,252,0.5)]' : 'border-[var(--glass-border)] opacity-60 hover:opacity-90'}`}
+                    style={{ width: 72, height: 96 }}
+                    aria-label={img.alt || `Image ${i + 1}`}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.alt || `View ${i + 1}`}
+                      className="h-full w-full object-contain"
+                      style={{
+                        background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
+                      }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Product info */}

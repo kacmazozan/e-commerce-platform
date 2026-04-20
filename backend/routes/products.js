@@ -172,7 +172,13 @@ router.get('/:id', async (req, res) => {
   )
 
   if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' })
-  res.json({ product: result.rows[0] })
+
+  const imagesResult = await pool.query(
+    `SELECT id, url, alt, position FROM product_images WHERE product_id = $1 ORDER BY position ASC`,
+    [productId]
+  )
+
+  res.json({ product: result.rows[0], images: imagesResult.rows })
 })
 
 module.exports = router
