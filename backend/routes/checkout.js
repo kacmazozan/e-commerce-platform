@@ -14,7 +14,7 @@ router.post('/reserve', async (req, res) => {
   const userId = req.user.userId
 
   const cartResult = await pool.query(
-    'SELECT product_id, quantity FROM cart_items WHERE user_id = $1',
+    'SELECT product_id, quantity, size FROM cart_items WHERE user_id = $1',
     [userId]
   )
 
@@ -117,12 +117,14 @@ router.post('/confirm', async (req, res) => {
             COALESCE(
               ROUND(p.price * (1 - pd.discount_percent / 100.0), 2),
               p.price
-            ) AS effective_price
+            ) AS effective_price,
+            COALESCE(ci.size, '') AS size
      FROM stock_reservations sr
      JOIN products p ON p.id = sr.product_id
      LEFT JOIN product_discounts pd ON pd.product_id = p.id
        AND pd.start_at <= NOW()
        AND (pd.end_at IS NULL OR pd.end_at > NOW())
+     LEFT JOIN cart_items ci ON ci.user_id = sr.user_id AND ci.product_id = sr.product_id
      WHERE sr.user_id = $1 AND sr.expires_at > NOW()`,
     [userId]
   )
@@ -155,8 +157,8 @@ router.post('/confirm', async (req, res) => {
 
     for (const item of reservations.rows) {
       await client.query(
-        'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)',
-        [orderId, item.product_id, item.quantity, item.effective_price]
+        'INSERT INTO order_items (order_id, product_id, quantity, price, size) VALUES ($1, $2, $3, $4, $5)',
+        [orderId, item.product_id, item.quantity, item.effective_price, item.size || '']
       )
     }
 

@@ -194,7 +194,7 @@ export default function ProductPage({
       return
     }
     setSizeError(false)
-    onAddToCart && onAddToCart(product)
+    onAddToCart && onAddToCart(product, selectedSize || '')
   }
 
   if (loading) {

@@ -172,9 +172,10 @@ export default function CartPage({
             {cartItems.map((item) => {
               const outOfStock = parseInt(item.available_stock) === 0
               const inWishlist = wishlistItems.some((w) => w.id === item.id)
+              const itemSize = item.size || ''
               return (
                 <div
-                  key={item.id}
+                  key={`${item.id}-${itemSize}`}
                   className={`flex items-center gap-4 rounded-2xl border p-4 shadow-[var(--shadow)] backdrop-blur-xl ${outOfStock ? 'border-red-400/30 bg-red-400/5' : 'border-[var(--glass-border)] bg-[var(--card-bg)]'}`}
                 >
                   <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-lg bg-purple-400/12">
@@ -185,6 +186,11 @@ export default function CartPage({
                       <span className="overflow-hidden text-[15px] font-medium text-ellipsis whitespace-nowrap text-[var(--text-h)]">
                         {item.name}
                       </span>
+                      {itemSize && (
+                        <span className="shrink-0 rounded-full bg-purple-400/12 px-2 py-0.5 text-[11px] font-semibold text-purple-400">
+                          {itemSize}
+                        </span>
+                      )}
                       {outOfStock && (
                         <span className="shrink-0 rounded-full bg-red-400/12 px-2 py-0.5 text-[11px] font-semibold text-red-400">
                           Out of Stock
@@ -213,7 +219,7 @@ export default function CartPage({
                     <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1">
                       <button
                         className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400"
-                        onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                        onClick={() => onUpdateQuantity(item.id, itemSize, item.quantity - 1)}
                         aria-label="Decrease quantity"
                       >
                         −
@@ -223,7 +229,7 @@ export default function CartPage({
                       </span>
                       <button
                         className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400"
-                        onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                        onClick={() => onUpdateQuantity(item.id, itemSize, item.quantity + 1)}
                         aria-label="Increase quantity"
                       >
                         +
@@ -243,7 +249,7 @@ export default function CartPage({
                     )}
                     <button
                       className="flex cursor-pointer items-center rounded-md border-none bg-transparent p-1.5 text-[var(--text)] transition-colors hover:bg-[rgba(232,93,93,0.1)] hover:text-[#e85d5d]"
-                      onClick={() => onRemove(item.id)}
+                      onClick={() => onRemove(item.id, itemSize)}
                       aria-label="Remove item"
                     >
                       <TrashIcon />
