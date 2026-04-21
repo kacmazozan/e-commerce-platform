@@ -281,7 +281,6 @@ function ProductModal({ mode, product, onClose, onCreate, onUpdate }) {
   const [price, setPrice] = useState(product?.price || '')
   const [stock, setStock] = useState(product?.stock ?? 0)
   const [category, setCategory] = useState(product?.category || '')
-  const [imageUrl, setImageUrl] = useState(product?.image_url || '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -297,7 +296,6 @@ function ProductModal({ mode, product, onClose, onCreate, onUpdate }) {
         price: parseFloat(price),
         stock: Number.isNaN(parsedStock) ? 0 : parsedStock,
         category,
-        image_url: imageUrl,
       }
       if (mode === 'create') {
         await onCreate(body)
@@ -375,16 +373,6 @@ function ProductModal({ mode, product, onClose, onCreate, onUpdate }) {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="e.g. Footwear"
-            />
-          </div>
-          <div className="mb-4 flex flex-col gap-1.5">
-            <label className="text-[13px] font-medium text-[var(--text-h)]">Image URL</label>
-            <input
-              type="text"
-              className={fieldInputClass}
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://…"
             />
           </div>
           {error && <p className="mb-4 text-sm text-red-400">{error}</p>}

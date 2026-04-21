@@ -15,7 +15,6 @@ describe('GET /api/products/search', () => {
     price: '1299.99',
     stock: 10,
     category: 'Computers',
-    image_url: null,
     created_at: new Date().toISOString(),
     available_stock: 10,
     discount_percent: null,

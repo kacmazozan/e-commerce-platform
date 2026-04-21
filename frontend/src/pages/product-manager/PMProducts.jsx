@@ -288,7 +288,6 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
   const [price, setPrice] = useState(product?.price || '')
   const [stock, setStock] = useState(product?.stock ?? 0)
   const [category, setCategory] = useState(product?.category || '')
-  const [imageUrl, setImageUrl] = useState(product?.image_url || '')
   const [countryOfOrigin, setCountryOfOrigin] = useState(product?.country_of_origin || '')
   const [material, setMaterial] = useState(product?.material || '')
   const [modelHeight, setModelHeight] = useState(product?.model_height || '')
@@ -318,7 +317,6 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
         price: parseFloat(price),
         stock: Number.isNaN(parsedStock) ? 0 : parsedStock,
         category,
-        image_url: imageUrl,
         country_of_origin: countryOfOrigin,
         material,
         model_height: modelHeight,
@@ -423,15 +421,6 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
                 placeholder="e.g. Footwear"
               />
             )}
-          </Field>
-          <Field label="Image URL">
-            <input
-              type="text"
-              className={fieldInputClass}
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://…"
-            />
           </Field>
           <Field label="Available Sizes" hint="(comma-separated, e.g. XS, S, M, L, XL)">
             <input

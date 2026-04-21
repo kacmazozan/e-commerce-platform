@@ -165,7 +165,7 @@ describe('POST /api/product-manager/products', () => {
 
   it('creates product successfully', async () => {
     pool.query.mockResolvedValueOnce({
-      rows: [{ id: 1, name: 'Test', price: '10.00', stock: 5, category: null, image_url: null }],
+      rows: [{ id: 1, name: 'Test', price: '10.00', stock: 5, category: null }],
     })
 
     const res = await request(app)

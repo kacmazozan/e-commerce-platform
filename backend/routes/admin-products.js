@@ -66,7 +66,7 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/admin/products
 router.post('/', async (req, res) => {
-  const { name, description, price, stock, category, image_url } = req.body
+  const { name, description, price, stock, category } = req.body
 
   if (!name || price == null) {
     return res.status(400).json({ error: 'Name and price are required' })
@@ -77,8 +77,8 @@ router.post('/', async (req, res) => {
   }
 
   const result = await pool.query(
-    `INSERT INTO products (name, description, price, stock, category, image_url)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO products (name, description, price, stock, category)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
     [
       name,
@@ -86,7 +86,6 @@ router.post('/', async (req, res) => {
       price,
       Number.isFinite(parseInt(stock)) ? parseInt(stock) : 0,
       category || null,
-      image_url || null,
     ]
   )
 
@@ -95,7 +94,7 @@ router.post('/', async (req, res) => {
 
 // PUT /api/admin/products/:id
 router.put('/:id', async (req, res) => {
-  const { name, description, price, stock, category, image_url } = req.body
+  const { name, description, price, stock, category } = req.body
   const productId = req.params.id
 
   const existing = await pool.query('SELECT id FROM products WHERE id = $1', [productId])
@@ -131,12 +130,6 @@ router.put('/:id', async (req, res) => {
     params.push(category)
     idx++
   }
-  if (image_url !== undefined) {
-    sets.push(`image_url = $${idx}`)
-    params.push(image_url)
-    idx++
-  }
-
   if (sets.length === 0) return res.status(400).json({ error: 'No fields to update' })
 
   sets.push(`updated_at = NOW()`)

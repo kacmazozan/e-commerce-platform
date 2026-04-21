@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import WishlistPage from '../src/pages/wishlist/WishlistPage'
 
 const regularItem = { id: 1, name: 'Widget', price: '19.99', available_stock: '5' }
@@ -24,7 +25,11 @@ const defaultProps = {
 }
 
 function renderPage(props = {}) {
-  return render(<WishlistPage {...defaultProps} {...props} />)
+  return render(
+    <MemoryRouter>
+      <WishlistPage {...defaultProps} {...props} />
+    </MemoryRouter>
+  )
 }
 
 describe('WishlistPage', () => {

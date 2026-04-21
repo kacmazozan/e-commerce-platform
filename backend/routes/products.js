@@ -26,7 +26,7 @@ router.get('/search', async (req, res) => {
   const limitClause = limit !== null ? `LIMIT $${params.length}` : ''
 
   const result = await pool.query(
-    `SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.image_url, p.created_at,
+    `SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
             GREATEST(0, p.stock - COALESCE(SUM(sr.quantity), 0)) AS available_stock,
             pd.discount_percent,
             CASE WHEN pd.discount_percent IS NOT NULL
@@ -66,7 +66,7 @@ router.get('/', async (req, res) => {
   const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : ''
 
   const result = await pool.query(
-    `SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.image_url, p.created_at,
+    `SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
             GREATEST(0, p.stock - COALESCE(SUM(sr.quantity), 0)) AS available_stock,
             pd.discount_percent,
             CASE WHEN pd.discount_percent IS NOT NULL
@@ -152,7 +152,7 @@ router.get('/:id', async (req, res) => {
   }
 
   const result = await pool.query(
-    `SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.image_url, p.created_at,
+    `SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
             p.country_of_origin, p.material, p.model_height, p.model_chest, p.model_waist,
             p.model_hips, p.model_size, p.sizes,
             GREATEST(0, p.stock - COALESCE(SUM(sr.quantity), 0)) AS available_stock,

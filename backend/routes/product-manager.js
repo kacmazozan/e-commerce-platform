@@ -75,7 +75,6 @@ router.post('/products', async (req, res) => {
     price,
     stock,
     category,
-    image_url,
     country_of_origin,
     material,
     model_height,
@@ -101,16 +100,15 @@ router.post('/products', async (req, res) => {
   const sizesArr = Array.isArray(sizes) ? sizes : null
 
   const result = await pool.query(
-    `INSERT INTO products (name, description, price, stock, category, image_url,
+    `INSERT INTO products (name, description, price, stock, category,
        country_of_origin, material, model_height, model_chest, model_waist, model_hips, model_size, sizes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [
       name,
       description || null,
       price,
       Number.isFinite(parsedStock) ? parsedStock : 0,
       category || null,
-      image_url || null,
       country_of_origin || null,
       material || null,
       model_height || null,
@@ -132,7 +130,6 @@ router.put('/products/:id', async (req, res) => {
     price,
     stock,
     category,
-    image_url,
     country_of_origin,
     material,
     model_height,
@@ -180,11 +177,6 @@ router.put('/products/:id', async (req, res) => {
   if (category !== undefined) {
     sets.push(`category = $${idx}`)
     params.push(category)
-    idx++
-  }
-  if (image_url !== undefined) {
-    sets.push(`image_url = $${idx}`)
-    params.push(image_url)
     idx++
   }
   if (country_of_origin !== undefined) {
