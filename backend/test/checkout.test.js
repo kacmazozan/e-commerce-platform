@@ -52,7 +52,7 @@ describe('POST /api/checkout/reserve', () => {
 
   it('returns 409 with unavailable items when stock is insufficient', async () => {
     pool.query.mockResolvedValueOnce({
-      rows: [{ product_id: 1, quantity: 5 }],
+      rows: [{ product_id: 1, quantity: 5, size: 'M' }],
     })
 
     const client = makeClient([
@@ -78,7 +78,7 @@ describe('POST /api/checkout/reserve', () => {
 
   it('returns 409 with available=0 when stock is fully reserved by others', async () => {
     pool.query.mockResolvedValueOnce({
-      rows: [{ product_id: 1, quantity: 2 }],
+      rows: [{ product_id: 1, quantity: 2, size: 'S' }],
     })
 
     const client = makeClient([
@@ -100,7 +100,7 @@ describe('POST /api/checkout/reserve', () => {
 
   it('returns 409 with available=0 when reserved by others exceeds stock', async () => {
     pool.query.mockResolvedValueOnce({
-      rows: [{ product_id: 1, quantity: 1 }],
+      rows: [{ product_id: 1, quantity: 1, size: 'L' }],
     })
 
     const client = makeClient([
@@ -122,7 +122,7 @@ describe('POST /api/checkout/reserve', () => {
 
   it('returns { expires_at } on success and upserts reservations', async () => {
     pool.query.mockResolvedValueOnce({
-      rows: [{ product_id: 1, quantity: 2 }],
+      rows: [{ product_id: 1, quantity: 2, size: 'M' }],
     })
 
     const client = makeClient([
@@ -146,7 +146,7 @@ describe('POST /api/checkout/reserve', () => {
 
   it('returns 409 with product name "Unknown" when product not found during reserve', async () => {
     pool.query.mockResolvedValueOnce({
-      rows: [{ product_id: 999, quantity: 1 }],
+      rows: [{ product_id: 999, quantity: 1, size: '' }],
     })
 
     const client = makeClient([
@@ -233,7 +233,14 @@ describe('POST /api/checkout/confirm', () => {
     pool.query.mockResolvedValueOnce({
       // reservations joined with products (single source of truth)
       rows: [
-        { product_id: 1, quantity: 2, name: 'Widget', price: '9.99', effective_price: '9.99' },
+        {
+          product_id: 1,
+          quantity: 2,
+          size: 'M',
+          name: 'Widget',
+          price: '9.99',
+          effective_price: '9.99',
+        },
       ],
     })
 
@@ -261,7 +268,14 @@ describe('POST /api/checkout/confirm', () => {
   it('accepts confirm without address', async () => {
     pool.query.mockResolvedValueOnce({
       rows: [
-        { product_id: 1, quantity: 1, name: 'Widget', price: '5.00', effective_price: '5.00' },
+        {
+          product_id: 1,
+          quantity: 1,
+          size: '',
+          name: 'Widget',
+          price: '5.00',
+          effective_price: '5.00',
+        },
       ],
     })
 
@@ -289,7 +303,14 @@ describe('POST /api/checkout/confirm', () => {
     // Product base price $20.00, 20% discount → effective_price $16.00
     pool.query.mockResolvedValueOnce({
       rows: [
-        { product_id: 1, quantity: 2, name: 'Widget', price: '20.00', effective_price: '16.00' },
+        {
+          product_id: 1,
+          quantity: 2,
+          size: 'S',
+          name: 'Widget',
+          price: '20.00',
+          effective_price: '16.00',
+        },
       ],
     })
 

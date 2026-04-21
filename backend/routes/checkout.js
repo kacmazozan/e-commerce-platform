@@ -79,11 +79,11 @@ router.post('/reserve', async (req, res) => {
 
     for (const item of cartResult.rows) {
       await client.query(
-        `INSERT INTO stock_reservations (user_id, product_id, quantity, expires_at)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT ON CONSTRAINT stock_reservations_user_product_unique
-         DO UPDATE SET quantity = $3, reserved_at = NOW(), expires_at = $4`,
-        [userId, item.product_id, item.quantity, expiresAt]
+        `INSERT INTO stock_reservations (user_id, product_id, quantity, size, expires_at)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT ON CONSTRAINT stock_reservations_user_product_size_unique
+         DO UPDATE SET quantity = $3, reserved_at = NOW(), expires_at = $5`,
+        [userId, item.product_id, item.quantity, item.size ?? '', expiresAt]
       )
     }
 
@@ -113,18 +113,16 @@ router.post('/confirm', async (req, res) => {
   // stock decrement and order item creation — avoids cart/reservation divergence.
   // effective_price applies any active discount; falls back to base price when none.
   const reservations = await pool.query(
-    `SELECT sr.product_id, sr.quantity, p.name, p.price,
+    `SELECT sr.product_id, sr.quantity, sr.size, p.name, p.price,
             COALESCE(
               ROUND(p.price * (1 - pd.discount_percent / 100.0), 2),
               p.price
-            ) AS effective_price,
-            COALESCE(ci.size, '') AS size
+            ) AS effective_price
      FROM stock_reservations sr
      JOIN products p ON p.id = sr.product_id
      LEFT JOIN product_discounts pd ON pd.product_id = p.id
        AND pd.start_at <= NOW()
        AND (pd.end_at IS NULL OR pd.end_at > NOW())
-     LEFT JOIN cart_items ci ON ci.user_id = sr.user_id AND ci.product_id = sr.product_id
      WHERE sr.user_id = $1 AND sr.expires_at > NOW()`,
     [userId]
   )
