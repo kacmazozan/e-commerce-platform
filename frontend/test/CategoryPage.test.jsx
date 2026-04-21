@@ -1,6 +1,7 @@
 import { render, screen, waitForElementToBeRemoved } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import CategoryPage from '../src/pages/category/CategoryPage'
 
 const category = { title: 'Electronics', subtitle: 'Gadgets and gear' }
@@ -17,7 +18,11 @@ const defaultProps = {
 }
 
 function renderPage(props = {}) {
-  return render(<CategoryPage {...defaultProps} {...props} />)
+  return render(
+    <MemoryRouter>
+      <CategoryPage {...defaultProps} {...props} />
+    </MemoryRouter>
+  )
 }
 
 describe('CategoryPage', () => {
