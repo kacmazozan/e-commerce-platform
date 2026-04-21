@@ -76,6 +76,33 @@ describe('POST /api/checkout/reserve', () => {
     expect(res.body.unavailable[0].available).toBe(3)
   })
 
+  it('aggregates multiple sizes of the same product for stock check', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        { product_id: 1, quantity: 5, size: 'S' },
+        { product_id: 1, quantity: 5, size: 'M' },
+      ],
+    })
+
+    const client = makeClient([
+      { rows: [] }, // BEGIN
+      { rows: [] }, // DELETE stale reservations
+      { rows: [{ name: 'Widget', stock: 8 }] }, // SELECT product FOR UPDATE (only 8 available)
+      { rows: [{ reserved: '0' }] }, // SUM reserved by others
+      { rows: [] }, // ROLLBACK
+    ])
+    pool.connect.mockResolvedValueOnce(client)
+
+    const res = await request(app)
+      .post('/api/checkout/reserve')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('Some items are out of stock')
+    expect(res.body.unavailable[0].requested).toBe(10) // 5 + 5
+    expect(res.body.unavailable[0].available).toBe(8)
+  })
+
   it('returns 409 with available=0 when stock is fully reserved by others', async () => {
     pool.query.mockResolvedValueOnce({
       rows: [{ product_id: 1, quantity: 2, size: 'S' }],
