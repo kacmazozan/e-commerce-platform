@@ -422,7 +422,7 @@ router.get('/products/:id/images', async (req, res) => {
   if (!Number.isInteger(productId) || productId <= 0)
     return res.status(400).json({ error: 'Invalid product ID' })
   const result = await pool.query(
-    `SELECT id, url, alt, position FROM product_images WHERE product_id = $1 ORDER BY position ASC`,
+    `SELECT id, url, alt FROM product_images WHERE product_id = $1 ORDER BY id ASC`,
     [productId]
   )
   res.json({ images: result.rows })
@@ -435,14 +435,9 @@ router.post('/products/:id/images', async (req, res) => {
     return res.status(400).json({ error: 'Invalid product ID' })
   const { url, alt } = req.body
   if (!url) return res.status(400).json({ error: 'url is required' })
-  const posResult = await pool.query(
-    `SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM product_images WHERE product_id = $1`,
-    [productId]
-  )
-  const position = posResult.rows[0].next_pos
   const result = await pool.query(
-    `INSERT INTO product_images (product_id, url, alt, position) VALUES ($1, $2, $3, $4) RETURNING *`,
-    [productId, url, alt || null, position]
+    `INSERT INTO product_images (product_id, url, alt) VALUES ($1, $2, $3) RETURNING *`,
+    [productId, url, alt || null]
   )
   res.status(201).json({ image: result.rows[0] })
 })

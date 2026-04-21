@@ -306,8 +306,8 @@ describe('GET /api/products/:id', () => {
       })
       .mockResolvedValueOnce({
         rows: [
-          { id: 10, url: 'https://example.com/img1.jpg', alt: 'Front', position: 0 },
-          { id: 11, url: 'https://example.com/img2.jpg', alt: 'Back', position: 1 },
+          { id: 10, url: 'https://example.com/img1.jpg', alt: 'Front' },
+          { id: 11, url: 'https://example.com/img2.jpg', alt: 'Back' },
         ],
       })
 

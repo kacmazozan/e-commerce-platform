@@ -585,8 +585,8 @@ describe('GET /api/product-manager/products/:id/images', () => {
   it('returns 200 with images array for pm token', async () => {
     pool.query.mockResolvedValueOnce({
       rows: [
-        { id: 10, url: 'https://example.com/img1.jpg', alt: 'Front', position: 0 },
-        { id: 11, url: 'https://example.com/img2.jpg', alt: 'Back', position: 1 },
+        { id: 10, url: 'https://example.com/img1.jpg', alt: 'Front' },
+        { id: 11, url: 'https://example.com/img2.jpg', alt: 'Back' },
       ],
     })
 
@@ -632,14 +632,13 @@ describe('POST /api/product-manager/products/:id/images', () => {
   })
 
   it('returns 201 with image on success', async () => {
-    pool.query.mockResolvedValueOnce({ rows: [{ next_pos: 2 }] }).mockResolvedValueOnce({
+    pool.query.mockResolvedValueOnce({
       rows: [
         {
           id: 20,
           product_id: 1,
           url: 'https://example.com/img.jpg',
           alt: 'Side view',
-          position: 2,
         },
       ],
     })
@@ -652,7 +651,6 @@ describe('POST /api/product-manager/products/:id/images', () => {
     expect(res.status).toBe(201)
     expect(res.body).toHaveProperty('image')
     expect(res.body.image.url).toBe('https://example.com/img.jpg')
-    expect(res.body.image.position).toBe(2)
   })
 })
 

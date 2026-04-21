@@ -174,7 +174,7 @@ router.get('/:id', async (req, res) => {
   if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' })
 
   const imagesResult = await pool.query(
-    `SELECT id, url, alt, position FROM product_images WHERE product_id = $1 ORDER BY position ASC`,
+    `SELECT id, url, alt FROM product_images WHERE product_id = $1 ORDER BY id ASC`,
     [productId]
   )
 
