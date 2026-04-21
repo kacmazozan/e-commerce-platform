@@ -21,25 +21,6 @@ function BackIcon() {
   )
 }
 
-function CartIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <path d="M16 10a4 4 0 01-8 0" />
-    </svg>
-  )
-}
-
 function HeartIcon({ filled }) {
   return (
     <svg
@@ -60,11 +41,8 @@ function HeartIcon({ filled }) {
 export default function CategoryPage({
   category,
   onBack,
-  onAddToCart,
-  onRemoveFromCart,
   onAddToWishlist,
   onRemoveFromWishlist,
-  cartItems = [],
   wishlistItems = [],
 }) {
   const [products, setProducts] = useState([])
@@ -93,7 +71,6 @@ export default function CategoryPage({
     }
   }, [category.title])
 
-  const cartIds = new Set(cartItems.map((i) => i.id))
   const wishlistIds = new Set(wishlistItems.map((i) => i.id))
 
   return (
@@ -137,10 +114,8 @@ export default function CategoryPage({
         {loading && <p className="text-[var(--text)] opacity-60">Loading products…</p>}
         <div className="grid [grid-template-columns:repeat(4,1fr)] gap-5 max-[1024px]:[grid-template-columns:repeat(3,1fr)] max-[720px]:[grid-template-columns:repeat(2,1fr)] max-[720px]:gap-3.5 max-[420px]:[grid-template-columns:1fr]">
           {products.map((product) => {
-            const inCart = cartIds.has(product.id)
             const inWishlist = wishlistIds.has(product.id)
             const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
-            const outOfStock = availableStock === 0
             return (
               <div
                 key={product.id}
@@ -188,32 +163,12 @@ export default function CategoryPage({
                         : `${availableStock} in stock`}
                   </span>
                 </div>
-                <div className="flex gap-2 px-3 pb-3.5">
-                  <button
-                    className={
-                      outOfStock
-                        ? 'flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-transparent px-3 py-2.5 text-[13px] font-semibold text-[var(--text)] opacity-40'
-                        : inCart
-                          ? 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-400 bg-transparent px-3 py-2.5 text-[13px] font-semibold text-purple-400 transition-opacity hover:opacity-88'
-                          : 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-none bg-purple-400 px-3 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88'
-                    }
-                    disabled={outOfStock && !inCart}
-                    onClick={() =>
-                      outOfStock
-                        ? undefined
-                        : inCart
-                          ? onRemoveFromCart && onRemoveFromCart(product.id)
-                          : onAddToCart && onAddToCart(product)
-                    }
-                  >
-                    <CartIcon />{' '}
-                    {outOfStock ? 'Out of Stock' : inCart ? 'Remove from Cart' : 'Add to Cart'}
-                  </button>
+                <div className="flex justify-end px-3 pb-3.5">
                   <button
                     className={
                       inWishlist
-                        ? 'flex h-[38px] w-[38px] shrink-0 cursor-pointer items-center justify-center rounded-lg border border-purple-400 bg-purple-400/12 text-purple-400 transition-colors'
-                        : 'flex h-[38px] w-[38px] shrink-0 cursor-pointer items-center justify-center rounded-lg border border-[var(--border)] bg-transparent text-[var(--text)] transition-colors hover:border-purple-400 hover:text-purple-400'
+                        ? 'flex h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-lg border border-purple-400 bg-purple-400/12 text-purple-400 transition-colors'
+                        : 'flex h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-lg border border-[var(--border)] bg-transparent text-[var(--text)] transition-colors hover:border-purple-400 hover:text-purple-400'
                     }
                     aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
                     onClick={() =>

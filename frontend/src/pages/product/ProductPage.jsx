@@ -136,10 +136,8 @@ export default function ProductPage({
   productId,
   onBack,
   onAddToCart,
-  onRemoveFromCart,
   onAddToWishlist,
   onRemoveFromWishlist,
-  cartItems = [],
   wishlistItems = [],
   token = null,
 }) {
@@ -266,7 +264,6 @@ export default function ProductPage({
   const hue = CATEGORY_HUE[product.category] ?? 280
   const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
   const outOfStock = availableStock === 0
-  const inCart = cartItems.some((i) => i.id === product.id)
   const inWishlist = wishlistItems.some((i) => i.id === product.id)
   const avgRating =
     reviews.length > 0
@@ -549,23 +546,15 @@ export default function ProductPage({
             <div className="flex gap-3">
               <button
                 disabled={outOfStock}
-                onClick={
-                  outOfStock
-                    ? undefined
-                    : inCart
-                      ? () => onRemoveFromCart && onRemoveFromCart(product.id)
-                      : handleAddToCart
-                }
+                onClick={outOfStock ? undefined : handleAddToCart}
                 className={
                   outOfStock
                     ? 'flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-transparent px-5 py-3 text-[14px] font-semibold text-[var(--text)] opacity-40'
-                    : inCart
-                      ? 'flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-purple-400 bg-transparent px-5 py-3 text-[14px] font-semibold text-purple-400 transition-opacity hover:opacity-80'
-                      : 'flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border-none bg-purple-400 px-5 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-88'
+                    : 'flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border-none bg-purple-400 px-5 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-88'
                 }
               >
                 <CartIcon />
-                {outOfStock ? 'Out of Stock' : inCart ? 'Remove from Cart' : 'Add to Cart'}
+                {outOfStock ? 'Out of Stock' : 'Add to Cart'}
               </button>
               <button
                 onClick={() =>

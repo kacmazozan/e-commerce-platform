@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MiniCartIcon, StarRating } from '../../components/icons'
+import { StarRating } from '../../components/icons'
 import Navbar from './components/Navbar'
 import HeroBanner from './components/HeroBanner'
 import Footer from './components/Footer'
@@ -104,7 +104,6 @@ export default function HomePage({
   onLogout,
   cartCount = 0,
   wishlistCount = 0,
-  onAddToCart,
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [newReleases, setNewReleases] = useState([])
@@ -240,7 +239,6 @@ export default function HomePage({
           {newReleases.map((product) => {
             const hue = CATEGORY_HUE[product.category] ?? 280
             const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
-            const outOfStock = availableStock === 0
             return (
               <div
                 key={product.id}
@@ -268,7 +266,7 @@ export default function HomePage({
                   <span className="text-[13px] leading-[1.3] font-semibold text-[var(--text-h)]">
                     {product.name}
                   </span>
-                  <div className="mt-2 flex items-center justify-between">
+                  <div className="mt-2">
                     {product.discounted_price != null ? (
                       <div className="flex flex-col gap-0.5">
                         <span className="text-[13px] text-red-400 line-through opacity-70">
@@ -286,18 +284,6 @@ export default function HomePage({
                         ${parseFloat(product.price).toFixed(2)}
                       </span>
                     )}
-                    <button
-                      className={
-                        outOfStock
-                          ? 'flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg border border-[var(--border)] bg-transparent text-[var(--text)] opacity-30'
-                          : 'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text)] transition-[background,color,border-color] hover:border-purple-400 hover:bg-purple-400 hover:text-white'
-                      }
-                      aria-label="Add to cart"
-                      disabled={outOfStock}
-                      onClick={() => !outOfStock && onAddToCart && onAddToCart(product)}
-                    >
-                      <MiniCartIcon />
-                    </button>
                   </div>
                   <span
                     className={

@@ -27,10 +27,8 @@ const defaultProps = {
   productId: 1,
   onBack: vi.fn(),
   onAddToCart: vi.fn(),
-  onRemoveFromCart: vi.fn(),
   onAddToWishlist: vi.fn(),
   onRemoveFromWishlist: vi.fn(),
-  cartItems: [],
   wishlistItems: [],
   token: null,
 }
@@ -129,30 +127,7 @@ describe('ProductPage', () => {
     )
   })
 
-  // 6. Remove from Cart when product is in cartItems
-  it('shows Remove from Cart when product is in cartItems', async () => {
-    stubFetch({ product: { ...mockProduct, sizes: null } })
-
-    renderPage({ cartItems: [{ id: 1, name: 'Merino Sweater' }] })
-
-    expect(await screen.findByRole('button', { name: /remove from cart/i })).toBeInTheDocument()
-  })
-
-  it('calls onRemoveFromCart when Remove from Cart is clicked', async () => {
-    const onRemoveFromCart = vi.fn()
-    stubFetch({ product: { ...mockProduct, sizes: null } })
-
-    renderPage({
-      cartItems: [{ id: 1, name: 'Merino Sweater' }],
-      onRemoveFromCart,
-    })
-
-    await userEvent.click(await screen.findByRole('button', { name: /remove from cart/i }))
-
-    expect(onRemoveFromCart).toHaveBeenCalledWith(1)
-  })
-
-  // 7. Size selector — selecting a size and clicking Add to Cart
+  // 6. Size selector — selecting a size and clicking Add to Cart
   it('shows size selector and allows selecting a size before adding to cart', async () => {
     const onAddToCart = vi.fn()
     stubFetch()
