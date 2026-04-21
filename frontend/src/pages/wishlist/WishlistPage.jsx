@@ -38,33 +38,7 @@ function TrashIcon() {
   )
 }
 
-function CartIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <path d="M16 10a4 4 0 01-8 0" />
-    </svg>
-  )
-}
-
-export default function WishlistPage({
-  onBack,
-  wishlistItems,
-  onRemove,
-  onAddToCart,
-  onRemoveFromCart,
-  cartItems = [],
-}) {
+export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
   if (wishlistItems.length === 0) {
     return (
       <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
@@ -145,9 +119,7 @@ export default function WishlistPage({
         <div className="grid [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] gap-5">
           {wishlistItems.map((item) => {
             const availableStock = parseInt(item.available_stock ?? 0)
-            const outOfStock = availableStock === 0
             const lowStock = availableStock > 0 && availableStock <= 10
-            const inCart = cartItems.some((c) => c.id === item.id)
             return (
               <div
                 key={item.id}
@@ -183,24 +155,7 @@ export default function WishlistPage({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2.5 px-4 pt-3 pb-4">
-                  <button
-                    className={
-                      outOfStock
-                        ? 'flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-transparent px-3.5 py-2.5 text-[13px] font-semibold text-[var(--text)] opacity-40'
-                        : inCart
-                          ? 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-400 bg-transparent px-3.5 py-2.5 text-[13px] font-semibold text-purple-400 transition-opacity hover:opacity-88'
-                          : 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-none bg-purple-400 px-3.5 py-2.5 text-[13px] font-semibold tracking-[0.3px] text-white transition-opacity hover:opacity-88'
-                    }
-                    disabled={outOfStock}
-                    onClick={() => {
-                      if (outOfStock) return
-                      inCart ? onRemoveFromCart(item.id) : onAddToCart(item)
-                    }}
-                  >
-                    <CartIcon />
-                    {outOfStock ? 'Out of Stock' : inCart ? 'Remove from Cart' : 'Add to Cart'}
-                  </button>
+                <div className="flex justify-end px-4 pt-3 pb-4">
                   <button
                     className="flex cursor-pointer items-center rounded-lg border border-[var(--border)] bg-transparent p-2.5 text-[var(--text)] transition-colors hover:border-[rgba(232,93,93,0.3)] hover:bg-[rgba(232,93,93,0.1)] hover:text-[#e85d5d]"
                     onClick={() => onRemove(item.id)}

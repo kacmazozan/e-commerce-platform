@@ -13,15 +13,11 @@ const discountedItem = {
   discount_percent: 20,
   available_stock: '3',
 }
-const outOfStockItem = { id: 3, name: 'Gone', price: '10.00', available_stock: '0' }
 
 const defaultProps = {
   onBack: vi.fn(),
   wishlistItems: [regularItem],
   onRemove: vi.fn(),
-  onAddToCart: vi.fn(),
-  onRemoveFromCart: vi.fn(),
-  cartItems: [],
 }
 
 function renderPage(props = {}) {
@@ -70,44 +66,6 @@ describe('WishlistPage', () => {
 
     expect(screen.getByText('$20.00')).toBeInTheDocument()
     expect(screen.getByText('$16.00')).toBeInTheDocument()
-  })
-
-  it('renders "Add to Cart" button for in-stock item not in cart', () => {
-    renderPage()
-
-    expect(screen.getByRole('button', { name: /add to cart/i })).toBeInTheDocument()
-  })
-
-  it('calls onAddToCart with item when "Add to Cart" is clicked', async () => {
-    const onAddToCart = vi.fn()
-    renderPage({ onAddToCart })
-
-    await userEvent.click(screen.getByRole('button', { name: /add to cart/i }))
-
-    expect(onAddToCart).toHaveBeenCalledWith(regularItem)
-  })
-
-  it('renders "Remove from Cart" button when item is already in cart', () => {
-    renderPage({ cartItems: [{ id: 1 }] })
-
-    expect(screen.getByRole('button', { name: /remove from cart/i })).toBeInTheDocument()
-  })
-
-  it('calls onRemoveFromCart with item id when "Remove from Cart" is clicked', async () => {
-    const onRemoveFromCart = vi.fn()
-    renderPage({ cartItems: [{ id: 1 }], onRemoveFromCart })
-
-    await userEvent.click(screen.getByRole('button', { name: /remove from cart/i }))
-
-    expect(onRemoveFromCart).toHaveBeenCalledWith(1)
-  })
-
-  it('renders disabled "Out of Stock" button for out-of-stock item', () => {
-    renderPage({ wishlistItems: [outOfStockItem] })
-
-    const btn = screen.getByRole('button', { name: /out of stock/i })
-    expect(btn).toBeInTheDocument()
-    expect(btn).toBeDisabled()
   })
 
   it('renders trash button for each item', () => {

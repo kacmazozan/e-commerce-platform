@@ -634,9 +634,9 @@ export default function ProductPage({
             </h3>
             {!token ? (
               <p className="text-[14px] text-[var(--text)] opacity-70">
-                <a href="/login" className="text-purple-400 underline">
+                <Link to="/login" className="text-purple-400 underline">
                   Log in
-                </a>{' '}
+                </Link>{' '}
                 to share your experience with this product.
               </p>
             ) : submitSuccess ? (

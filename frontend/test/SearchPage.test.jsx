@@ -7,11 +7,8 @@ import SearchPage from '../src/pages/search/SearchPage'
 const defaultProps = {
   searchQuery: 'laptop',
   onBack: vi.fn(),
-  onAddToCart: vi.fn(),
-  onRemoveFromCart: vi.fn(),
   onAddToWishlist: vi.fn(),
   onRemoveFromWishlist: vi.fn(),
-  cartItems: [],
   wishlistItems: [],
 }
 
@@ -107,23 +104,6 @@ describe('SearchPage', () => {
     expect(await screen.findByText('Out of stock')).toBeInTheDocument()
   })
 
-  it('disables add-to-cart button for out-of-stock products', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          products: [{ id: 1, name: 'Laptop Pro', price: '999.99', stock: 0, available_stock: 0 }],
-        }),
-      })
-    )
-
-    renderPage()
-
-    const button = await screen.findByRole('button', { name: /out of stock/i })
-    expect(button).toBeDisabled()
-  })
-
   it('shows "No products found for" message when results are empty', async () => {
     vi.stubGlobal(
       'fetch',
@@ -158,61 +138,6 @@ describe('SearchPage', () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/products/search?q=')
     )
-  })
-
-  it('shows "Remove from Cart" when product is already in cartItems', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          products: [{ id: 1, name: 'Laptop Pro', price: '999.99', stock: 5, available_stock: 5 }],
-        }),
-      })
-    )
-
-    renderPage({ cartItems: [{ id: 1, name: 'Laptop Pro' }] })
-
-    expect(await screen.findByRole('button', { name: /remove from cart/i })).toBeInTheDocument()
-  })
-
-  it('calls onAddToCart when "Add to Cart" is clicked for in-stock product', async () => {
-    const onAddToCart = vi.fn()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          products: [{ id: 1, name: 'Laptop Pro', price: '999.99', stock: 5, available_stock: 5 }],
-        }),
-      })
-    )
-
-    renderPage({ onAddToCart })
-
-    await userEvent.click(await screen.findByRole('button', { name: /add to cart/i }))
-
-    expect(onAddToCart).toHaveBeenCalledOnce()
-    expect(onAddToCart).toHaveBeenCalledWith(expect.objectContaining({ id: 1, name: 'Laptop Pro' }))
-  })
-
-  it('calls onRemoveFromCart when "Remove from Cart" is clicked', async () => {
-    const onRemoveFromCart = vi.fn()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          products: [{ id: 1, name: 'Laptop Pro', price: '999.99', stock: 5, available_stock: 5 }],
-        }),
-      })
-    )
-
-    renderPage({ cartItems: [{ id: 1, name: 'Laptop Pro' }], onRemoveFromCart })
-
-    await userEvent.click(await screen.findByRole('button', { name: /remove from cart/i }))
-
-    expect(onRemoveFromCart).toHaveBeenCalledWith(1)
   })
 
   it('calls onAddToWishlist when wishlist button is clicked for item not in wishlist', async () => {
@@ -287,16 +212,6 @@ describe('SearchPage', () => {
     renderPage()
 
     expect(await screen.findByText('2 products found')).toBeInTheDocument()
-  })
-
-  it('renders empty grid and no cart buttons on fetch error', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')))
-
-    renderPage()
-
-    await waitForElementToBeRemoved(() => screen.queryByText(/loading products/i))
-
-    expect(screen.queryByRole('button', { name: /add to cart/i })).not.toBeInTheDocument()
   })
 
   it('shows error message on fetch failure', async () => {

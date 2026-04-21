@@ -71,10 +71,8 @@ function RequireAdmin({ adminToken, children }) {
 
 function CategoryRoute({
   onAddToCart,
-  onRemoveFromCart,
   onAddToWishlist,
   onRemoveFromWishlist,
-  cartItems,
   wishlistItems,
   token,
 }) {
@@ -90,10 +88,8 @@ function CategoryRoute({
       category={state.category}
       onBack={() => navigate(-1)}
       onAddToCart={onAddToCart}
-      onRemoveFromCart={onRemoveFromCart}
       onAddToWishlist={onAddToWishlist}
       onRemoveFromWishlist={onRemoveFromWishlist}
-      cartItems={cartItems}
       wishlistItems={wishlistItems}
       token={token}
     />
@@ -102,10 +98,8 @@ function CategoryRoute({
 
 function ProductRoute({
   onAddToCart,
-  onRemoveFromCart,
   onAddToWishlist,
   onRemoveFromWishlist,
-  cartItems,
   wishlistItems,
   token,
 }) {
@@ -116,25 +110,15 @@ function ProductRoute({
       productId={id}
       onBack={() => navigate(-1)}
       onAddToCart={onAddToCart}
-      onRemoveFromCart={onRemoveFromCart}
       onAddToWishlist={onAddToWishlist}
       onRemoveFromWishlist={onRemoveFromWishlist}
-      cartItems={cartItems}
       wishlistItems={wishlistItems}
       token={token}
     />
   )
 }
 
-function SearchRoute({
-  onAddToCart,
-  onRemoveFromCart,
-  onAddToWishlist,
-  onRemoveFromWishlist,
-  cartItems,
-  wishlistItems,
-  token,
-}) {
+function SearchRoute({ onAddToWishlist, onRemoveFromWishlist, wishlistItems }) {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const q = searchParams.get('q') || ''
@@ -143,13 +127,9 @@ function SearchRoute({
     <SearchPage
       searchQuery={q}
       onBack={() => navigate(-1)}
-      onAddToCart={onAddToCart}
-      onRemoveFromCart={onRemoveFromCart}
       onAddToWishlist={onAddToWishlist}
       onRemoveFromWishlist={onRemoveFromWishlist}
-      cartItems={cartItems}
       wishlistItems={wishlistItems}
-      token={token}
     />
   )
 }
@@ -253,7 +233,9 @@ function App() {
 
   async function removeFromCart(productId, size = '') {
     if (token) {
-      const sizeParam = size ? `?size=${encodeURIComponent(size)}` : ''
+      // If size is null, we'd need a different endpoint or a loop,
+      // but current UI only removes specific variants.
+      const sizeParam = size !== null ? `?size=${encodeURIComponent(size || '')}` : ''
       const res = await fetch(`${API_BASE}/api/cart/${productId}${sizeParam}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
@@ -264,7 +246,13 @@ function App() {
         return
       }
     }
-    setCart((prev) => prev.filter((item) => !(item.id === productId && (item.size || '') === size)))
+    setCart((prev) =>
+      prev.filter((item) => {
+        if (item.id !== productId) return true
+        if (size === null) return false // Remove all sizes
+        return (item.size || '') !== (size || '')
+      })
+    )
   }
 
   async function updateCartQuantity(productId, size = '', quantity) {
@@ -541,9 +529,6 @@ function App() {
               onBack={() => navigate(-1)}
               wishlistItems={wishlist}
               onRemove={removeFromWishlist}
-              onAddToCart={addToCart}
-              onRemoveFromCart={removeFromCart}
-              cartItems={cart}
             />
           }
         />
@@ -552,10 +537,8 @@ function App() {
           element={
             <ProductRoute
               onAddToCart={addToCart}
-              onRemoveFromCart={removeFromCart}
               onAddToWishlist={addToWishlist}
               onRemoveFromWishlist={removeFromWishlist}
-              cartItems={cart}
               wishlistItems={wishlist}
               token={token}
             />
@@ -566,10 +549,8 @@ function App() {
           element={
             <CategoryRoute
               onAddToCart={addToCart}
-              onRemoveFromCart={removeFromCart}
               onAddToWishlist={addToWishlist}
               onRemoveFromWishlist={removeFromWishlist}
-              cartItems={cart}
               wishlistItems={wishlist}
               token={token}
             />
@@ -579,13 +560,9 @@ function App() {
           path="/search"
           element={
             <SearchRoute
-              onAddToCart={addToCart}
-              onRemoveFromCart={removeFromCart}
               onAddToWishlist={addToWishlist}
               onRemoveFromWishlist={removeFromWishlist}
-              cartItems={cart}
               wishlistItems={wishlist}
-              token={token}
             />
           }
         />
