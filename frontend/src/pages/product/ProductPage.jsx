@@ -445,6 +445,62 @@ export default function ProductPage({
               </div>
             )}
 
+            {/* Product details */}
+            {(product.description ||
+              product.material ||
+              product.country_of_origin ||
+              hasModelInfo) && (
+              <div className="space-y-4 border-t border-[var(--border)] pt-4">
+                {product.description && (
+                  <div>
+                    <p className="m-0 mb-1 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase">
+                      Description
+                    </p>
+                    <p className="m-0 text-[14px] leading-relaxed text-[var(--text-h)]">
+                      {product.description}
+                    </p>
+                  </div>
+                )}
+                {product.material && (
+                  <div>
+                    <p className="m-0 mb-1 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase">
+                      Material
+                    </p>
+                    <p className="m-0 text-[14px] text-[var(--text-h)]">{product.material}</p>
+                  </div>
+                )}
+                {product.country_of_origin && (
+                  <div>
+                    <p className="m-0 mb-1 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase">
+                      Country of Origin
+                    </p>
+                    <p className="m-0 text-[14px] text-[var(--text-h)]">
+                      {product.country_of_origin}
+                    </p>
+                  </div>
+                )}
+                {hasModelInfo && (
+                  <div>
+                    <p className="m-0 mb-1 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase">
+                      Fit &amp; Sizing
+                    </p>
+                    <p className="m-0 text-[14px] leading-relaxed text-[var(--text-h)]">
+                      {[
+                        product.model_size && `The model wears size ${product.model_size}`,
+                        product.model_height && `height ${product.model_height}`,
+                        product.model_chest && `chest ${product.model_chest}`,
+                        product.model_waist && `waist ${product.model_waist}`,
+                        product.model_hips && `hips ${product.model_hips}`,
+                      ]
+                        .filter(Boolean)
+                        .join(', ')}
+                      .
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Add to cart + wishlist */}
             <div className="flex gap-3">
               <button
@@ -485,97 +541,6 @@ export default function ProductPage({
             </div>
           </div>
         </div>
-
-        {/* ── Product details ── */}
-        {(product.description || product.material || product.country_of_origin || hasModelInfo) && (
-          <section className="mt-12 border-t border-[var(--border)] pt-10">
-            <h2 className="m-0 mb-6 text-[22px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
-              Product Details
-            </h2>
-            <div className="grid gap-8 md:grid-cols-2">
-              {(product.description || product.material || product.country_of_origin) && (
-                <div className="space-y-4">
-                  {product.description && (
-                    <div>
-                      <p className="m-0 mb-1 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase">
-                        Description
-                      </p>
-                      <p className="m-0 text-[14px] leading-relaxed text-[var(--text-h)]">
-                        {product.description}
-                      </p>
-                    </div>
-                  )}
-                  {product.material && (
-                    <div>
-                      <p className="m-0 mb-1 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase">
-                        Material
-                      </p>
-                      <p className="m-0 text-[14px] text-[var(--text-h)]">{product.material}</p>
-                    </div>
-                  )}
-                  {product.country_of_origin && (
-                    <div>
-                      <p className="m-0 mb-1 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase">
-                        Country of Origin
-                      </p>
-                      <p className="m-0 text-[14px] text-[var(--text-h)]">
-                        {product.country_of_origin}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {hasModelInfo && (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5">
-                  <p className="m-0 mb-4 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase">
-                    Fit & Sizing
-                  </p>
-                  {product.model_size && (
-                    <p className="m-0 mb-3 text-[13px] leading-relaxed text-[var(--text-h)]">
-                      The model is wearing size{' '}
-                      <span className="font-bold text-purple-400">{product.model_size}</span>.
-                    </p>
-                  )}
-                  <div className="space-y-2">
-                    {product.model_height && (
-                      <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
-                        <span className="text-[13px] text-[var(--text)]">Height</span>
-                        <span className="text-[13px] font-semibold text-[var(--text-h)]">
-                          {product.model_height}
-                        </span>
-                      </div>
-                    )}
-                    {product.model_chest && (
-                      <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
-                        <span className="text-[13px] text-[var(--text)]">Chest</span>
-                        <span className="text-[13px] font-semibold text-[var(--text-h)]">
-                          {product.model_chest}
-                        </span>
-                      </div>
-                    )}
-                    {product.model_waist && (
-                      <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
-                        <span className="text-[13px] text-[var(--text)]">Waist</span>
-                        <span className="text-[13px] font-semibold text-[var(--text-h)]">
-                          {product.model_waist}
-                        </span>
-                      </div>
-                    )}
-                    {product.model_hips && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-[13px] text-[var(--text)]">Hips</span>
-                        <span className="text-[13px] font-semibold text-[var(--text-h)]">
-                          {product.model_hips}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
 
         {/* ── Reviews ── */}
         <section className="mt-12 border-t border-[var(--border)] pt-10">
