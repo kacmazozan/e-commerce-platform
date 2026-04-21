@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import Footer from '../home/components/Footer'
 import API_BASE from '../../api'
 
 function BackIcon() {
@@ -97,6 +98,14 @@ export default function CategoryPage({
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
+      <div
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(170deg, var(--bg) 0%, var(--bg-gradient-to) 25%, var(--accent-bg) 50%, var(--bg-gradient-to) 75%, var(--bg) 100%)',
+        }}
+        aria-hidden="true"
+      />
       <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
           <button
@@ -114,7 +123,7 @@ export default function CategoryPage({
         </div>
       </header>
 
-      <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
+      <main className="relative z-[1] mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
         <div className="mb-10">
           <p className="m-0 mb-2.5 text-[11px] font-bold tracking-[5px] text-purple-400 uppercase">
             Collection
@@ -221,6 +230,7 @@ export default function CategoryPage({
           })}
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { StarRating } from '../../components/icons'
+import Footer from '../home/components/Footer'
 import API_BASE from '../../api'
 
 const CATEGORY_HUE = {
@@ -227,11 +228,23 @@ export default function ProductPage({
     onAddToCart && onAddToCart(product, selectedSize || '')
   }
 
+  const ambientBg = (
+    <div
+      className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+      style={{
+        background:
+          'linear-gradient(170deg, var(--bg) 0%, var(--bg-gradient-to) 25%, var(--accent-bg) 50%, var(--bg-gradient-to) 75%, var(--bg) 100%)',
+      }}
+      aria-hidden="true"
+    />
+  )
+
   if (loading) {
     return (
       <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
+        {ambientBg}
         <Header onBack={onBack} />
-        <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
+        <main className="relative z-[1] mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
           <p className="text-[var(--text)] opacity-60">Loading…</p>
         </main>
       </div>
@@ -241,8 +254,9 @@ export default function ProductPage({
   if (error || !product) {
     return (
       <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
+        {ambientBg}
         <Header onBack={onBack} />
-        <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
+        <main className="relative z-[1] mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
           <p className="text-red-400">{error || 'Product not found'}</p>
         </main>
       </div>
@@ -269,9 +283,10 @@ export default function ProductPage({
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
+      {ambientBg}
       <Header onBack={onBack} />
 
-      <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-10 pb-20">
+      <main className="relative z-[1] mx-auto box-border w-full max-w-[1280px] px-6 pt-10 pb-20">
         {/* ── Top section: image gallery + info ── */}
         <div className="grid gap-10 max-[720px]:grid-cols-1 lg:grid-cols-[5fr_7fr]">
           {/* Image gallery */}
@@ -719,6 +734,7 @@ export default function ProductPage({
           ))}
         </div>
       </main>
+      <Footer />
     </div>
   )
 }
