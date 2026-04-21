@@ -318,6 +318,7 @@ export default function ProductPage({
               {images.length > 1 && (
                 <>
                   <button
+                    type="button"
                     onClick={() => setActiveImg((i) => (i - 1 + images.length) % images.length)}
                     className="absolute top-1/2 left-3 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-none bg-[var(--card-bg)]/80 text-[var(--text-h)] shadow-md backdrop-blur-sm transition-colors hover:bg-purple-400/20 hover:text-purple-400"
                     aria-label="Previous image"
@@ -336,6 +337,7 @@ export default function ProductPage({
                     </svg>
                   </button>
                   <button
+                    type="button"
                     onClick={() => setActiveImg((i) => (i + 1) % images.length)}
                     className="absolute top-1/2 right-3 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-none bg-[var(--card-bg)]/80 text-[var(--text-h)] shadow-md backdrop-blur-sm transition-colors hover:bg-purple-400/20 hover:text-purple-400"
                     aria-label="Next image"
@@ -362,6 +364,7 @@ export default function ProductPage({
                 {images.map((_, i) => (
                   <button
                     key={i}
+                    type="button"
                     onClick={() => setActiveImg(i)}
                     className={`cursor-pointer rounded-full border-none transition-all ${i === activeImg ? 'h-2 w-6 bg-purple-400' : 'h-2 w-2 bg-[var(--border)] hover:bg-purple-400/50'}`}
                     aria-label={`View image ${i + 1}`}
@@ -376,6 +379,7 @@ export default function ProductPage({
                 {images.map((img, i) => (
                   <button
                     key={img.id}
+                    type="button"
                     onClick={() => setActiveImg(i)}
                     className={`shrink-0 cursor-pointer overflow-hidden rounded-xl border-2 p-0 transition-all ${i === activeImg ? 'border-purple-400 shadow-[0_0_0_1px_rgba(192,132,252,0.5)]' : 'border-[var(--glass-border)] opacity-60 hover:opacity-90'}`}
                     style={{ width: 72, height: 96 }}
@@ -466,6 +470,7 @@ export default function ProductPage({
                   {product.sizes.map((sz) => (
                     <button
                       key={sz}
+                      type="button"
                       onClick={() => {
                         setSelectedSize(sz)
                         setSizeError(false)
@@ -545,6 +550,7 @@ export default function ProductPage({
             {/* Add to cart + wishlist */}
             <div className="flex gap-3">
               <button
+                type="button"
                 disabled={outOfStock}
                 onClick={outOfStock ? undefined : handleAddToCart}
                 className={
@@ -557,6 +563,7 @@ export default function ProductPage({
                 {outOfStock ? 'Out of Stock' : 'Add to Cart'}
               </button>
               <button
+                type="button"
                 onClick={() =>
                   inWishlist
                     ? onRemoveFromWishlist && onRemoveFromWishlist(product.id)
@@ -733,6 +740,7 @@ function Header({ onBack }) {
     <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
         <button
+          type="button"
           className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
           onClick={onBack}
         >

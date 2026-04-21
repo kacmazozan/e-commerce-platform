@@ -221,18 +221,24 @@ export default function PriceManagement({ token }) {
                     {editingId === p.id ? (
                       <div className="flex gap-1.5">
                         <button
+                          type="button"
                           className={btnEdit}
                           onClick={() => savePrice(p.id)}
                           disabled={saving}
                         >
                           {saving ? 'Saving…' : 'Save'}
                         </button>
-                        <button className={btnBase} onClick={cancelEdit} disabled={saving}>
+                        <button
+                          type="button"
+                          className={btnBase}
+                          onClick={cancelEdit}
+                          disabled={saving}
+                        >
                           Cancel
                         </button>
                       </div>
                     ) : (
-                      <button className={btnEdit} onClick={() => startEdit(p)}>
+                      <button type="button" className={btnEdit} onClick={() => startEdit(p)}>
                         Edit Price
                       </button>
                     )}
@@ -247,6 +253,7 @@ export default function PriceManagement({ token }) {
       {pagination.totalPages > 1 && (
         <div className="mt-5 flex items-center justify-center gap-4">
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page <= 1}
             onClick={() => fetchProducts(pagination.page - 1, filterCategory, searchQuery)}
@@ -257,6 +264,7 @@ export default function PriceManagement({ token }) {
             Page {pagination.page} of {pagination.totalPages} ({pagination.total} products)
           </span>
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => fetchProducts(pagination.page + 1, filterCategory, searchQuery)}

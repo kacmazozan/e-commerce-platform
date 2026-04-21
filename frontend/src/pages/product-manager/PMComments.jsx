@@ -154,6 +154,7 @@ function PMComments({ token }) {
                   <td className={`${tdClass} flex gap-2`}>
                     {c.status !== 'approved' && (
                       <button
+                        type="button"
                         className={btnApprove}
                         disabled={actionPending === c.id}
                         onClick={() => handleModerate(c.id, 'approve')}
@@ -163,6 +164,7 @@ function PMComments({ token }) {
                     )}
                     {c.status !== 'rejected' && (
                       <button
+                        type="button"
                         className={btnReject}
                         disabled={actionPending === c.id}
                         onClick={() => handleModerate(c.id, 'reject')}
@@ -181,6 +183,7 @@ function PMComments({ token }) {
       {pagination.totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between text-sm">
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page <= 1}
             onClick={() => fetchComments(pagination.page - 1)}
@@ -191,6 +194,7 @@ function PMComments({ token }) {
             Page {pagination.page} of {pagination.totalPages} ({pagination.total} comments)
           </span>
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => fetchComments(pagination.page + 1)}

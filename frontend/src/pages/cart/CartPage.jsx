@@ -99,6 +99,7 @@ export default function CartPage({
         <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
           <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
             <button
+              type="button"
               className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
               onClick={onBack}
             >
@@ -138,6 +139,7 @@ export default function CartPage({
               Browse our categories and add items you love.
             </p>
             <button
+              type="button"
               className="cursor-pointer rounded-lg border-none bg-purple-400 px-7 py-3 text-sm font-semibold tracking-[0.5px] text-white transition-opacity hover:opacity-88"
               onClick={onBack}
             >
@@ -154,6 +156,7 @@ export default function CartPage({
       <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
           <button
+            type="button"
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
             onClick={onBack}
           >
@@ -221,6 +224,7 @@ export default function CartPage({
                   <div className="flex shrink-0 items-center gap-4">
                     <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1">
                       <button
+                        type="button"
                         className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400"
                         onClick={() => onUpdateQuantity(item.id, itemSize, item.quantity - 1)}
                         aria-label="Decrease quantity"
@@ -231,6 +235,7 @@ export default function CartPage({
                         {item.quantity}
                       </span>
                       <button
+                        type="button"
                         className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400"
                         onClick={() => onUpdateQuantity(item.id, itemSize, item.quantity + 1)}
                         aria-label="Increase quantity"
@@ -243,6 +248,7 @@ export default function CartPage({
                     </span>
                     {outOfStock && onAddToWishlist && !inWishlist && (
                       <button
+                        type="button"
                         className="flex cursor-pointer items-center gap-1 rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-[11px] font-semibold text-[var(--text)] transition-colors hover:border-purple-400/40 hover:text-purple-400"
                         onClick={() => onAddToWishlist(item)}
                         aria-label="Save to wishlist"
@@ -251,6 +257,7 @@ export default function CartPage({
                       </button>
                     )}
                     <button
+                      type="button"
                       className="flex cursor-pointer items-center rounded-md border-none bg-transparent p-1.5 text-[var(--text)] transition-colors hover:bg-[rgba(232,93,93,0.1)] hover:text-[#e85d5d]"
                       onClick={() => onRemove(item.id, itemSize)}
                       aria-label="Remove item"
@@ -296,6 +303,7 @@ export default function CartPage({
               </p>
             )}
             <button
+              type="button"
               className="mt-1 cursor-pointer rounded-[10px] border-none bg-purple-400 px-7 py-3.5 text-[15px] font-semibold tracking-[0.5px] text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleCheckout}
               disabled={reserving || hasOutOfStock}

@@ -222,6 +222,7 @@ export default function DiscountManagement({ token }) {
               : `${selectedIds.size} product(s) selected`}
           </span>
           <button
+            type="button"
             className={btnEdit}
             onClick={applyDiscount}
             disabled={applying || selectedIds.size === 0}
@@ -332,7 +333,11 @@ export default function DiscountManagement({ token }) {
                     </TableCell>
                     <TableCell>
                       {p.discount_percent != null && (
-                        <button className={btnBase} onClick={() => removeDiscount(p.id)}>
+                        <button
+                          type="button"
+                          className={btnBase}
+                          onClick={() => removeDiscount(p.id)}
+                        >
                           Remove
                         </button>
                       )}
@@ -348,6 +353,7 @@ export default function DiscountManagement({ token }) {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-center gap-4">
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page <= 1}
             onClick={() => fetchProducts(pagination.page - 1, filterCategory, searchQuery)}
@@ -358,6 +364,7 @@ export default function DiscountManagement({ token }) {
             Page {pagination.page} of {pagination.totalPages} ({pagination.total} products)
           </span>
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => fetchProducts(pagination.page + 1, filterCategory, searchQuery)}

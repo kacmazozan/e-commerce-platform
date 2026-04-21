@@ -95,6 +95,7 @@ export default function NotificationBell({ token }) {
   return (
     <div className="relative" ref={ref}>
       <button
+        type="button"
         className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-h)] transition-colors hover:border-purple-400/40 hover:bg-purple-400/12 hover:text-purple-400"
         aria-label="Notifications"
         aria-expanded={open}
@@ -119,6 +120,7 @@ export default function NotificationBell({ token }) {
             <div className="flex items-center gap-3">
               {unreadCount > 0 && (
                 <button
+                  type="button"
                   role="menuitem"
                   className="text-[11px] text-purple-400 hover:underline"
                   onClick={markAllRead}
@@ -128,6 +130,7 @@ export default function NotificationBell({ token }) {
               )}
               {notifications.length > 0 && (
                 <button
+                  type="button"
                   role="menuitem"
                   className="text-[11px] text-[var(--text)] opacity-50 hover:underline hover:opacity-100"
                   onClick={clearAll}

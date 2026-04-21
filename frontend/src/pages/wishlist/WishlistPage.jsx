@@ -45,6 +45,7 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
         <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
           <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
             <button
+              type="button"
               className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
               onClick={onBack}
             >
@@ -84,6 +85,7 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
               Save items you love and come back to them anytime.
             </p>
             <button
+              type="button"
               className="cursor-pointer rounded-lg border-none bg-purple-400 px-7 py-3 text-sm font-semibold tracking-[0.5px] text-white transition-opacity hover:opacity-88"
               onClick={onBack}
             >
@@ -100,6 +102,7 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
       <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
           <button
+            type="button"
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
             onClick={onBack}
           >
@@ -157,6 +160,7 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
                 </div>
                 <div className="flex justify-end px-4 pt-3 pb-4">
                   <button
+                    type="button"
                     className="flex cursor-pointer items-center rounded-lg border border-[var(--border)] bg-transparent p-2.5 text-[var(--text)] transition-colors hover:border-[rgba(232,93,93,0.3)] hover:bg-[rgba(232,93,93,0.1)] hover:text-[#e85d5d]"
                     onClick={() => onRemove(item.id)}
                     aria-label="Remove from wishlist"

@@ -291,6 +291,7 @@ function FaqItem({ question, answer }) {
   return (
     <div className={`border-b border-[var(--border)] last:border-b-0${open ? ' faq-open' : ''}`}>
       <button
+        type="button"
         className={`flex w-full cursor-pointer items-center justify-between gap-4 border-none bg-transparent px-5 py-[18px] text-left text-sm font-semibold transition-colors ${open ? 'bg-purple-400/12 text-purple-400' : 'text-[var(--text-h)] hover:bg-[var(--border)]'}`}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -336,6 +337,7 @@ export default function HelpPage({ onBack }) {
       <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
           <button
+            type="button"
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
             onClick={onBack}
           >
@@ -375,6 +377,7 @@ export default function HelpPage({ onBack }) {
           />
           {search && (
             <button
+              type="button"
               className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer border-none bg-none p-1 text-[20px] leading-none text-[var(--text)] transition-colors hover:text-[var(--text-h)]"
               onClick={() => setSearch('')}
               aria-label="Clear search"
@@ -389,6 +392,7 @@ export default function HelpPage({ onBack }) {
         {/* Category tabs */}
         <div className="mb-10 flex flex-wrap gap-2">
           <button
+            type="button"
             className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-4 py-2 text-[13px] font-medium whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'border-purple-400 bg-purple-400 text-white hover:text-white' : 'border-[var(--border)] bg-transparent text-[var(--text)] hover:border-purple-400 hover:text-[var(--text-h)]'}`}
             onClick={() => setActiveCategory('all')}
           >
@@ -397,6 +401,7 @@ export default function HelpPage({ onBack }) {
           {FAQ_CATEGORIES.map((cat) => (
             <button
               key={cat.id}
+              type="button"
               className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-4 py-2 text-[13px] font-medium whitespace-nowrap transition-colors ${activeCategory === cat.id ? 'border-purple-400 bg-purple-400 text-white hover:text-white' : 'border-[var(--border)] bg-transparent text-[var(--text)] hover:border-purple-400 hover:text-[var(--text-h)]'}`}
               onClick={() => setActiveCategory(cat.id)}
             >
@@ -415,6 +420,7 @@ export default function HelpPage({ onBack }) {
             <p className="m-0 text-sm text-[var(--text)]">
               Try different keywords, or{' '}
               <button
+                type="button"
                 className="cursor-pointer border-none bg-none p-0 text-sm text-purple-400 underline underline-offset-[3px]"
                 onClick={() => setSearch('')}
               >
@@ -448,10 +454,16 @@ export default function HelpPage({ onBack }) {
             </p>
           </div>
           <div className="flex shrink-0 gap-2.5">
-            <button className="cursor-pointer rounded-lg border border-purple-400 bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-85">
+            <button
+              type="button"
+              className="cursor-pointer rounded-lg border border-purple-400 bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
+            >
               Live Chat
             </button>
-            <button className="cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-5 py-2.5 text-[13px] font-semibold text-[var(--text-h)] transition-opacity hover:opacity-85">
+            <button
+              type="button"
+              className="cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-5 py-2.5 text-[13px] font-semibold text-[var(--text-h)] transition-opacity hover:opacity-85"
+            >
               Email Us
             </button>
           </div>

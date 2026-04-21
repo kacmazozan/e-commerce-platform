@@ -156,7 +156,7 @@ function OrderManagement({ token }) {
               </option>
             ))}
           </select>
-          <button type="submit" className={btnSearch}>
+          <button type="button" type="submit" className={btnSearch}>
             Search
           </button>
         </form>
@@ -227,10 +227,15 @@ function OrderManagement({ token }) {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1.5">
-                      <button className={btnEdit} onClick={() => viewOrder(o.id)}>
+                      <button type="button" className={btnEdit} onClick={() => viewOrder(o.id)}>
                         View
                       </button>
-                      <button className={btnDelete} onClick={() => setDeleteConfirm(o)}>
+                      <button
+                        type="button"
+                        type="button"
+                        className={btnDelete}
+                        onClick={() => setDeleteConfirm(o)}
+                      >
                         Delete
                       </button>
                     </div>
@@ -246,6 +251,8 @@ function OrderManagement({ token }) {
       {pagination.totalPages > 1 && (
         <div className="mt-5 flex items-center justify-center gap-4">
           <button
+            type="button"
+            type="button"
             className={btnBase}
             disabled={pagination.page <= 1}
             onClick={() => fetchOrders(pagination.page - 1)}
@@ -256,6 +263,8 @@ function OrderManagement({ token }) {
             Page {pagination.page} of {pagination.totalPages} ({pagination.total} orders)
           </span>
           <button
+            type="button"
+            type="button"
             className={btnBase}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => fetchOrders(pagination.page + 1)}
@@ -370,7 +379,7 @@ function OrderManagement({ token }) {
               )}
 
               <div className="flex justify-end">
-                <button className={btnBase} onClick={() => setDetail(null)}>
+                <button type="button" className={btnBase} onClick={() => setDetail(null)}>
                   Close
                 </button>
               </div>
@@ -391,10 +400,15 @@ function OrderManagement({ token }) {
             remove all associated items.
           </p>
           <div className="flex justify-end gap-2">
-            <button className={btnBase} onClick={() => setDeleteConfirm(null)}>
+            <button type="button" className={btnBase} onClick={() => setDeleteConfirm(null)}>
               Cancel
             </button>
-            <button className={btnDanger} onClick={() => handleDelete(deleteConfirm.id)}>
+            <button
+              type="button"
+              type="button"
+              className={btnDanger}
+              onClick={() => handleDelete(deleteConfirm.id)}
+            >
               Delete
             </button>
           </div>

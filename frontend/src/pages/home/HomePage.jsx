@@ -155,7 +155,10 @@ export default function HomePage({
           <h2 className="m-0 text-[28px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
             Browse Categories
           </h2>
-          <button className="shrink-0 cursor-pointer border-none bg-transparent p-1 text-[13px] font-semibold tracking-[0.3px] text-purple-400 transition-opacity hover:opacity-75">
+          <button
+            type="button"
+            className="shrink-0 cursor-pointer border-none bg-transparent p-1 text-[13px] font-semibold tracking-[0.3px] text-purple-400 transition-opacity hover:opacity-75"
+          >
             View All
           </button>
         </div>
@@ -163,6 +166,7 @@ export default function HomePage({
         <div className="grid grid-cols-4 gap-5 max-[720px]:grid-cols-2 max-[720px]:gap-3.5 max-[420px]:grid-cols-1 max-lg:grid-cols-3">
           {CATEGORIES.map((cat) => (
             <button
+              type="button"
               key={cat.id}
               className="flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] p-0 text-left shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
               onClick={() => onNavigate('category', cat)}
@@ -203,6 +207,7 @@ export default function HomePage({
           <div className="flex items-center gap-2">
             {[-1, 1].map((dir) => (
               <button
+                type="button"
                 key={dir}
                 className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--card-bg)] text-[var(--text-h)] backdrop-blur-xl transition-[background,border-color,color] hover:border-purple-400/40 hover:bg-purple-400/18 hover:text-purple-400"
                 onClick={() => scrollReleases(dir)}
@@ -226,7 +231,10 @@ export default function HomePage({
                 </svg>
               </button>
             ))}
-            <button className="shrink-0 cursor-pointer border-none bg-transparent p-1 text-[13px] font-semibold tracking-[0.3px] text-purple-400 transition-opacity hover:opacity-75">
+            <button
+              type="button"
+              className="shrink-0 cursor-pointer border-none bg-transparent p-1 text-[13px] font-semibold tracking-[0.3px] text-purple-400 transition-opacity hover:opacity-75"
+            >
               View All
             </button>
           </div>
@@ -245,6 +253,7 @@ export default function HomePage({
                 className="flex w-[210px] shrink-0 [scroll-snap-align:start] flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
               >
                 <button
+                  type="button"
                   className="relative flex aspect-[2/3] w-full cursor-pointer items-center justify-center border-b border-[var(--glass-border)] p-0"
                   style={{
                     background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
