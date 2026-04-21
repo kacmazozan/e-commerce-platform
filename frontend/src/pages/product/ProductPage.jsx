@@ -68,6 +68,35 @@ function CartIcon() {
   )
 }
 
+function AccordionRow({ title, children }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent py-4 text-left text-[15px] font-semibold text-[var(--text-h)] transition-colors hover:text-purple-400"
+      >
+        {title}
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && <div className="pb-5">{children}</div>}
+    </div>
+  )
+}
+
 function StarSelector({ value, onChange }) {
   const [hovered, setHovered] = useState(0)
   const active = hovered || value
@@ -640,6 +669,55 @@ export default function ProductPage({
             )}
           </div>
         </section>
+
+        {/* ── Info accordion ── */}
+        <div className="mt-12 divide-y divide-[var(--border)] border-t border-[var(--border)]">
+          {[
+            {
+              title: 'Shipping & Delivery',
+              content: (
+                <>
+                  <p className="m-0 mb-2 text-[14px] leading-relaxed text-[var(--text-h)]">
+                    Standard delivery in <strong>3–5 business days</strong>. Express options
+                    available at checkout.
+                  </p>
+                  <p className="m-0 text-[14px] leading-relaxed text-[var(--text-h)]">
+                    Free shipping on orders over <strong>$50</strong>. Orders are dispatched within
+                    1 business day.
+                  </p>
+                </>
+              ),
+            },
+            {
+              title: 'Installments',
+              content: (
+                <p className="m-0 text-[14px] leading-relaxed text-[var(--text-h)]">
+                  Split your purchase into <strong>3, 6, or 12 interest-free installments</strong>{' '}
+                  at checkout. Available for orders over $30. No hidden fees — the total you see is
+                  the total you pay.
+                </p>
+              ),
+            },
+            {
+              title: 'Returns & Refunds',
+              content: (
+                <>
+                  <p className="m-0 mb-2 text-[14px] leading-relaxed text-[var(--text-h)]">
+                    Free returns within <strong>30 days</strong> of delivery. Items must be unworn,
+                    unwashed, and in original packaging.
+                  </p>
+                  <p className="m-0 text-[14px] leading-relaxed text-[var(--text-h)]">
+                    Refunds are processed within 5–7 business days after we receive the return.
+                  </p>
+                </>
+              ),
+            },
+          ].map(({ title, content }) => (
+            <AccordionRow key={title} title={title}>
+              {content}
+            </AccordionRow>
+          ))}
+        </div>
       </main>
     </div>
   )
