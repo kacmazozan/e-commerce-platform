@@ -32,8 +32,7 @@ export function getCategoryImageUrl(categoryTitle) {
 
 export function getProductImageUrl(product) {
   if (!product?.name || !product?.category) return null
-  const categoryPathSegment =
-    CATEGORY_PATH_SEGMENT_OVERRIDES[product.category] ?? product.category
+  const categoryPathSegment = CATEGORY_PATH_SEGMENT_OVERRIDES[product.category] ?? product.category
 
   return buildCatalogUrl('catalog', categoryPathSegment, `${product.name}.jpg`)
 }

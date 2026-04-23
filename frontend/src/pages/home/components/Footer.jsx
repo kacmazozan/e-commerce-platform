@@ -22,7 +22,6 @@ export default function Footer() {
               className="min-w-0 flex-1 border-none bg-transparent px-3 py-[9px] text-[13px] text-[var(--text-h)] outline-none placeholder:text-[var(--text)]"
             />
             <button
-              type="button"
               type="submit"
               className="cursor-pointer border-none bg-purple-400 px-[14px] py-[9px] text-xs font-bold tracking-[0.5px] whitespace-nowrap text-white transition-opacity hover:opacity-88"
             >

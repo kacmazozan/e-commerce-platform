@@ -56,7 +56,9 @@ export default function CategoryPage({
 
   useEffect(() => {
     let cancelled = false
-    fetchJsonWithRetry(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}`)
+    fetchJsonWithRetry(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}`, {
+      attempts: 1,
+    })
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
