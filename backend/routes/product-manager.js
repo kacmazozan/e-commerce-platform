@@ -12,10 +12,56 @@ router.use(requireProductManager)
 
 // GET /api/product-manager/categories
 router.get('/categories', async (req, res) => {
-  const result = await pool.query(
-    'SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category'
-  )
-  res.json({ categories: result.rows.map((r) => r.category) })
+  const result = await pool.query(`
+    SELECT c.name, COUNT(p.id)::int AS product_count
+    FROM categories c
+    LEFT JOIN products p ON p.category = c.name
+    GROUP BY c.name
+    ORDER BY c.name
+  `)
+  res.json({ categories: result.rows })
+})
+
+// POST /api/product-manager/categories
+router.post('/categories', async (req, res) => {
+  const name = (req.body.name || '').trim()
+  if (!name) return res.status(400).json({ error: 'Category name is required' })
+  if (name.length > 100) {
+    return res.status(400).json({ error: 'Category name must be 100 characters or fewer' })
+  }
+  try {
+    const result = await pool.query('INSERT INTO categories (name) VALUES ($1) RETURNING *', [name])
+    res.status(201).json({ category: result.rows[0] })
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Category already exists' })
+    throw err
+  }
+})
+
+// DELETE /api/product-manager/categories/:name
+router.delete('/categories/:name', async (req, res) => {
+  const name = req.params.name
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query(
+      'DELETE FROM order_items WHERE product_id IN (SELECT id FROM products WHERE category = $1)',
+      [name]
+    )
+    await client.query('DELETE FROM products WHERE category = $1', [name])
+    const result = await client.query('DELETE FROM categories WHERE name = $1 RETURNING id', [name])
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Category not found' })
+    }
+    await client.query('COMMIT')
+    res.json({ message: 'Category and its products deleted successfully' })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 })
 
 // GET /api/product-manager/products

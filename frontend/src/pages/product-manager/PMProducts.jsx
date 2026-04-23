@@ -76,7 +76,7 @@ function PMProducts({ token }) {
         const res = await fetch(CATS_API, { headers: { Authorization: `Bearer ${token}` } })
         if (res.ok) {
           const data = await res.json()
-          setCategories(data.categories || [])
+          setCategories((data.categories || []).map((c) => c.name))
         }
       } catch {
         // categories stay empty — field falls back gracefully
