@@ -229,7 +229,7 @@ export default function SMInvoices({ token }) {
                     <div className="text-xs text-[var(--text)]">{inv.customer_email}</div>
                   </td>
                   <td className="px-4 py-3 text-[var(--text)]">
-                    {new Date(inv.order_date).toLocaleDateString()}
+                    {new Date(inv.order_date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </td>
                   <td className="px-4 py-3 text-right text-[var(--text)]">{inv.item_count}</td>
                   <td className="px-4 py-3 text-right font-medium text-[var(--text-h)]">
@@ -306,7 +306,9 @@ export default function SMInvoices({ token }) {
                   <div className="flex items-center gap-2">
                     {statusBadge(detail.order.status)}
                     <span className="text-xs text-[var(--text)]">
-                      {new Date(detail.order.created_at).toLocaleDateString()}
+                      {new Date(detail.order.created_at).toLocaleDateString('en-US', {
+                        timeZone: 'UTC',
+                      })}
                     </span>
                   </div>
                 </div>
