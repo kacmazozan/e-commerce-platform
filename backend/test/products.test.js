@@ -562,3 +562,82 @@ describe('POST /api/products/:id/reviews', () => {
     expect(res.body.review.status).toBe('pending')
   })
 })
+
+// ─── GET /api/products — sort parameter ──────────────────────────────────────
+
+describe('GET /api/products — sort parameter', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('defaults to newest when no sort param is given', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.created_at DESC')
+  })
+
+  it('sorts by newest when ?sort=newest', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products?sort=newest')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.created_at DESC')
+  })
+
+  it('sorts by price ascending when ?sort=price_asc', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products?sort=price_asc')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.price ASC')
+  })
+
+  it('sorts by price descending when ?sort=price_desc', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products?sort=price_desc')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.price DESC')
+  })
+
+  it('sorts by popularity when ?sort=popularity', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products?sort=popularity')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('COALESCE(SUM(oi.quantity), 0)')
+    expect(sql).toContain('order_items')
+  })
+
+  it('falls back to newest when ?sort= value is invalid', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products?sort=bogus')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.created_at DESC')
+  })
+
+  it('includes stock-pin sentinel in SQL for price_asc sort', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products?sort=price_asc')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('CASE WHEN GREATEST')
+  })
+
+  it('JOINs order_items in SQL for all sort values', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products?sort=newest')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('order_items')
+  })
+})
