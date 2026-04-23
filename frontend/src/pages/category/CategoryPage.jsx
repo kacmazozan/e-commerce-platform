@@ -38,6 +38,13 @@ function HeartIcon({ filled }) {
   )
 }
 
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'price_asc', label: 'Price: Low to High' },
+  { value: 'price_desc', label: 'Price: High to Low' },
+  { value: 'popularity', label: 'Most Popular' },
+]
+
 export default function CategoryPage({
   category,
   onBack,
@@ -46,30 +53,38 @@ export default function CategoryPage({
   wishlistItems = [],
 }) {
   const [products, setProducts] = useState([])
-  const [loadedCategory, setLoadedCategory] = useState(null)
+  const [loadedKey, setLoadedKey] = useState(null)
+  const [sort, setSort] = useState('newest')
   const navigate = useNavigate()
-  const loading = loadedCategory !== category.title
+  const currentKey = `${category.title}::${sort}`
+  const loading = loadedKey !== currentKey
+
+  useEffect(() => {
+    setSort('newest')
+  }, [category.title])
 
   useEffect(() => {
     let cancelled = false
-    fetch(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}`)
+    fetch(
+      `${API_BASE}/api/products?category=${encodeURIComponent(category.title)}&sort=${sort}`,
+    )
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
-          setLoadedCategory(category.title)
+          setLoadedKey(currentKey)
         }
       })
       .catch(() => {
         if (!cancelled) {
           setProducts([])
-          setLoadedCategory(category.title)
+          setLoadedKey(currentKey)
         }
       })
     return () => {
       cancelled = true
     }
-  }, [category.title])
+  }, [category.title, sort])
 
   const wishlistIds = new Set(wishlistItems.map((i) => i.id))
 
@@ -110,6 +125,27 @@ export default function CategoryPage({
             {category.title}
           </h1>
           <p className="m-0 text-[15px] text-[var(--text)]">{category.subtitle}</p>
+        </div>
+
+        <div className="mb-6 flex items-center justify-end">
+          <label
+            htmlFor="category-sort"
+            className="mr-2 text-[13px] text-[var(--text)] opacity-60"
+          >
+            Sort by
+          </label>
+          <select
+            id="category-sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-1.5 text-sm text-[var(--text-h)] outline-none focus:border-purple-400/50"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {loading && <p className="text-[var(--text)] opacity-60">Loading products…</p>}
