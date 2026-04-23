@@ -14,13 +14,24 @@ router.post('/reserve', async (req, res) => {
   const userId = req.user.userId
 
   const cartResult = await pool.query(
-    'SELECT product_id, quantity FROM cart_items WHERE user_id = $1',
+    'SELECT product_id, quantity, size FROM cart_items WHERE user_id = $1',
     [userId]
   )
 
   if (cartResult.rows.length === 0) {
     return res.status(400).json({ error: 'Cart is empty' })
   }
+
+  // 1. Group items by product_id to check total requested against stock
+  const aggregated = cartResult.rows.reduce((acc, item) => {
+    const pid = item.product_id
+    if (!acc[pid]) {
+      acc[pid] = { id: pid, totalQuantity: 0, items: [] }
+    }
+    acc[pid].totalQuantity += item.quantity
+    acc[pid].items.push(item)
+    return acc
+  }, {})
 
   const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000)
   const unavailable = []
@@ -29,23 +40,24 @@ router.post('/reserve', async (req, res) => {
   try {
     await client.query('BEGIN')
 
-    for (const item of cartResult.rows) {
+    for (const pid in aggregated) {
+      const product = aggregated[pid]
       // Purge stale reservations for this product then lock the row
       await client.query(
         'DELETE FROM stock_reservations WHERE product_id = $1 AND expires_at < NOW()',
-        [item.product_id]
+        [product.id]
       )
 
       const productResult = await client.query(
         'SELECT name, stock FROM products WHERE id = $1 FOR UPDATE',
-        [item.product_id]
+        [product.id]
       )
 
       if (productResult.rows.length === 0) {
         unavailable.push({
-          product_id: item.product_id,
+          product_id: product.id,
           name: 'Unknown',
-          requested: item.quantity,
+          requested: product.totalQuantity,
           available: 0,
         })
         continue
@@ -55,18 +67,18 @@ router.post('/reserve', async (req, res) => {
 
       const reservedResult = await client.query(
         `SELECT COALESCE(SUM(quantity), 0) AS reserved
-         FROM stock_reservations
-         WHERE product_id = $1 AND user_id != $2`,
-        [item.product_id, userId]
+           FROM stock_reservations
+           WHERE product_id = $1 AND user_id != $2`,
+        [product.id, userId]
       )
       const reservedByOthers = parseInt(reservedResult.rows[0].reserved)
       const available = stock - reservedByOthers
 
-      if (available < item.quantity) {
+      if (available < product.totalQuantity) {
         unavailable.push({
-          product_id: item.product_id,
+          product_id: product.id,
           name,
-          requested: item.quantity,
+          requested: product.totalQuantity,
           available: Math.max(0, available),
         })
       }
@@ -77,14 +89,16 @@ router.post('/reserve', async (req, res) => {
       return res.status(409).json({ error: 'Some items are out of stock', unavailable })
     }
 
-    for (const item of cartResult.rows) {
-      await client.query(
-        `INSERT INTO stock_reservations (user_id, product_id, quantity, expires_at)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT ON CONSTRAINT stock_reservations_user_product_unique
-         DO UPDATE SET quantity = $3, reserved_at = NOW(), expires_at = $4`,
-        [userId, item.product_id, item.quantity, expiresAt]
-      )
+    for (const pid in aggregated) {
+      for (const item of aggregated[pid].items) {
+        await client.query(
+          `INSERT INTO stock_reservations (user_id, product_id, quantity, size, expires_at)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT ON CONSTRAINT stock_reservations_user_product_size_unique
+             DO UPDATE SET quantity = $3, reserved_at = NOW(), expires_at = $5`,
+          [userId, item.product_id, item.quantity, item.size ?? '', expiresAt]
+        )
+      }
     }
 
     await client.query('COMMIT')
@@ -113,7 +127,7 @@ router.post('/confirm', async (req, res) => {
   // stock decrement and order item creation — avoids cart/reservation divergence.
   // effective_price applies any active discount; falls back to base price when none.
   const reservations = await pool.query(
-    `SELECT sr.product_id, sr.quantity, p.name, p.price,
+    `SELECT sr.product_id, sr.quantity, sr.size, p.name, p.price,
             COALESCE(
               ROUND(p.price * (1 - pd.discount_percent / 100.0), 2),
               p.price
@@ -155,8 +169,8 @@ router.post('/confirm', async (req, res) => {
 
     for (const item of reservations.rows) {
       await client.query(
-        'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)',
-        [orderId, item.product_id, item.quantity, item.effective_price]
+        'INSERT INTO order_items (order_id, product_id, quantity, price, size) VALUES ($1, $2, $3, $4, $5)',
+        [orderId, item.product_id, item.quantity, item.effective_price, item.size || '']
       )
     }
 

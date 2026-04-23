@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 
 /* ── Mock data ───────────────────────────────────────────── */
 
@@ -244,6 +245,7 @@ function TrackingRow({ code, carrier }) {
         </span>
       </div>
       <button
+        type="button"
         className="flex cursor-pointer items-center gap-1.5 rounded-[7px] border border-[var(--border)] bg-transparent px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-[var(--text)] transition-colors hover:border-purple-400 hover:text-purple-400"
         onClick={copy}
         aria-label="Copy tracking code"
@@ -311,14 +313,18 @@ export default function OrdersPage({ onBack }) {
       <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
           <button
+            type="button"
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
             onClick={onBack}
           >
             <BackIcon /> Back
           </button>
-          <span className="ml-auto text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
+          <Link
+            to="/"
+            className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
+          >
             FIER
-          </span>
+          </Link>
         </div>
       </header>
 
@@ -391,6 +397,7 @@ export default function OrdersPage({ onBack }) {
               {PAST_ORDERS.map((order) => (
                 <div key={order.id} className="border-b border-[var(--border)] last:border-b-0">
                   <button
+                    type="button"
                     className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left transition-colors hover:bg-[var(--border)]"
                     onClick={() => togglePast(order.id)}
                     aria-expanded={expandedPast === order.id}

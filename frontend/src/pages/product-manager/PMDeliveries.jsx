@@ -135,7 +135,7 @@ function PMDeliveries({ token }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="submit" className={btnSearch}>
+          <button type="button" type="submit" className={btnSearch}>
             Search
           </button>
         </form>
@@ -203,6 +203,7 @@ function PMDeliveries({ token }) {
                     <td className={tdClass}>
                       <div className="flex flex-wrap items-center gap-2">
                         <button
+                          type="button"
                           className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-h)] transition-colors hover:border-purple-400 hover:text-purple-400"
                           onClick={() => viewDetail(o.id)}
                         >
@@ -210,6 +211,7 @@ function PMDeliveries({ token }) {
                         </button>
                         {nextStatuses.includes('delivered') && (
                           <button
+                            type="button"
                             className={`${btnCreate} py-1 text-xs`}
                             disabled={isUpdating}
                             onClick={() => markDelivered(o.id)}
@@ -221,6 +223,7 @@ function PMDeliveries({ token }) {
                           .filter((s) => s !== 'delivered')
                           .map((s) => (
                             <button
+                              type="button"
                               key={s}
                               className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-h)] transition-colors hover:border-purple-400 hover:text-purple-400"
                               disabled={isUpdating}
@@ -244,6 +247,7 @@ function PMDeliveries({ token }) {
       {pagination.totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between text-sm">
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page <= 1}
             onClick={() => fetchOrders(pagination.page - 1)}
@@ -254,6 +258,7 @@ function PMDeliveries({ token }) {
             Page {pagination.page} of {pagination.totalPages} ({pagination.total} deliveries)
           </span>
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => fetchOrders(pagination.page + 1)}
@@ -349,7 +354,7 @@ function PMDeliveries({ token }) {
             )}
 
             <div className="mt-5 flex justify-end">
-              <button className={btnBase} onClick={() => setDetail(null)}>
+              <button type="button" className={btnBase} onClick={() => setDetail(null)}>
                 Close
               </button>
             </div>

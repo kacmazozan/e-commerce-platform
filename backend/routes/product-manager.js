@@ -69,7 +69,21 @@ router.get('/products/:id', async (req, res) => {
 
 // POST /api/product-manager/products
 router.post('/products', async (req, res) => {
-  const { name, description, price, stock, category, image_url } = req.body
+  const {
+    name,
+    description,
+    price,
+    stock,
+    category,
+    country_of_origin,
+    material,
+    model_height,
+    model_chest,
+    model_waist,
+    model_hips,
+    model_size,
+    sizes,
+  } = req.body
   if (!name || price == null) return res.status(400).json({ error: 'Name and price are required' })
   if (parseFloat(price) < 0 || Number.isNaN(parseFloat(price)))
     return res.status(400).json({ error: 'Price must be a non-negative number' })
@@ -83,16 +97,26 @@ router.post('/products', async (req, res) => {
     return res.status(400).json({ error: 'Stock must be a non-negative integer' })
   }
 
+  const sizesArr = Array.isArray(sizes) ? sizes : null
+
   const result = await pool.query(
-    `INSERT INTO products (name, description, price, stock, category, image_url)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    `INSERT INTO products (name, description, price, stock, category,
+       country_of_origin, material, model_height, model_chest, model_waist, model_hips, model_size, sizes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [
       name,
       description || null,
       price,
       Number.isFinite(parsedStock) ? parsedStock : 0,
       category || null,
-      image_url || null,
+      country_of_origin || null,
+      material || null,
+      model_height || null,
+      model_chest || null,
+      model_waist || null,
+      model_hips || null,
+      model_size || null,
+      sizesArr,
     ]
   )
   res.status(201).json({ product: result.rows[0] })
@@ -100,7 +124,21 @@ router.post('/products', async (req, res) => {
 
 // PUT /api/product-manager/products/:id
 router.put('/products/:id', async (req, res) => {
-  const { name, description, price, stock, category, image_url } = req.body
+  const {
+    name,
+    description,
+    price,
+    stock,
+    category,
+    country_of_origin,
+    material,
+    model_height,
+    model_chest,
+    model_waist,
+    model_hips,
+    model_size,
+    sizes,
+  } = req.body
   const productId = req.params.id
 
   const existing = await pool.query('SELECT id FROM products WHERE id = $1', [productId])
@@ -141,9 +179,44 @@ router.put('/products/:id', async (req, res) => {
     params.push(category)
     idx++
   }
-  if (image_url !== undefined) {
-    sets.push(`image_url = $${idx}`)
-    params.push(image_url)
+  if (country_of_origin !== undefined) {
+    sets.push(`country_of_origin = $${idx}`)
+    params.push(country_of_origin || null)
+    idx++
+  }
+  if (material !== undefined) {
+    sets.push(`material = $${idx}`)
+    params.push(material || null)
+    idx++
+  }
+  if (model_height !== undefined) {
+    sets.push(`model_height = $${idx}`)
+    params.push(model_height || null)
+    idx++
+  }
+  if (model_chest !== undefined) {
+    sets.push(`model_chest = $${idx}`)
+    params.push(model_chest || null)
+    idx++
+  }
+  if (model_waist !== undefined) {
+    sets.push(`model_waist = $${idx}`)
+    params.push(model_waist || null)
+    idx++
+  }
+  if (model_hips !== undefined) {
+    sets.push(`model_hips = $${idx}`)
+    params.push(model_hips || null)
+    idx++
+  }
+  if (model_size !== undefined) {
+    sets.push(`model_size = $${idx}`)
+    params.push(model_size || null)
+    idx++
+  }
+  if (sizes !== undefined) {
+    sets.push(`sizes = $${idx}`)
+    params.push(Array.isArray(sizes) ? sizes : null)
     idx++
   }
 
@@ -339,6 +412,44 @@ router.put('/comments/:id/reject', async (req, res) => {
   )
   if (result.rows.length === 0) return res.status(404).json({ error: 'Comment not found' })
   res.json({ comment: result.rows[0] })
+})
+
+// ─── Product Images ──────────────────────────────────────────────────────────
+
+// GET /api/product-manager/products/:id/images
+router.get('/products/:id/images', async (req, res) => {
+  const productId = parseInt(req.params.id, 10)
+  if (!Number.isInteger(productId) || productId <= 0)
+    return res.status(400).json({ error: 'Invalid product ID' })
+  const result = await pool.query(
+    `SELECT id, url, alt FROM product_images WHERE product_id = $1 ORDER BY id ASC`,
+    [productId]
+  )
+  res.json({ images: result.rows })
+})
+
+// POST /api/product-manager/products/:id/images
+router.post('/products/:id/images', async (req, res) => {
+  const productId = parseInt(req.params.id, 10)
+  if (!Number.isInteger(productId) || productId <= 0)
+    return res.status(400).json({ error: 'Invalid product ID' })
+  const { url, alt } = req.body
+  if (!url) return res.status(400).json({ error: 'url is required' })
+  const result = await pool.query(
+    `INSERT INTO product_images (product_id, url, alt) VALUES ($1, $2, $3) RETURNING *`,
+    [productId, url, alt || null]
+  )
+  res.status(201).json({ image: result.rows[0] })
+})
+
+// DELETE /api/product-manager/products/:id/images/:imageId
+router.delete('/products/:id/images/:imageId', async (req, res) => {
+  const result = await pool.query(
+    `DELETE FROM product_images WHERE id = $1 AND product_id = $2 RETURNING id`,
+    [req.params.imageId, req.params.id]
+  )
+  if (result.rows.length === 0) return res.status(404).json({ error: 'Image not found' })
+  res.json({ message: 'Image deleted' })
 })
 
 module.exports = router

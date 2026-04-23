@@ -88,6 +88,7 @@ export default function Navbar({
         <nav className="ml-auto flex items-center gap-2">
           {/* Theme Toggle Button (where SALE was) */}
           <button
+            type="button"
             onClick={toggleTheme}
             className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-h)] transition-colors hover:border-purple-400/40 hover:bg-purple-400/12 hover:text-purple-400"
             aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
@@ -100,6 +101,7 @@ export default function Navbar({
 
           {/* Wishlist */}
           <button
+            type="button"
             className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-h)] transition-colors hover:border-purple-400/40 hover:bg-purple-400/12 hover:text-purple-400"
             aria-label="Wishlist"
             onClick={() => (isLoggedIn ? onNavigate('wishlist') : onRequireAuth())}
@@ -114,6 +116,7 @@ export default function Navbar({
 
           {/* Cart */}
           <button
+            type="button"
             className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-h)] transition-colors hover:border-purple-400/40 hover:bg-purple-400/12 hover:text-purple-400"
             aria-label="Shopping cart"
             onClick={() => onNavigate('cart')}
@@ -129,6 +132,7 @@ export default function Navbar({
           {/* Avatar menu */}
           <div className="relative" ref={avatarRef}>
             <button
+              type="button"
               className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-h)] transition-all hover:border-purple-400/40 hover:bg-purple-400/12 hover:text-purple-400 aria-expanded:border-purple-400 aria-expanded:bg-purple-400/12 aria-expanded:text-purple-400"
               onClick={() => setAvatarOpen((o) => !o)}
               aria-label="Account menu"
@@ -170,10 +174,12 @@ export default function Navbar({
                       },
                     ].map(({ icon, label, action }) => (
                       <button
+                        type="button"
                         key={label}
                         className="flex w-full items-center gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-[9px] text-left text-[13px] text-[var(--text)] transition-[background,color] duration-100 hover:bg-purple-400/12 hover:text-[var(--text-h)]"
                         onClick={action}
                       >
+                        {' '}
                         {icon} {label}
                       </button>
                     ))}
@@ -199,10 +205,12 @@ export default function Navbar({
                       },
                     ].map(({ icon, label, action }) => (
                       <button
+                        type="button"
                         key={label}
                         className="flex w-full items-center gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-[9px] text-left text-[13px] text-[var(--text)] transition-[background,color] duration-100 hover:bg-purple-400/12 hover:text-[var(--text-h)]"
                         onClick={action}
                       >
+                        {' '}
                         {icon} {label}
                       </button>
                     ))}
@@ -210,6 +218,7 @@ export default function Navbar({
                     <div className="my-1 h-px bg-[var(--border)]" />
 
                     <button
+                      type="button"
                       className="flex w-full items-center gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-[9px] text-left text-[13px] text-[var(--text)] transition-[background,color] duration-100 hover:bg-purple-400/12 hover:text-[var(--text-h)]"
                       onClick={toggleTheme}
                     >
@@ -227,6 +236,7 @@ export default function Navbar({
                     <div className="my-1 h-px bg-[var(--border)]" />
 
                     <button
+                      type="button"
                       className="flex w-full items-center gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-[9px] text-left text-[13px] text-red-400 transition-[background] duration-100 hover:bg-red-500/8"
                       onClick={onLogout}
                     >
@@ -236,6 +246,7 @@ export default function Navbar({
                 ) : (
                   <>
                     <button
+                      type="button"
                       className="flex w-full items-center gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-[9px] text-left text-[13px] text-[var(--text)] transition-[background,color] duration-100 hover:bg-purple-400/12 hover:text-[var(--text-h)]"
                       onClick={() => {
                         setAvatarOpen(false)
@@ -246,6 +257,7 @@ export default function Navbar({
                     </button>
                     <div className="my-1 h-px bg-[var(--border)]" />
                     <button
+                      type="button"
                       className="flex w-full items-center gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-[9px] text-left text-[13px] text-[var(--text)] transition-[background,color] duration-100 hover:bg-purple-400/12 hover:text-[var(--text-h)]"
                       onClick={toggleTheme}
                     >

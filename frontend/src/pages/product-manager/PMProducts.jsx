@@ -138,11 +138,11 @@ function PMProducts({ token }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="submit" className={btnSearch}>
+          <button type="button" type="submit" className={btnSearch}>
             Search
           </button>
         </form>
-        <button className={btnCreate} onClick={() => setModal({ mode: 'create' })}>
+        <button type="button" className={btnCreate} onClick={() => setModal({ mode: 'create' })}>
           + New Product
         </button>
       </div>
@@ -192,12 +192,13 @@ function PMProducts({ token }) {
                   <td className={tdClass}>{new Date(p.created_at).toLocaleDateString()}</td>
                   <td className={`${tdClass} flex gap-2`}>
                     <button
+                      type="button"
                       className={btnEdit}
                       onClick={() => setModal({ mode: 'edit', product: p })}
                     >
                       Edit
                     </button>
-                    <button className={btnDelete} onClick={() => setDeleteConfirm(p)}>
+                    <button type="button" className={btnDelete} onClick={() => setDeleteConfirm(p)}>
                       Delete
                     </button>
                   </td>
@@ -211,6 +212,7 @@ function PMProducts({ token }) {
       {pagination.totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between text-sm">
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page <= 1}
             onClick={() => fetchProducts(pagination.page - 1)}
@@ -221,6 +223,7 @@ function PMProducts({ token }) {
             Page {pagination.page} of {pagination.totalPages} ({pagination.total} products)
           </span>
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => fetchProducts(pagination.page + 1)}
@@ -256,10 +259,14 @@ function PMProducts({ token }) {
               cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
-              <button className={btnBase} onClick={() => setDeleteConfirm(null)}>
+              <button type="button" className={btnBase} onClick={() => setDeleteConfirm(null)}>
                 Cancel
               </button>
-              <button className={btnDanger} onClick={() => handleDelete(deleteConfirm.id)}>
+              <button
+                type="button"
+                className={btnDanger}
+                onClick={() => handleDelete(deleteConfirm.id)}
+              >
                 Delete
               </button>
             </div>
@@ -270,13 +277,34 @@ function PMProducts({ token }) {
   )
 }
 
+function Field({ label, children, hint }) {
+  return (
+    <div className="mb-4">
+      <label className="mb-1.5 block text-sm font-medium text-[var(--text-h)]">
+        {label}
+        {hint && <span className="ml-1.5 font-normal text-[var(--text)] opacity-60">{hint}</span>}
+      </label>
+      {children}
+    </div>
+  )
+}
+
 function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }) {
   const [name, setName] = useState(product?.name || '')
   const [description, setDescription] = useState(product?.description || '')
   const [price, setPrice] = useState(product?.price || '')
   const [stock, setStock] = useState(product?.stock ?? 0)
   const [category, setCategory] = useState(product?.category || '')
-  const [imageUrl, setImageUrl] = useState(product?.image_url || '')
+  const [countryOfOrigin, setCountryOfOrigin] = useState(product?.country_of_origin || '')
+  const [material, setMaterial] = useState(product?.material || '')
+  const [modelHeight, setModelHeight] = useState(product?.model_height || '')
+  const [modelChest, setModelChest] = useState(product?.model_chest || '')
+  const [modelWaist, setModelWaist] = useState(product?.model_waist || '')
+  const [modelHips, setModelHips] = useState(product?.model_hips || '')
+  const [modelSize, setModelSize] = useState(product?.model_size || '')
+  const [sizesInput, setSizesInput] = useState(
+    Array.isArray(product?.sizes) ? product.sizes.join(', ') : ''
+  )
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -286,13 +314,24 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
     setSaving(true)
     try {
       const parsedStock = parseInt(stock, 10)
+      const sizes = sizesInput
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean)
       const body = {
         name,
         description,
         price: parseFloat(price),
         stock: Number.isNaN(parsedStock) ? 0 : parsedStock,
         category,
-        image_url: imageUrl,
+        country_of_origin: countryOfOrigin,
+        material,
+        model_height: modelHeight,
+        model_chest: modelChest,
+        model_waist: modelWaist,
+        model_hips: modelHips,
+        model_size: modelSize,
+        sizes: sizes.length > 0 ? sizes : null,
       }
       if (mode === 'create') {
         await onCreate(body)
@@ -306,21 +345,24 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
     }
   }
 
+  const sectionLabel =
+    'mb-3 mt-6 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase border-b border-[var(--border)] pb-2'
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] p-6 shadow-[var(--shadow)]"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] p-6 shadow-[var(--shadow)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-5 text-lg font-semibold text-[var(--text-h)]">
           {mode === 'create' ? 'Create Product' : 'Edit Product'}
         </h2>
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text-h)]">Name</label>
+          <p className={sectionLabel}>Basic Info</p>
+          <Field label="Name">
             <input
               type="text"
               className={fieldInputClass}
@@ -329,24 +371,18 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
               required
               placeholder="Product name"
             />
-          </div>
-          <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text-h)]">
-              Description
-            </label>
-            <input
-              type="text"
-              className={fieldInputClass}
+          </Field>
+          <Field label="Description">
+            <textarea
+              className={`${fieldInputClass} resize-none`}
+              rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description"
             />
-          </div>
+          </Field>
           <div className="mb-4 grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-[var(--text-h)]">
-                Price ($)
-              </label>
+            <Field label="Price ($)">
               <input
                 type="number"
                 step="0.01"
@@ -357,9 +393,8 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
                 required
                 placeholder="0.00"
               />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-[var(--text-h)]">Stock</label>
+            </Field>
+            <Field label="Stock">
               <input
                 type="number"
                 min="0"
@@ -368,12 +403,9 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
                 onChange={(e) => setStock(e.target.value)}
                 placeholder="0"
               />
-            </div>
+            </Field>
           </div>
-          <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text-h)]">
-              Category
-            </label>
+          <Field label="Category">
             {categories.length > 0 ? (
               <select
                 className={fieldInputClass}
@@ -396,25 +428,94 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
                 placeholder="e.g. Footwear"
               />
             )}
-          </div>
-          <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text-h)]">
-              Image URL
-            </label>
+          </Field>
+          <Field label="Available Sizes" hint="(comma-separated, e.g. XS, S, M, L, XL)">
             <input
               type="text"
               className={fieldInputClass}
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://…"
+              value={sizesInput}
+              onChange={(e) => setSizesInput(e.target.value)}
+              placeholder="XS, S, M, L, XL, XXL"
             />
+          </Field>
+
+          <p className={sectionLabel}>Product Details</p>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Material">
+              <input
+                type="text"
+                className={fieldInputClass}
+                value={material}
+                onChange={(e) => setMaterial(e.target.value)}
+                placeholder="e.g. 100% Cotton"
+              />
+            </Field>
+            <Field label="Country of Origin">
+              <input
+                type="text"
+                className={fieldInputClass}
+                value={countryOfOrigin}
+                onChange={(e) => setCountryOfOrigin(e.target.value)}
+                placeholder="e.g. Turkey"
+              />
+            </Field>
           </div>
+
+          <p className={sectionLabel}>Model Measurements</p>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Height">
+              <input
+                type="text"
+                className={fieldInputClass}
+                value={modelHeight}
+                onChange={(e) => setModelHeight(e.target.value)}
+                placeholder="e.g. 185 cm"
+              />
+            </Field>
+            <Field label="Wears Size">
+              <input
+                type="text"
+                className={fieldInputClass}
+                value={modelSize}
+                onChange={(e) => setModelSize(e.target.value)}
+                placeholder="e.g. M"
+              />
+            </Field>
+            <Field label="Chest">
+              <input
+                type="text"
+                className={fieldInputClass}
+                value={modelChest}
+                onChange={(e) => setModelChest(e.target.value)}
+                placeholder="e.g. 96 cm"
+              />
+            </Field>
+            <Field label="Waist">
+              <input
+                type="text"
+                className={fieldInputClass}
+                value={modelWaist}
+                onChange={(e) => setModelWaist(e.target.value)}
+                placeholder="e.g. 78 cm"
+              />
+            </Field>
+            <Field label="Hips">
+              <input
+                type="text"
+                className={fieldInputClass}
+                value={modelHips}
+                onChange={(e) => setModelHips(e.target.value)}
+                placeholder="e.g. 90 cm"
+              />
+            </Field>
+          </div>
+
           {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
           <div className="mt-5 flex justify-end gap-2">
             <button type="button" className={btnBase} onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className={btnCreate} disabled={saving}>
+            <button type="button" type="submit" className={btnCreate} disabled={saving}>
               {saving ? 'Saving…' : mode === 'create' ? 'Create' : 'Save Changes'}
             </button>
           </div>

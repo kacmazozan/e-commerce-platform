@@ -161,11 +161,11 @@ function UserManagement({ token }) {
               </option>
             ))}
           </select>
-          <button type="submit" className={btnSearch}>
+          <button type="button" type="submit" className={btnSearch}>
             Search
           </button>
         </form>
-        <button className={btnCreate} onClick={() => setModal({ mode: 'create' })}>
+        <button type="button" className={btnCreate} onClick={() => setModal({ mode: 'create' })}>
           + New User
         </button>
       </div>
@@ -230,12 +230,17 @@ function UserManagement({ token }) {
                   <TableCell>
                     <div className="flex gap-1.5">
                       <button
+                        type="button"
                         className={btnEdit}
                         onClick={() => setModal({ mode: 'edit', user: u })}
                       >
                         Edit
                       </button>
-                      <button className={btnDelete} onClick={() => setDeleteConfirm(u)}>
+                      <button
+                        type="button"
+                        className={btnDelete}
+                        onClick={() => setDeleteConfirm(u)}
+                      >
                         Delete
                       </button>
                     </div>
@@ -251,6 +256,7 @@ function UserManagement({ token }) {
       {pagination.totalPages > 1 && (
         <div className="mt-5 flex items-center justify-center gap-4">
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page <= 1}
             onClick={() => fetchUsers(pagination.page - 1)}
@@ -261,6 +267,7 @@ function UserManagement({ token }) {
             Page {pagination.page} of {pagination.totalPages} ({pagination.total} users)
           </span>
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => fetchUsers(pagination.page + 1)}
@@ -293,10 +300,14 @@ function UserManagement({ token }) {
             cannot be undone.
           </p>
           <div className="flex justify-end gap-2">
-            <button className={btnBase} onClick={() => setDeleteConfirm(null)}>
+            <button type="button" className={btnBase} onClick={() => setDeleteConfirm(null)}>
               Cancel
             </button>
-            <button className={btnDanger} onClick={() => handleDelete(deleteConfirm.id)}>
+            <button
+              type="button"
+              className={btnDanger}
+              onClick={() => handleDelete(deleteConfirm.id)}
+            >
               Delete
             </button>
           </div>
@@ -385,7 +396,7 @@ function UserModal({ mode, user, onClose, onCreate, onUpdate }) {
             <button type="button" className={btnBase} onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className={btnCreate} disabled={saving}>
+            <button type="button" type="submit" className={btnCreate} disabled={saving}>
               {saving ? 'Saving…' : mode === 'create' ? 'Create' : 'Save Changes'}
             </button>
           </div>

@@ -60,7 +60,7 @@ describe('CartPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /decrease quantity/i }))
 
-    expect(onUpdateQuantity).toHaveBeenCalledWith(1, 1)
+    expect(onUpdateQuantity).toHaveBeenCalledWith(1, '', 1)
   })
 
   it('calls onUpdateQuantity with incremented value when plus is clicked', async () => {
@@ -69,7 +69,7 @@ describe('CartPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /increase quantity/i }))
 
-    expect(onUpdateQuantity).toHaveBeenCalledWith(1, 3)
+    expect(onUpdateQuantity).toHaveBeenCalledWith(1, '', 3)
   })
 
   it('calls onRemove when remove button is clicked', async () => {
@@ -78,7 +78,7 @@ describe('CartPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /remove item/i }))
 
-    expect(onRemove).toHaveBeenCalledWith(1)
+    expect(onRemove).toHaveBeenCalledWith(1, '')
   })
 
   it('shows "Login to Checkout" button when not logged in', () => {

@@ -7,6 +7,7 @@ import {
   useLocation,
   useNavigationType,
   useSearchParams,
+  useParams,
 } from 'react-router-dom'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import SalesManagerLoginPage from './pages/sales-manager/SalesManagerLoginPage'
@@ -27,6 +28,7 @@ import OrdersPage from './pages/orders/OrdersPage'
 import HelpPage from './pages/help/HelpPage'
 
 import ProductManagerDashboard from './pages/product-manager/ProductManagerDashboard'
+import ProductPage from './pages/product/ProductPage'
 import API_BASE from './api'
 import { decodeJwtPayload } from './utils/jwt'
 
@@ -69,11 +71,10 @@ function RequireAdmin({ adminToken, children }) {
 
 function CategoryRoute({
   onAddToCart,
-  onRemoveFromCart,
   onAddToWishlist,
   onRemoveFromWishlist,
-  cartItems,
   wishlistItems,
+  token,
 }) {
   const { state } = useLocation()
   const navigate = useNavigate()
@@ -87,23 +88,37 @@ function CategoryRoute({
       category={state.category}
       onBack={() => navigate(-1)}
       onAddToCart={onAddToCart}
-      onRemoveFromCart={onRemoveFromCart}
       onAddToWishlist={onAddToWishlist}
       onRemoveFromWishlist={onRemoveFromWishlist}
-      cartItems={cartItems}
       wishlistItems={wishlistItems}
+      token={token}
     />
   )
 }
 
-function SearchRoute({
+function ProductRoute({
   onAddToCart,
-  onRemoveFromCart,
   onAddToWishlist,
   onRemoveFromWishlist,
-  cartItems,
   wishlistItems,
+  token,
 }) {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  return (
+    <ProductPage
+      productId={id}
+      onBack={() => navigate(-1)}
+      onAddToCart={onAddToCart}
+      onAddToWishlist={onAddToWishlist}
+      onRemoveFromWishlist={onRemoveFromWishlist}
+      wishlistItems={wishlistItems}
+      token={token}
+    />
+  )
+}
+
+function SearchRoute({ onAddToWishlist, onRemoveFromWishlist, wishlistItems }) {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const q = searchParams.get('q') || ''
@@ -112,11 +127,8 @@ function SearchRoute({
     <SearchPage
       searchQuery={q}
       onBack={() => navigate(-1)}
-      onAddToCart={onAddToCart}
-      onRemoveFromCart={onRemoveFromCart}
       onAddToWishlist={onAddToWishlist}
       onRemoveFromWishlist={onRemoveFromWishlist}
-      cartItems={cartItems}
       wishlistItems={wishlistItems}
     />
   )
@@ -190,12 +202,12 @@ function App() {
     if (!token) localStorage.setItem('guest_wishlist', JSON.stringify(wishlist))
   }, [wishlist, token])
 
-  async function addToCart(product) {
+  async function addToCart(product, size = '') {
     if (token) {
       const res = await fetch(`${API_BASE}/api/cart`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ productId: product.id, quantity: 1 }),
+        body: JSON.stringify({ productId: product.id, quantity: 1, size }),
       }).catch(() => null)
       const data = await res?.json().catch(() => null)
       if (data?.items) {
@@ -204,19 +216,27 @@ function App() {
       }
     }
     setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id)
+      const existing = prev.find((item) => item.id === product.id && (item.size || '') === size)
       if (existing) {
         return prev.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === product.id && (item.size || '') === size
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
         )
       }
-      return [...prev, { id: product.id, name: product.name, price: product.price, quantity: 1 }]
+      return [
+        ...prev,
+        { id: product.id, name: product.name, price: product.price, quantity: 1, size },
+      ]
     })
   }
 
-  async function removeFromCart(productId) {
+  async function removeFromCart(productId, size = '') {
     if (token) {
-      const res = await fetch(`${API_BASE}/api/cart/${productId}`, {
+      // If size is null, we'd need a different endpoint or a loop,
+      // but current UI only removes specific variants.
+      const sizeParam = size !== null ? `?size=${encodeURIComponent(size || '')}` : ''
+      const res = await fetch(`${API_BASE}/api/cart/${productId}${sizeParam}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => null)
@@ -226,16 +246,23 @@ function App() {
         return
       }
     }
-    setCart((prev) => prev.filter((item) => item.id !== productId))
+    setCart((prev) =>
+      prev.filter((item) => {
+        if (item.id !== productId) return true
+        if (size === null) return false // Remove all sizes
+        return (item.size || '') !== (size || '')
+      })
+    )
   }
 
-  async function updateCartQuantity(productId, quantity) {
+  async function updateCartQuantity(productId, size = '', quantity) {
     if (quantity < 1) {
-      removeFromCart(productId)
+      removeFromCart(productId, size)
       return
     }
     if (token) {
-      const res = await fetch(`${API_BASE}/api/cart/${productId}`, {
+      const sizeParam = size ? `?size=${encodeURIComponent(size)}` : ''
+      const res = await fetch(`${API_BASE}/api/cart/${productId}${sizeParam}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ quantity }),
@@ -246,7 +273,11 @@ function App() {
         return
       }
     }
-    setCart((prev) => prev.map((item) => (item.id === productId ? { ...item, quantity } : item)))
+    setCart((prev) =>
+      prev.map((item) =>
+        item.id === productId && (item.size || '') === size ? { ...item, quantity } : item
+      )
+    )
   }
 
   async function addToWishlist(product) {
@@ -498,9 +529,18 @@ function App() {
               onBack={() => navigate(-1)}
               wishlistItems={wishlist}
               onRemove={removeFromWishlist}
+            />
+          }
+        />
+        <Route
+          path="/product/:id"
+          element={
+            <ProductRoute
               onAddToCart={addToCart}
-              onRemoveFromCart={removeFromCart}
-              cartItems={cart}
+              onAddToWishlist={addToWishlist}
+              onRemoveFromWishlist={removeFromWishlist}
+              wishlistItems={wishlist}
+              token={token}
             />
           }
         />
@@ -509,11 +549,10 @@ function App() {
           element={
             <CategoryRoute
               onAddToCart={addToCart}
-              onRemoveFromCart={removeFromCart}
               onAddToWishlist={addToWishlist}
               onRemoveFromWishlist={removeFromWishlist}
-              cartItems={cart}
               wishlistItems={wishlist}
+              token={token}
             />
           }
         />
@@ -521,11 +560,8 @@ function App() {
           path="/search"
           element={
             <SearchRoute
-              onAddToCart={addToCart}
-              onRemoveFromCart={removeFromCart}
               onAddToWishlist={addToWishlist}
               onRemoveFromWishlist={removeFromWishlist}
-              cartItems={cart}
               wishlistItems={wishlist}
             />
           }

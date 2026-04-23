@@ -1,6 +1,7 @@
 import { render, screen, waitForElementToBeRemoved } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import CategoryPage from '../src/pages/category/CategoryPage'
 
 const category = { title: 'Electronics', subtitle: 'Gadgets and gear' }
@@ -8,16 +9,17 @@ const category = { title: 'Electronics', subtitle: 'Gadgets and gear' }
 const defaultProps = {
   category,
   onBack: vi.fn(),
-  onAddToCart: vi.fn(),
-  onRemoveFromCart: vi.fn(),
   onAddToWishlist: vi.fn(),
   onRemoveFromWishlist: vi.fn(),
-  cartItems: [],
   wishlistItems: [],
 }
 
 function renderPage(props = {}) {
-  return render(<CategoryPage {...defaultProps} {...props} />)
+  return render(
+    <MemoryRouter>
+      <CategoryPage {...defaultProps} {...props} />
+    </MemoryRouter>
+  )
 }
 
 describe('CategoryPage', () => {
@@ -117,78 +119,6 @@ describe('CategoryPage', () => {
     renderPage()
 
     expect(await screen.findByText('Out of stock')).toBeInTheDocument()
-  })
-
-  it('disables cart button and shows "Out of Stock" when available_stock is 0', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 0, available_stock: 0 }],
-        }),
-      })
-    )
-
-    renderPage()
-
-    const button = await screen.findByRole('button', { name: /out of stock/i })
-    expect(button).toBeDisabled()
-  })
-
-  it('calls onAddToCart when "Add to Cart" is clicked for in-stock product', async () => {
-    const onAddToCart = vi.fn()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
-        }),
-      })
-    )
-
-    renderPage({ onAddToCart })
-
-    await userEvent.click(await screen.findByRole('button', { name: /add to cart/i }))
-
-    expect(onAddToCart).toHaveBeenCalledOnce()
-    expect(onAddToCart).toHaveBeenCalledWith(expect.objectContaining({ id: 1, name: 'Widget' }))
-  })
-
-  it('shows "Remove from Cart" when product is already in cart', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
-        }),
-      })
-    )
-
-    renderPage({ cartItems: [{ id: 1, name: 'Widget' }] })
-
-    expect(await screen.findByRole('button', { name: /remove from cart/i })).toBeInTheDocument()
-  })
-
-  it('calls onRemoveFromCart when "Remove from Cart" is clicked', async () => {
-    const onRemoveFromCart = vi.fn()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          products: [{ id: 1, name: 'Widget', price: '9.99', stock: 10, available_stock: 10 }],
-        }),
-      })
-    )
-
-    renderPage({ cartItems: [{ id: 1, name: 'Widget' }], onRemoveFromCart })
-
-    await userEvent.click(await screen.findByRole('button', { name: /remove from cart/i }))
-
-    expect(onRemoveFromCart).toHaveBeenCalledWith(1)
   })
 
   it('calls onAddToWishlist when wishlist button is clicked for item not in wishlist', async () => {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import API_BASE from '../../api'
 
 function BackIcon() {
@@ -99,14 +99,18 @@ export default function CartPage({
         <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
           <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
             <button
+              type="button"
               className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
               onClick={onBack}
             >
               <BackIcon /> Back
             </button>
-            <span className="ml-auto text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
+            <Link
+              to="/"
+              className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
+            >
               FIER
-            </span>
+            </Link>
           </div>
         </header>
         <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
@@ -135,6 +139,7 @@ export default function CartPage({
               Browse our categories and add items you love.
             </p>
             <button
+              type="button"
               className="cursor-pointer rounded-lg border-none bg-purple-400 px-7 py-3 text-sm font-semibold tracking-[0.5px] text-white transition-opacity hover:opacity-88"
               onClick={onBack}
             >
@@ -151,6 +156,7 @@ export default function CartPage({
       <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
           <button
+            type="button"
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
             onClick={onBack}
           >
@@ -172,9 +178,10 @@ export default function CartPage({
             {cartItems.map((item) => {
               const outOfStock = parseInt(item.available_stock) === 0
               const inWishlist = wishlistItems.some((w) => w.id === item.id)
+              const itemSize = item.size || ''
               return (
                 <div
-                  key={item.id}
+                  key={`${item.id}-${itemSize}`}
                   className={`flex items-center gap-4 rounded-2xl border p-4 shadow-[var(--shadow)] backdrop-blur-xl ${outOfStock ? 'border-red-400/30 bg-red-400/5' : 'border-[var(--glass-border)] bg-[var(--card-bg)]'}`}
                 >
                   <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-lg bg-purple-400/12">
@@ -185,6 +192,11 @@ export default function CartPage({
                       <span className="overflow-hidden text-[15px] font-medium text-ellipsis whitespace-nowrap text-[var(--text-h)]">
                         {item.name}
                       </span>
+                      {itemSize && (
+                        <span className="shrink-0 rounded-full bg-purple-400/12 px-2 py-0.5 text-[11px] font-semibold text-purple-400">
+                          {itemSize}
+                        </span>
+                      )}
                       {outOfStock && (
                         <span className="shrink-0 rounded-full bg-red-400/12 px-2 py-0.5 text-[11px] font-semibold text-red-400">
                           Out of Stock
@@ -212,8 +224,9 @@ export default function CartPage({
                   <div className="flex shrink-0 items-center gap-4">
                     <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1">
                       <button
+                        type="button"
                         className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400"
-                        onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                        onClick={() => onUpdateQuantity(item.id, itemSize, item.quantity - 1)}
                         aria-label="Decrease quantity"
                       >
                         −
@@ -222,8 +235,9 @@ export default function CartPage({
                         {item.quantity}
                       </span>
                       <button
+                        type="button"
                         className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400"
-                        onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                        onClick={() => onUpdateQuantity(item.id, itemSize, item.quantity + 1)}
                         aria-label="Increase quantity"
                       >
                         +
@@ -234,6 +248,7 @@ export default function CartPage({
                     </span>
                     {outOfStock && onAddToWishlist && !inWishlist && (
                       <button
+                        type="button"
                         className="flex cursor-pointer items-center gap-1 rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-[11px] font-semibold text-[var(--text)] transition-colors hover:border-purple-400/40 hover:text-purple-400"
                         onClick={() => onAddToWishlist(item)}
                         aria-label="Save to wishlist"
@@ -242,8 +257,9 @@ export default function CartPage({
                       </button>
                     )}
                     <button
+                      type="button"
                       className="flex cursor-pointer items-center rounded-md border-none bg-transparent p-1.5 text-[var(--text)] transition-colors hover:bg-[rgba(232,93,93,0.1)] hover:text-[#e85d5d]"
-                      onClick={() => onRemove(item.id)}
+                      onClick={() => onRemove(item.id, itemSize)}
                       aria-label="Remove item"
                     >
                       <TrashIcon />
@@ -287,6 +303,7 @@ export default function CartPage({
               </p>
             )}
             <button
+              type="button"
               className="mt-1 cursor-pointer rounded-[10px] border-none bg-purple-400 px-7 py-3.5 text-[15px] font-semibold tracking-[0.5px] text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleCheckout}
               disabled={reserving || hasOutOfStock}
