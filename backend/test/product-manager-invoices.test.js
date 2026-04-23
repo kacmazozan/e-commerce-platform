@@ -74,6 +74,10 @@ describe('GET /api/product-manager/invoices', () => {
       invoice_number: 'INV-2026-000042',
       customer_email: 'jane.doe@example.com',
       customer_name: 'Jane Doe',
+      subtotal: 120,
+      tax_rate: 0.2,
+      tax_amount: 24,
+      total: 144,
       status: 'pending',
     })
     expect(res.body.pagination).toEqual({ page: 1, limit: 10, total: 1, totalPages: 1 })

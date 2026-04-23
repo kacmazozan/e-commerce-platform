@@ -69,7 +69,7 @@ router.get('/', async (req, res) => {
     `SELECT COUNT(*) FROM orders o JOIN auth.users u ON u.id = o.user_id ${whereClause}`,
     params
   )
-  const total = parseInt(countResult.rows[0].count)
+  const total = parseInt(countResult.rows[0].count, 10)
 
   const dataResult = await pool.query(
     `SELECT o.id, o.status, o.total, o.address, o.created_at,
@@ -82,15 +82,24 @@ router.get('/', async (req, res) => {
     [...params, limit, offset]
   )
 
-  const invoices = dataResult.rows.map((order) => ({
-    order_id: order.id,
-    invoice_number: invoiceNumberFor(order),
-    customer_name: inferCustomerName(order.user_email),
-    customer_email: order.user_email,
-    total: order.total,
-    status: order.status,
-    issued_at: order.created_at,
-  }))
+  const TAX_RATE = 0.2
+  const invoices = dataResult.rows.map((order) => {
+    const subtotal = Math.round((Number(order.total) + Number.EPSILON) * 100) / 100
+    const tax_amount = Math.round((subtotal * TAX_RATE + Number.EPSILON) * 100) / 100
+    const invoice_total = Math.round((subtotal + tax_amount + Number.EPSILON) * 100) / 100
+    return {
+      order_id: order.id,
+      invoice_number: invoiceNumberFor(order),
+      customer_name: inferCustomerName(order.user_email),
+      customer_email: order.user_email,
+      subtotal,
+      tax_rate: TAX_RATE,
+      tax_amount,
+      total: invoice_total,
+      status: order.status,
+      issued_at: order.created_at,
+    }
+  })
 
   res.json({
     invoices,
