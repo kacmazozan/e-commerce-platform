@@ -10,6 +10,8 @@ An e-commerce platform (Sabanci University CS308 course project) with a React fr
 
 When writing commit messages, follow [Conventional Commits](.claude/conventional-commits.md). Do **not** add `Co-Authored-By: Claude ...` trailers.
 
+When opening GitHub bug issues, follow [Bug Issue Template](.claude/issue-bug-template.md).
+
 ## Commands
 
 ### Frontend (`frontend/`)
