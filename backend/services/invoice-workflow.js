@@ -1,8 +1,4 @@
-const {
-  buildInvoiceData,
-  createInvoiceEmailBody,
-  generateInvoicePdf,
-} = require('./invoice')
+const { buildInvoiceData, createInvoiceEmailBody, generateInvoicePdf } = require('./invoice')
 const { sendMail } = require('./mailer')
 
 async function processInvoiceRequest(request) {
