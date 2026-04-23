@@ -13,21 +13,21 @@ Full spec: https://www.conventionalcommits.org/en/v1.0.0/
 ```
 
 - Subject line ≤ 72 chars, lowercase, no trailing period
-- Body only when the *why* isn't obvious from the subject
+- Body only when the _why_ isn't obvious from the subject
 - No `Co-Authored-By: Claude` trailers
 
 ## Types
 
-| Type | When to use |
-|------|-------------|
-| `feat` | New feature or endpoint |
-| `fix` | Bug fix |
+| Type       | When to use                                     |
+| ---------- | ----------------------------------------------- |
+| `feat`     | New feature or endpoint                         |
+| `fix`      | Bug fix                                         |
 | `refactor` | Code change that is neither a fix nor a feature |
-| `test` | Adding or updating tests |
-| `docs` | Documentation only |
-| `style` | Formatting, whitespace — no logic change |
-| `chore` | Build scripts, deps, config |
-| `perf` | Performance improvement |
+| `test`     | Adding or updating tests                        |
+| `docs`     | Documentation only                              |
+| `style`    | Formatting, whitespace — no logic change        |
+| `chore`    | Build scripts, deps, config                     |
+| `perf`     | Performance improvement                         |
 
 ## Scope (optional)
 

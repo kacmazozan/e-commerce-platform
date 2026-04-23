@@ -25,6 +25,16 @@ router.get('/products', async (req, res) => {
   const offset = (page - 1) * limit
   const search = (req.query.search || '').trim()
   const category = (req.query.category || '').trim()
+  const sort = (req.query.sort || '').trim()
+
+  const SORT_MAP = {
+    alpha: 'name ASC',
+    price_asc: 'price ASC',
+    price_desc: 'price DESC',
+    stock_asc: 'stock ASC',
+    stock_desc: 'stock DESC',
+  }
+  const orderBy = SORT_MAP[sort] || 'created_at DESC'
 
   let where = []
   let params = []
@@ -50,7 +60,7 @@ router.get('/products', async (req, res) => {
   const total = parseInt(countResult.rows[0].count)
 
   const dataResult = await pool.query(
-    `SELECT * FROM products ${whereClause} ORDER BY created_at DESC LIMIT $${idx} OFFSET $${idx + 1}`,
+    `SELECT * FROM products ${whereClause} ORDER BY ${orderBy} LIMIT $${idx} OFFSET $${idx + 1}`,
     [...params, limit, offset]
   )
 

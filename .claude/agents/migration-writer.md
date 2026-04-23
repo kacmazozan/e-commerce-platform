@@ -15,6 +15,7 @@ You write database migration files for this e-commerce platform using `node-pg-m
 ## File structure
 
 Every migration must export:
+
 - `exports.options = { transaction: false }` — always include this
 - `exports.up = async (pgm) => { ... }` or `(pgm) => { ... }` for sync
 - `exports.down = (pgm) => { ... }` — must fully reverse `up`
@@ -38,53 +39,61 @@ Every migration must export:
 ## Common pgm methods
 
 ```js
-pgm.createTable({ schema, name }, columns)
-pgm.dropTable({ schema, name })
-pgm.addColumn({ schema, name }, columns)
-pgm.dropColumn({ schema, name }, columnName)
-pgm.addIndex({ schema, name }, columns, { name: 'idx_name' })
-pgm.dropIndex({ schema, name }, columns, { name: 'idx_name' })
-pgm.createType(typeName, values)         // enum
-pgm.dropType(typeName)
-pgm.addConstraint({ schema, name }, constraintName, constraintExpr)
-pgm.dropConstraint({ schema, name }, constraintName)
-pgm.alterColumn({ schema, name }, columnName, options)
-pgm.sql(`raw SQL here`)                  // for INSERTs, seed data, etc.
+pgm.createTable({ schema, name }, columns);
+pgm.dropTable({ schema, name });
+pgm.addColumn({ schema, name }, columns);
+pgm.dropColumn({ schema, name }, columnName);
+pgm.addIndex({ schema, name }, columns, { name: "idx_name" });
+pgm.dropIndex({ schema, name }, columns, { name: "idx_name" });
+pgm.createType(typeName, values); // enum
+pgm.dropType(typeName);
+pgm.addConstraint({ schema, name }, constraintName, constraintExpr);
+pgm.dropConstraint({ schema, name }, constraintName);
+pgm.alterColumn({ schema, name }, columnName, options);
+pgm.sql(`raw SQL here`); // for INSERTs, seed data, etc.
 ```
 
 ## Example migration
 
 ```js
-exports.options = { transaction: false }
+exports.options = { transaction: false };
 
 exports.up = async (pgm) => {
   pgm.createTable(
-    { schema: 'public', name: 'reviews' },
+    { schema: "public", name: "reviews" },
     {
-      id: { type: 'serial', primaryKey: true },
+      id: { type: "serial", primaryKey: true },
       product_id: {
-        type: 'integer',
+        type: "integer",
         notNull: true,
         references: '"products"(id)',
-        onDelete: 'CASCADE',
+        onDelete: "CASCADE",
       },
       user_id: {
-        type: 'integer',
+        type: "integer",
         notNull: true,
         references: '"auth"."users"(id)',
-        onDelete: 'CASCADE',
+        onDelete: "CASCADE",
       },
-      rating: { type: 'smallint', notNull: true },
-      body: { type: 'text' },
-      created_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
-      updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
-    }
-  )
-}
+      rating: { type: "smallint", notNull: true },
+      body: { type: "text" },
+      created_at: {
+        type: "timestamptz",
+        notNull: true,
+        default: pgm.func("NOW()"),
+      },
+      updated_at: {
+        type: "timestamptz",
+        notNull: true,
+        default: pgm.func("NOW()"),
+      },
+    },
+  );
+};
 
 exports.down = (pgm) => {
-  pgm.dropTable({ schema: 'public', name: 'reviews' })
-}
+  pgm.dropTable({ schema: "public", name: "reviews" });
+};
 ```
 
 ## Your output

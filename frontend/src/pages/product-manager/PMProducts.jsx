@@ -33,6 +33,7 @@ function PMProducts({ token }) {
   const [products, setProducts] = useState([])
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 })
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [modal, setModal] = useState(null)
@@ -48,6 +49,7 @@ function PMProducts({ token }) {
       try {
         const params = new URLSearchParams({ page, limit: 10 })
         if (search) params.set('search', search)
+        if (sort) params.set('sort', sort)
         const res = await fetch(`${API}?${params}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -61,7 +63,7 @@ function PMProducts({ token }) {
         setLoading(false)
       }
     },
-    [token, search]
+    [token, search, sort]
   )
 
   useEffect(() => {
@@ -130,10 +132,24 @@ function PMProducts({ token }) {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <form className="flex min-w-0 flex-1 gap-2" onSubmit={handleSearch}>
+        <form className="flex items-center gap-2" onSubmit={handleSearch}>
+          <select
+            className="rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-h)] focus:ring-2 focus:ring-purple-500/40 focus:outline-none"
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value)
+            }}
+          >
+            <option value="">Sort: Default</option>
+            <option value="alpha">Alphabetical (A–Z)</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="stock_asc">Stock: Low to High</option>
+            <option value="stock_desc">Stock: High to Low</option>
+          </select>
           <input
             type="text"
-            className={`${fieldInputClass} min-w-[140px] flex-1`}
+            className={`${fieldInputClass} w-44`}
             placeholder="Search by name…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
