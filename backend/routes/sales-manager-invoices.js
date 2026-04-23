@@ -37,7 +37,9 @@ function buildInvoiceFromOrder(order, items) {
 
 function defaultDateRange() {
   const now = new Date()
-  const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+  const year = now.getUTCFullYear()
+  const month = now.getUTCMonth()
+  const startDate = new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10)
   const endDate = now.toISOString().slice(0, 10)
   return { startDate, endDate }
 }
@@ -47,10 +49,13 @@ function parseDateRange(query) {
   const startDate = query.startDate || defaults.startDate
   const endDate = query.endDate || defaults.endDate
 
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  // advance end by 1 day so that the endDate itself is fully included
-  end.setDate(end.getDate() + 1)
+  // Parse as UTC to avoid local-timezone shifting on YYYY-MM-DD strings
+  const [sy, sm, sd] = startDate.split('-').map(Number)
+  const [ey, em, ed] = endDate.split('-').map(Number)
+
+  const start = new Date(Date.UTC(sy, sm - 1, sd))
+  // advance end by 1 day so that the full endDate day is included
+  const end = new Date(Date.UTC(ey, em - 1, ed + 1))
 
   return { start: start.toISOString(), end: end.toISOString() }
 }
@@ -110,21 +115,21 @@ router.get('/export/pdf', async (req, res) => {
     doc.addPage()
     doc.fontSize(14).font('Helvetica-Bold').text(`Invoice ${invoice.number}`)
     doc.fontSize(10).font('Helvetica')
-    doc.text(`Order ID: ${invoice.orderId}`)
-    doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`)
-    doc.text(`Customer: ${invoice.customer.name} <${invoice.customer.email}>`)
+    doc.text(`Order ID: ${invoice.order_id}`)
+    doc.text(`Date: ${invoice.date_str}`)
+    doc.text(`Customer: ${invoice.customer_name} <${invoice.customer_email}>`)
     doc.moveDown(0.5)
 
     doc.font('Helvetica-Bold').text('Items:')
     doc.font('Helvetica')
     for (const item of invoice.items) {
       doc.text(
-        `  ${item.description}  ×${item.quantity}  @ $${item.unitPrice.toFixed(2)}  =  $${item.total.toFixed(2)}`
+        `  ${item.description}  ×${item.quantity}  @ $${item.unit_price.toFixed(2)}  =  $${item.total.toFixed(2)}`
       )
     }
     doc.moveDown(0.5)
     doc.text(`Subtotal: $${invoice.subtotal.toFixed(2)}`)
-    doc.text(`Tax (20%): $${invoice.taxAmount.toFixed(2)}`)
+    doc.text(`Tax (20%): $${invoice.tax_amount.toFixed(2)}`)
     doc.font('Helvetica-Bold').text(`Total: $${invoice.total.toFixed(2)}`)
     doc
       .moveTo(50, doc.y + 10)
