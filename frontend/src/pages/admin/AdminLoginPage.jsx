@@ -104,7 +104,6 @@ function AdminLoginPage({ onLogin }) {
 
         <button
           type="button"
-          type="button"
           onClick={() => (window.location.href = '/')}
           className="mx-auto mt-5 block cursor-pointer border-0 bg-transparent p-0 text-sm text-purple-400 underline underline-offset-2 hover:opacity-75"
         >
