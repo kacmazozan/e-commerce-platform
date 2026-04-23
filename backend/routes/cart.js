@@ -7,7 +7,7 @@ router.use(authenticate)
 
 async function fetchCart(userId) {
   const result = await pool.query(
-    `SELECT ci.product_id AS id, p.name, p.price, ci.quantity, ci.size,
+    `SELECT ci.product_id AS id, p.name, p.price, p.category, ci.quantity, ci.size,
             GREATEST(0, p.stock - COALESCE(
               (SELECT SUM(sr.quantity) FROM stock_reservations sr
                WHERE sr.product_id = p.id AND sr.expires_at > NOW()), 0

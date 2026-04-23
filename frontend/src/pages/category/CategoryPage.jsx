@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import CatalogImage from '../../components/catalog/CatalogImage'
 import Footer from '../home/components/Footer'
 import API_BASE from '../../api'
+import { getProductImageUrl } from '../../lib/catalogAssets'
+import { fetchJsonWithRetry } from '../../lib/fetchJsonWithRetry'
 
 function BackIcon() {
   return (
@@ -47,13 +50,14 @@ export default function CategoryPage({
 }) {
   const [products, setProducts] = useState([])
   const [loadedCategory, setLoadedCategory] = useState(null)
+  const [error, setError] = useState(false)
   const navigate = useNavigate()
   const loading = loadedCategory !== category.title
 
   useEffect(() => {
     let cancelled = false
-    fetch(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}`)
-      .then((r) => r.json())
+    setError(false)
+    fetchJsonWithRetry(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}`)
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
@@ -63,6 +67,7 @@ export default function CategoryPage({
       .catch(() => {
         if (!cancelled) {
           setProducts([])
+          setError(true)
           setLoadedCategory(category.title)
         }
       })
@@ -113,6 +118,12 @@ export default function CategoryPage({
         </div>
 
         {loading && <p className="text-[var(--text)] opacity-60">Loading products…</p>}
+        {!loading && error && (
+          <p className="mb-6 text-[15px] text-red-400">Failed to load products for this category.</p>
+        )}
+        {!loading && !error && products.length === 0 && (
+          <p className="mb-6 text-[15px] text-[var(--text)]">No products found in this category.</p>
+        )}
         <div className="grid [grid-template-columns:repeat(4,1fr)] gap-5 max-[1024px]:[grid-template-columns:repeat(3,1fr)] max-[720px]:[grid-template-columns:repeat(2,1fr)] max-[720px]:gap-3.5 max-[420px]:[grid-template-columns:1fr]">
           {products.map((product) => {
             const inWishlist = wishlistIds.has(product.id)
@@ -128,9 +139,18 @@ export default function CategoryPage({
                   onClick={() => navigate(`/product/${product.id}`)}
                   aria-label={`View details for ${product.name}`}
                 >
-                  <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
-                    {product.name[0]}
-                  </span>
+                  <CatalogImage
+                    src={getProductImageUrl({ ...product, category: product.category ?? category.title })}
+                    alt={product.name}
+                    containerClassName="h-full w-full"
+                    imageClassName="object-contain p-3"
+                    placeholder={
+                      <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
+                        {product.name[0]}
+                      </span>
+                    }
+                    style={{ background: 'rgba(192,132,252,0.12)' }}
+                  />
                 </button>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2.5">
                   <span className="text-sm font-semibold text-[var(--text-h)]">{product.name}</span>

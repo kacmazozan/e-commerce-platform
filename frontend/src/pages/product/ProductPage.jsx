@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { StarRating } from '../../components/icons'
+import CatalogImage from '../../components/catalog/CatalogImage'
 import Footer from '../home/components/Footer'
 import API_BASE from '../../api'
+import { getResolvedProductImages } from '../../lib/catalogAssets'
 
 const CATEGORY_HUE = {
   "Women's Clothing": 280,
@@ -265,6 +267,7 @@ export default function ProductPage({
   const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
   const outOfStock = availableStock === 0
   const inWishlist = wishlistItems.some((i) => i.id === product.id)
+  const galleryImages = getResolvedProductImages(product, images)
   const avgRating =
     reviews.length > 0
       ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
@@ -290,36 +293,32 @@ export default function ProductPage({
           <div className="flex flex-col gap-3">
             {/* Main image */}
             <div className="relative overflow-hidden rounded-2xl border border-[var(--glass-border)] shadow-[var(--shadow)]">
-              {images.length > 0 ? (
-                <img
-                  src={images[activeImg].url}
-                  alt={images[activeImg].alt || product.name}
-                  className="aspect-[3/4] w-full object-contain"
-                  style={{
-                    background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
-                  }}
-                />
-              ) : (
-                <div
-                  className="flex aspect-[3/4] w-full items-center justify-center"
-                  style={{
-                    background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
-                  }}
-                >
+              <CatalogImage
+                src={galleryImages[activeImg]?.url}
+                alt={galleryImages[activeImg]?.alt || product.name}
+                loading="eager"
+                containerClassName="aspect-[3/4] w-full"
+                imageClassName="object-contain"
+                placeholder={
                   <span
                     className="text-[120px] font-bold opacity-30 select-none"
                     style={{ color: `hsl(${hue},70%,var(--cat-text-l,70%))` }}
                   >
                     {product.name[0]}
                   </span>
-                </div>
-              )}
+                }
+                style={{
+                  background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
+                }}
+              />
               {/* Arrow navigation */}
-              {images.length > 1 && (
+              {galleryImages.length > 1 && (
                 <>
                   <button
                     type="button"
-                    onClick={() => setActiveImg((i) => (i - 1 + images.length) % images.length)}
+                    onClick={() =>
+                      setActiveImg((i) => (i - 1 + galleryImages.length) % galleryImages.length)
+                    }
                     className="absolute top-1/2 left-3 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-none bg-[var(--card-bg)]/80 text-[var(--text-h)] shadow-md backdrop-blur-sm transition-colors hover:bg-purple-400/20 hover:text-purple-400"
                     aria-label="Previous image"
                   >
@@ -338,7 +337,7 @@ export default function ProductPage({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveImg((i) => (i + 1) % images.length)}
+                    onClick={() => setActiveImg((i) => (i + 1) % galleryImages.length)}
                     className="absolute top-1/2 right-3 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-none bg-[var(--card-bg)]/80 text-[var(--text-h)] shadow-md backdrop-blur-sm transition-colors hover:bg-purple-400/20 hover:text-purple-400"
                     aria-label="Next image"
                   >
@@ -359,9 +358,9 @@ export default function ProductPage({
               )}
             </div>
             {/* Dot indicators — outside the image so they're always visible */}
-            {images.length > 1 && (
+            {galleryImages.length > 1 && (
               <div className="flex justify-center gap-2">
-                {images.map((_, i) => (
+                {galleryImages.map((_, i) => (
                   <button
                     key={i}
                     type="button"
@@ -374,9 +373,9 @@ export default function ProductPage({
             )}
 
             {/* Thumbnail strip */}
-            {images.length > 1 && (
+            {galleryImages.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {images.map((img, i) => (
+                {galleryImages.map((img, i) => (
                   <button
                     key={img.id}
                     type="button"
@@ -385,10 +384,19 @@ export default function ProductPage({
                     style={{ width: 72, height: 96 }}
                     aria-label={img.alt || `Image ${i + 1}`}
                   >
-                    <img
+                    <CatalogImage
                       src={img.url}
                       alt={img.alt || `View ${i + 1}`}
-                      className="h-full w-full object-contain"
+                      containerClassName="h-full w-full"
+                      imageClassName="object-contain"
+                      placeholder={
+                        <span
+                          className="text-2xl font-bold opacity-30 select-none"
+                          style={{ color: `hsl(${hue},70%,var(--cat-text-l,70%))` }}
+                        >
+                          {product.name[0]}
+                        </span>
+                      }
                       style={{
                         background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
                       }}
