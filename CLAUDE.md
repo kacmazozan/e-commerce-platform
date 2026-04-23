@@ -72,16 +72,17 @@ docker compose down -v      # Stop and remove containers AND all volumes (see wa
 > **Warning — `down -v`:** Removes **all** volumes, including the named `postgres_data` volume. All database data (users, products, orders) will be lost. Only use this to fix stale anonymous `node_modules` volumes when `nodemon` or other packages are not found inside the container despite being in `package.json`. After running, bring the stack back up — seeds run automatically.
 
 On every `docker compose up`, the backend entrypoint (`backend/entrypoint.sh`) automatically:
+
 1. Waits for PostgreSQL to accept connections
 2. Runs all pending migrations (`npm run migrate:up`)
 3. Seeds all dev accounts and products (all seeds are idempotent — safe to re-run)
 
 **Dev credentials (defined in `docker-compose.yml`):**
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | `admin@example.com` | `admin123456` |
-| Sales Manager | `salesmanager@example.com` | `salesmanager123456` |
+| Role            | Email                        | Password               |
+| --------------- | ---------------------------- | ---------------------- |
+| Admin           | `admin@example.com`          | `admin123456`          |
+| Sales Manager   | `salesmanager@example.com`   | `salesmanager123456`   |
 | Product Manager | `productmanager@example.com` | `productmanager123456` |
 
 Products (56 items across 8 categories) are also seeded automatically.
@@ -176,6 +177,7 @@ Shared: `src/styles/dashboardStyles.js` (Tailwind constants), `src/components/Da
 `src/api.js` exports `API_BASE` from `VITE_API_BASE_URL`, falling back to `http://localhost:3000`.
 
 Pages live in `src/pages/<section>/`. Key SM pages:
+
 - `DiscountManagement` (`src/pages/sales-manager/DiscountManagement.jsx`) — paginated product table with category filter, search bar, and bulk discount apply/remove
 - `NotificationBell` (`src/pages/home/components/NotificationBell.jsx`) — price-drop notifications for logged-in customers; mark-read, mark-all-read, clear-all
 
