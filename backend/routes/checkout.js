@@ -1,6 +1,8 @@
 const express = require('express')
 const authenticate = require('../middleware/auth')
 const pool = require('../db')
+const { inferCustomerName } = require('../services/invoice')
+const { queueInvoiceRequest } = require('../services/invoice-workflow')
 
 const router = express.Router()
 router.use(authenticate)
@@ -178,6 +180,20 @@ router.post('/confirm', async (req, res) => {
     await client.query('DELETE FROM stock_reservations WHERE user_id = $1', [userId])
 
     await client.query('COMMIT')
+
+    queueInvoiceRequest({
+      invoice_number: `INV-${new Date().getFullYear()}-${String(orderId).padStart(6, '0')}`,
+      order_id: String(orderId),
+      customer_name: inferCustomerName(req.user.email),
+      customer_email: req.user.email,
+      customer_address: address || 'Address not provided',
+      items: reservations.rows.map((item) => ({
+        description: item.name,
+        quantity: item.quantity,
+        unit_price: Number(item.effective_price),
+      })),
+    })
+
     res.json({ order_id: orderId })
   } catch (err) {
     await client.query('ROLLBACK')
