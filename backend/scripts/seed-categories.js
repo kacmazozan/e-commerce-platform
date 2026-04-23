@@ -10,7 +10,7 @@ const CATEGORIES = [
   'Accessories',
   'Activewear',
   'Formal',
-  "Kids & Baby",
+  'Kids & Baby',
 ]
 
 async function seed() {

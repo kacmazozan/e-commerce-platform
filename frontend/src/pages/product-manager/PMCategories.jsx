@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import API_BASE from '../../api'
-import {
-  btnBase,
-  btnCreate,
-  btnDanger,
-  fieldInputClass,
-} from '../../styles/dashboardStyles'
+import { btnBase, btnCreate, btnDanger, fieldInputClass } from '../../styles/dashboardStyles'
 
 const API = `${API_BASE}/api/product-manager/categories`
 
@@ -112,7 +107,7 @@ function PMCategories({ token }) {
 
       <div className="mb-6 flex items-center justify-between gap-3">
         <select
-          className="rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-h)] focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+          className="rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-h)] focus:ring-2 focus:ring-purple-500/40 focus:outline-none"
           value={sort}
           onChange={(e) => setSort(e.target.value)}
         >
@@ -234,12 +229,17 @@ function PMCategories({ token }) {
           >
             {deleteConfirm.product_count > 0 ? (
               <>
-                <h2 className="mb-3 text-lg font-semibold text-[var(--text-h)]">Cannot Delete Category</h2>
+                <h2 className="mb-3 text-lg font-semibold text-[var(--text-h)]">
+                  Cannot Delete Category
+                </h2>
                 <p className="mb-5 text-sm text-[var(--text)]">
                   <span className="font-medium text-amber-400">Notice:</span> The category{' '}
                   <strong>{deleteConfirm.name}</strong> contains{' '}
-                  <strong>{deleteConfirm.product_count} product{deleteConfirm.product_count !== 1 ? 's' : ''}</strong>.
-                  Remove or reassign all products before deleting this category.
+                  <strong>
+                    {deleteConfirm.product_count} product
+                    {deleteConfirm.product_count !== 1 ? 's' : ''}
+                  </strong>
+                  . Remove or reassign all products before deleting this category.
                 </p>
                 <div className="flex justify-end">
                   <button className={btnBase} onClick={() => setDeleteConfirm(null)}>
@@ -251,9 +251,9 @@ function PMCategories({ token }) {
               <>
                 <h2 className="mb-3 text-lg font-semibold text-[var(--text-h)]">Delete Category</h2>
                 <p className="mb-5 text-sm text-[var(--text)]">
-                  <span className="font-medium text-amber-400">Warning:</span> You are about to delete
-                  the category <strong>{deleteConfirm.name}</strong>. It has no products. This action
-                  cannot be undone.
+                  <span className="font-medium text-amber-400">Warning:</span> You are about to
+                  delete the category <strong>{deleteConfirm.name}</strong>. It has no products.
+                  This action cannot be undone.
                 </p>
                 <div className="flex justify-end gap-2">
                   <button
