@@ -283,13 +283,13 @@ export default function SMInvoices({ token }) {
       {/* Detail modal */}
       {(detailLoading || detail) && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75"
           onClick={() => {
             if (!detailLoading) setDetail(null)
           }}
         >
           <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-6 shadow-xl"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-6 shadow-xl backdrop-blur-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {detailLoading && (
