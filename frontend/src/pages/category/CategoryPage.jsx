@@ -55,13 +55,16 @@ export default function CategoryPage({
   const [products, setProducts] = useState([])
   const [loadedKey, setLoadedKey] = useState(null)
   const [sort, setSort] = useState('newest')
+  const [prevCategoryTitle, setPrevCategoryTitle] = useState(category.title)
   const navigate = useNavigate()
+
+  if (prevCategoryTitle !== category.title) {
+    setPrevCategoryTitle(category.title)
+    setSort('newest')
+  }
+
   const currentKey = `${category.title}::${sort}`
   const loading = loadedKey !== currentKey
-
-  useEffect(() => {
-    setSort('newest')
-  }, [category.title])
 
   useEffect(() => {
     let cancelled = false

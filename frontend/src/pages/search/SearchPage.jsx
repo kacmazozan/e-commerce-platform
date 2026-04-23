@@ -73,14 +73,17 @@ export default function SearchPage({
   const [loadedQuery, setLoadedQuery] = useState(null)
   const [inputValue, setInputValue] = useState(searchQuery)
   const [sort, setSort] = useState('newest')
+  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery)
   const [error, setError] = useState(false)
   const navigate = useNavigate()
+
+  if (prevSearchQuery !== searchQuery) {
+    setPrevSearchQuery(searchQuery)
+    setSort('newest')
+  }
+
   const currentKey = `${searchQuery}::${sort}`
   const loading = loadedQuery !== currentKey
-
-  useEffect(() => {
-    setSort('newest')
-  }, [searchQuery])
 
   useEffect(() => {
     let cancelled = false
