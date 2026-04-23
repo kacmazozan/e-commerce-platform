@@ -26,6 +26,9 @@ router.get('/categories', async (req, res) => {
 router.post('/categories', async (req, res) => {
   const name = (req.body.name || '').trim()
   if (!name) return res.status(400).json({ error: 'Category name is required' })
+  if (name.length > 100) {
+    return res.status(400).json({ error: 'Category name must be 100 characters or fewer' })
+  }
   try {
     const result = await pool.query('INSERT INTO categories (name) VALUES ($1) RETURNING *', [name])
     res.status(201).json({ category: result.rows[0] })
