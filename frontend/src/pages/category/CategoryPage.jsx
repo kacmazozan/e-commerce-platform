@@ -68,9 +68,7 @@ export default function CategoryPage({
 
   useEffect(() => {
     let cancelled = false
-    fetch(
-      `${API_BASE}/api/products?category=${encodeURIComponent(category.title)}&sort=${sort}`,
-    )
+    fetch(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}&sort=${sort}`)
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled) {
@@ -131,10 +129,7 @@ export default function CategoryPage({
         </div>
 
         <div className="mb-6 flex items-center justify-end">
-          <label
-            htmlFor="category-sort"
-            className="mr-2 text-[13px] text-[var(--text)] opacity-60"
-          >
+          <label htmlFor="category-sort" className="mr-2 text-[13px] text-[var(--text)] opacity-60">
             Sort by
           </label>
           <select

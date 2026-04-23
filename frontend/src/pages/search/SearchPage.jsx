@@ -88,9 +88,7 @@ export default function SearchPage({
   useEffect(() => {
     let cancelled = false
     setError(false)
-    fetch(
-      `${API_BASE}/api/products/search?q=${encodeURIComponent(searchQuery)}&sort=${sort}`,
-    )
+    fetch(`${API_BASE}/api/products/search?q=${encodeURIComponent(searchQuery)}&sort=${sort}`)
       .then((r) => {
         if (!r.ok) throw new Error('Server error')
         return r.json()
@@ -193,10 +191,7 @@ export default function SearchPage({
         </div>
 
         <div className="mb-6 flex items-center justify-end">
-          <label
-            htmlFor="search-sort"
-            className="mr-2 text-[13px] text-[var(--text)] opacity-60"
-          >
+          <label htmlFor="search-sort" className="mr-2 text-[13px] text-[var(--text)] opacity-60">
             Sort by
           </label>
           <select
