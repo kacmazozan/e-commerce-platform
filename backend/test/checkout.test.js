@@ -5,7 +5,12 @@ jest.mock('../db', () => ({
   connect: jest.fn(),
 }))
 
+jest.mock('../services/invoice-workflow', () => ({
+  queueInvoiceRequest: jest.fn(),
+}))
+
 const pool = require('../db')
+const { queueInvoiceRequest } = require('../services/invoice-workflow')
 
 process.env.JWT_SECRET = 'test-secret'
 
@@ -256,6 +261,14 @@ describe('POST /api/checkout/confirm', () => {
     expect(res.status).toBe(200)
     expect(res.body).toHaveProperty('order_id')
     expect(res.body.order_id).toBe(55)
+    expect(queueInvoiceRequest).toHaveBeenCalledWith({
+      invoice_number: expect.stringMatching(/^INV-\d{4}-\d{6}$/),
+      order_id: '55',
+      customer_name: 'User',
+      customer_email: 'user@example.com',
+      customer_address: '123 Main St',
+      items: [{ description: 'Widget', quantity: 2, unit_price: 9.99 }],
+    })
   })
 
   it('accepts confirm without address', async () => {

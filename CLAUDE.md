@@ -86,7 +86,7 @@ On every `docker compose up`, the backend entrypoint (`backend/entrypoint.sh`) a
 
 Products (56 items across 8 categories) are also seeded automatically.
 
-Services: frontend → <http://localhost:5173>, backend → <http://localhost:3000>, PostgreSQL → localhost:5432, invoice-api → <http://localhost:8080>, MailHog UI → <http://localhost:8025>
+Services: frontend → <http://localhost:5173>, backend → <http://localhost:3000>, PostgreSQL → localhost:5432, MailHog UI → <http://localhost:8025>
 
 Each service has a `Dockerfile` (production) and `Dockerfile.dev` (development). `docker-compose.yml` uses the dev Dockerfiles with volume mounts for hot reload.
 
@@ -148,6 +148,7 @@ Route files in `backend/routes/`:
 - `sales-manager-products.js` — `GET /api/sales-manager/products` (`?category=`, `?q=`), `GET /api/sales-manager/products/categories`, `PATCH /api/sales-manager/products/:id/price`, `POST /api/sales-manager/products/discount`, `DELETE /api/sales-manager/products/:id/discount`
 - `notifications.js` — authenticated; `GET /api/notifications`, `PATCH /api/notifications/:id/read`, `PATCH /api/notifications/read-all`, `DELETE /api/notifications`
 - `wishlist.js` — authenticated; `GET/POST /api/wishlist`, `DELETE /api/wishlist/:productId`
+- `invoices.js` — `GET /api/invoices/health`, `POST /api/invoices/generate`; checkout confirmation also queues invoice email delivery automatically
 
 Middleware in `backend/middleware/`:
 
@@ -155,9 +156,9 @@ Middleware in `backend/middleware/`:
 - `admin.js` — requires `role === 'admin'`; stack with `auth.js` on all admin routes
 - `sales-manager.js` — requires `role === 'sales_manager'`; stack with `auth.js` on all SM routes
 
-### Invoice service (`backend/invoice_api/`, `backend/pkg/`)
+### Invoice service
 
-A separate Python FastAPI microservice on port 8080. Entry point: `invoice_api/main.py`. Shared library in `backend/pkg/`: `pkg/mailer/` (SMTP via MailHog), `pkg/invoice/` (PDF via wkhtmltopdf + Jinja2). Dependencies: `backend/requirements-invoice.txt`.
+Invoice generation and email delivery now live inside the Node backend. `backend/services/invoice.js` handles request validation, totals, and PDF creation with `pdfkit`; `backend/services/mailer.js` sends mail over SMTP (MailHog in local Docker); `backend/services/invoice-workflow.js` ties generation and delivery together. The public API is exposed from `backend/routes/invoices.js`.
 
 ### Frontend
 
@@ -191,7 +192,7 @@ Role enum: `auth.user_role` — `customer`, `sales_manager`, `product_manager`, 
 
 **Backend** — Jest + Supertest. Tests in `backend/test/`. DB pool always mocked.
 
-**Invoice service** — pytest. Tests in `backend/tests/`. `backend/conftest.py` adds `backend/` to `sys.path`.
+**Invoices** — Jest + Supertest. Tests in `backend/test/invoices.test.js` and `backend/test/invoice-models.test.js`.
 
 ## Environment
 
