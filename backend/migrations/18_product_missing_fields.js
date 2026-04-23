@@ -1,4 +1,4 @@
-exports.options = { transaction: false };
+exports.options = { transaction: false }
 
 exports.up = (pgm) => {
   pgm.addColumn(
@@ -21,13 +21,13 @@ exports.up = (pgm) => {
         type: 'text',
         notNull: false,
       },
-    },
-  );
-};
+    }
+  )
+}
 
 exports.down = (pgm) => {
-  pgm.dropColumn({ schema: 'public', name: 'products' }, 'model');
-  pgm.dropColumn({ schema: 'public', name: 'products' }, 'serial_number');
-  pgm.dropColumn({ schema: 'public', name: 'products' }, 'warranty_status');
-  pgm.dropColumn({ schema: 'public', name: 'products' }, 'distributor_info');
-};
+  pgm.dropColumn({ schema: 'public', name: 'products' }, 'model')
+  pgm.dropColumn({ schema: 'public', name: 'products' }, 'serial_number')
+  pgm.dropColumn({ schema: 'public', name: 'products' }, 'warranty_status')
+  pgm.dropColumn({ schema: 'public', name: 'products' }, 'distributor_info')
+}
