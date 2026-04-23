@@ -136,7 +136,10 @@ function PMProducts({ token }) {
           <select
             className="rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-h)] focus:outline-none focus:ring-2 focus:ring-purple-500/40"
             value={sort}
-            onChange={(e) => { setSort(e.target.value); fetchProducts(1) }}
+            onChange={(e) => {
+              setSort(e.target.value)
+              fetchProducts(1)
+            }}
           >
             <option value="">Sort: Default</option>
             <option value="alpha">Alphabetical (A–Z)</option>
