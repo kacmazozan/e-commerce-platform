@@ -7,6 +7,7 @@ import PMCategories from './PMCategories'
 import PMInventory from './PMInventory'
 import PMOrders from './PMOrders'
 import PMDeliveries from './PMDeliveries'
+import PMInvoices from './PMInvoices'
 import PMComments from './PMComments'
 import './ProductManagerDashboard.css'
 
@@ -131,6 +132,7 @@ function ProductManagerDashboard({ token, onLogout }) {
     { key: 'inventory', label: 'Inventory', icon: <InventoryIcon /> },
     { key: 'orders', label: 'Orders', icon: <OrdersIcon /> },
     { key: 'deliveries', label: 'Deliveries', icon: <DeliveriesIcon /> },
+    { key: 'invoices', label: 'Invoices', icon: <InvoicesIcon /> },
     { key: 'comments', label: 'Comments', icon: <CommentsIcon /> },
   ]
 
@@ -149,6 +151,7 @@ function ProductManagerDashboard({ token, onLogout }) {
       {activeSection === 'inventory' && <PMInventory token={token} />}
       {activeSection === 'orders' && <PMOrders token={token} />}
       {activeSection === 'deliveries' && <PMDeliveries token={token} />}
+      {activeSection === 'invoices' && <PMInvoices token={token} />}
       {activeSection === 'comments' && <PMComments token={token} />}
     </DashboardLayout>
   )
@@ -255,6 +258,25 @@ function DeliveriesIcon() {
       <path d="M16 8h4l3 5v3h-7V8z" />
       <circle cx="5.5" cy="18.5" r="2.5" />
       <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  )
+}
+
+function InvoicesIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="13" y2="17" />
+      <line x1="8" y1="9" x2="10" y2="9" />
     </svg>
   )
 }
