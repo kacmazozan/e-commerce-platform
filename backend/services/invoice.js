@@ -143,13 +143,16 @@ function buildInvoiceData(request, options = {}) {
   const taxRate = options.taxRate ?? DEFAULT_TAX_RATE
   const date = options.date ?? new Date()
 
-  const items = request.items.map((item) => ({
-    description: item.description,
-    quantity: item.quantity,
-    unit_price: roundMoney(item.unit_price),
-    total: roundMoney(item.quantity * item.unit_price),
-  }))
+  const items = request.items.map((item) => {
+    const unit_price = roundMoney(item.unit_price)
 
+    return {
+      description: item.description,
+      quantity: item.quantity,
+      unit_price,
+      total: roundMoney(item.quantity * unit_price),
+    }
+  })
   const subtotal = roundMoney(items.reduce((sum, item) => sum + item.total, 0))
   const tax_amount = roundMoney(subtotal * taxRate)
   const total = roundMoney(subtotal + tax_amount)
