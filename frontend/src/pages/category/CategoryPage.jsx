@@ -56,11 +56,11 @@ export default function CategoryPage({
 
   useEffect(() => {
     let cancelled = false
-    setError(false)
     fetchJsonWithRetry(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}`)
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
+          setError(false)
           setLoadedCategory(category.title)
         }
       })
@@ -119,7 +119,9 @@ export default function CategoryPage({
 
         {loading && <p className="text-[var(--text)] opacity-60">Loading products…</p>}
         {!loading && error && (
-          <p className="mb-6 text-[15px] text-red-400">Failed to load products for this category.</p>
+          <p className="mb-6 text-[15px] text-red-400">
+            Failed to load products for this category.
+          </p>
         )}
         {!loading && !error && products.length === 0 && (
           <p className="mb-6 text-[15px] text-[var(--text)]">No products found in this category.</p>
@@ -140,7 +142,10 @@ export default function CategoryPage({
                   aria-label={`View details for ${product.name}`}
                 >
                   <CatalogImage
-                    src={getProductImageUrl({ ...product, category: product.category ?? category.title })}
+                    src={getProductImageUrl({
+                      ...product,
+                      category: product.category ?? category.title,
+                    })}
                     alt={product.name}
                     containerClassName="h-full w-full"
                     imageClassName="object-contain p-3"

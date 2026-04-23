@@ -10,7 +10,8 @@ export async function fetchJsonWithRetry(
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const response = await fetch(url, fetchOptions)
+      const response =
+        fetchOptions === undefined ? await fetch(url) : await fetch(url, fetchOptions)
       if (!response.ok) throw new Error(`Request failed with status ${response.status}`)
       return await response.json()
     } catch (error) {
