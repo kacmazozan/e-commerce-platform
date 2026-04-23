@@ -138,7 +138,6 @@ function PMProducts({ token }) {
             value={sort}
             onChange={(e) => {
               setSort(e.target.value)
-              fetchProducts(1)
             }}
           >
             <option value="">Sort: Default</option>
