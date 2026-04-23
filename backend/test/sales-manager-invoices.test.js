@@ -36,6 +36,7 @@ function mockOrderRow(overrides = {}) {
 
 describe('GET /api/sales-manager/invoices', () => {
   beforeEach(() => jest.clearAllMocks())
+  afterEach(() => jest.useRealTimers())
 
   it('returns 401 with no token', async () => {
     const res = await request(app).get('/api/sales-manager/invoices')
@@ -82,6 +83,14 @@ describe('GET /api/sales-manager/invoices', () => {
     expect(res.body.pagination).toEqual({ page: 1, limit: 15, total: 1, totalPages: 1 })
   })
 
+  it('returns 400 for invalid date format', async () => {
+    const res = await request(app)
+      .get('/api/sales-manager/invoices?startDate=not-a-date&endDate=2026-04-30')
+      .set('Authorization', `Bearer ${smToken}`)
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/YYYY-MM-DD/)
+  })
+
   it('passes date range to WHERE clause', async () => {
     pool.query.mockResolvedValueOnce({ rows: [{ count: '0' }] }).mockResolvedValueOnce({ rows: [] })
 
@@ -109,8 +118,6 @@ describe('GET /api/sales-manager/invoices', () => {
     expect(countCall[1][0]).toBe(new Date(Date.UTC(2026, 3, 1)).toISOString())
     // endDate default is today (2026-04-15), advanced by 1 day to include full day
     expect(countCall[1][1]).toBe(new Date(Date.UTC(2026, 3, 16)).toISOString())
-
-    jest.useRealTimers()
   })
 })
 
@@ -230,13 +237,19 @@ describe('GET /api/sales-manager/invoices/export/pdf', () => {
     expect(res.status).toBe(403)
   })
 
+  it('returns 400 for invalid date format', async () => {
+    const res = await request(app)
+      .get('/api/sales-manager/invoices/export/pdf?startDate=bad&endDate=2026-04-30')
+      .set('Authorization', `Bearer ${smToken}`)
+    expect(res.status).toBe(400)
+  })
+
   it('streams a summary PDF for the date range', async () => {
-    // First query: orders list for the range
+    // First query: orders list; second query: all items batched (order_id field required)
     pool.query
       .mockResolvedValueOnce({ rows: [mockOrderRow({ item_count: undefined })] })
-      // Second query: items for that order
       .mockResolvedValueOnce({
-        rows: [{ id: 1, quantity: 1, price: '100.00', product_id: 11, product_name: 'Widget' }],
+        rows: [{ order_id: 42, quantity: 1, price: '100.00', product_name: 'Widget' }],
       })
 
     const res = await request(app)

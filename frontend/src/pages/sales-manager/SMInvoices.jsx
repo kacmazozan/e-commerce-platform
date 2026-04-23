@@ -37,7 +37,8 @@ async function triggerPdfDownload(url, filename, token) {
   a.href = objectUrl
   a.download = filename
   a.click()
-  URL.revokeObjectURL(objectUrl)
+  // Revoke after a short delay so the browser has time to start reading the blob
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
 }
 
 export default function SMInvoices({ token }) {
