@@ -75,9 +75,9 @@ describe('GET /api/product-manager/invoices', () => {
       customer_email: 'jane.doe@example.com',
       customer_name: 'Jane Doe',
       subtotal: 120,
-      tax_rate: 0.2,
-      tax_amount: 24,
-      total: 144,
+      tax_rate: 0,
+      tax_amount: 0,
+      total: 120,
       status: 'pending',
     })
     expect(res.body.pagination).toEqual({ page: 1, limit: 10, total: 1, totalPages: 1 })
@@ -148,9 +148,9 @@ describe('GET /api/product-manager/invoices/:orderId', () => {
       order_id: '42',
       customer_email: 'jane.doe@example.com',
       subtotal: 120,
-      tax_rate: 0.2,
-      tax_amount: 24,
-      total: 144,
+      tax_rate: 0,
+      tax_amount: 0,
+      total: 120,
     })
     expect(res.body.invoice.items).toHaveLength(2)
     expect(res.body.order).toMatchObject({ id: 42, status: 'pending' })

@@ -74,9 +74,9 @@ describe('GET /api/sales-manager/invoices', () => {
       customer_email: 'jane.doe@example.com',
       item_count: 2,
       subtotal: 100,
-      tax_rate: 0.2,
-      tax_amount: 20,
-      total: 120,
+      tax_rate: 0,
+      tax_amount: 0,
+      total: 100,
       status: 'delivered',
     })
     expect(res.body.pagination).toEqual({ page: 1, limit: 15, total: 1, totalPages: 1 })
@@ -152,9 +152,9 @@ describe('GET /api/sales-manager/invoices/:orderId', () => {
       number: 'INV-2026-000042',
       customer_email: 'jane.doe@example.com',
       subtotal: 100,
-      tax_rate: 0.2,
-      tax_amount: 20,
-      total: 120,
+      tax_rate: 0,
+      tax_amount: 0,
+      total: 100,
     })
     expect(res.body.invoice.items).toHaveLength(2)
     expect(res.body.order).toMatchObject({ id: 42, status: 'delivered' })

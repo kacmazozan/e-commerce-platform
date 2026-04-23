@@ -10,7 +10,7 @@ const router = express.Router()
 router.use(authenticate)
 router.use(requireSalesManager)
 
-const TAX_RATE = 0.2
+const TAX_RATE = 0
 
 function invoiceNumberFor(order) {
   const year = new Date(order.created_at).getFullYear()

@@ -28,8 +28,8 @@ describe('invoice calculations', () => {
     })
 
     expect(invoice.subtotal).toBe(200.0)
-    expect(invoice.tax_amount).toBe(40.0)
-    expect(invoice.total).toBe(240.0)
+    expect(invoice.tax_amount).toBe(0.0)
+    expect(invoice.total).toBe(200.0)
   })
 
   it('supports empty invoices', () => {

@@ -1,6 +1,6 @@
 const PDFDocument = require('pdfkit')
 
-const DEFAULT_TAX_RATE = 0.2
+const DEFAULT_TAX_RATE = 0
 const INVOICE_NUMBER_PATTERN = /^[A-Za-z0-9._-]+$/
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

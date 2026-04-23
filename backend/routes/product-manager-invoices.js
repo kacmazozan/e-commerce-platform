@@ -82,7 +82,7 @@ router.get('/', async (req, res) => {
     [...params, limit, offset]
   )
 
-  const TAX_RATE = 0.2
+  const TAX_RATE = 0
   const invoices = dataResult.rows.map((order) => {
     const subtotal = Math.round((Number(order.total) + Number.EPSILON) * 100) / 100
     const tax_amount = Math.round((subtotal * TAX_RATE + Number.EPSILON) * 100) / 100
