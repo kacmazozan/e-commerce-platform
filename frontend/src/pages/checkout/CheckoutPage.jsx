@@ -241,7 +241,13 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
         setConfirming(false)
         return
       }
-      onOrderConfirmed()
+      onOrderConfirmed({
+        orderId: data.order_id,
+        items: cartItems,
+        subtotal: total,
+        shippingCost,
+        address: addressStr,
+      })
     } catch {
       setSubmitError('Network error. Please try again.')
       setConfirming(false)

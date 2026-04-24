@@ -20,6 +20,7 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import HomePage from './pages/home/HomePage'
 import CartPage from './pages/cart/CartPage'
 import CheckoutPage from './pages/checkout/CheckoutPage'
+import OrderSuccessPage from './pages/checkout/OrderSuccessPage'
 import WishlistPage from './pages/wishlist/WishlistPage'
 import CategoryPage from './pages/category/CategoryPage'
 import SearchPage from './pages/search/SearchPage'
@@ -514,11 +515,19 @@ function App() {
               <CheckoutPage
                 cartItems={cart}
                 token={token}
-                onOrderConfirmed={() => {
+                onOrderConfirmed={(orderData) => {
                   setCart([])
-                  navigate('/orders')
+                  navigate('/order-success', { state: orderData })
                 }}
               />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/order-success"
+          element={
+            <RequireAuth token={token}>
+              <OrderSuccessPage />
             </RequireAuth>
           }
         />
