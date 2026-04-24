@@ -21,10 +21,5 @@ exports.up = (pgm) => {
 }
 
 exports.down = (pgm) => {
-  pgm.dropColumns('products', [
-    'model',
-    'serial_number',
-    'warranty_status',
-    'distributor_info',
-  ])
+  pgm.dropColumns('products', ['model', 'serial_number', 'warranty_status', 'distributor_info'])
 }
