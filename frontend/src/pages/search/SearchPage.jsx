@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import CatalogImage from '../../components/catalog/CatalogImage'
 import API_BASE from '../../api'
 import { SORT_OPTIONS } from '../../constants/sortOptions'
+import { getProductImageUrl } from '../../lib/catalogAssets'
 
 function BackIcon() {
   return (
@@ -81,7 +83,8 @@ export default function SearchPage({
 
   useEffect(() => {
     let cancelled = false
-    setError(false)
+    const requestKey = `${searchQuery}::${sort}`
+
     fetch(`${API_BASE}/api/products/search?q=${encodeURIComponent(searchQuery)}&sort=${sort}`)
       .then((r) => {
         if (!r.ok) throw new Error('Server error')
@@ -90,14 +93,14 @@ export default function SearchPage({
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
-          setLoadedKey(currentKey)
+          setLoadedKey(requestKey)
         }
       })
       .catch(() => {
         if (!cancelled) {
           setProducts([])
           setError(true)
-          setLoadedKey(currentKey)
+          setLoadedKey(requestKey)
         }
       })
     return () => {
@@ -219,9 +222,18 @@ export default function SearchPage({
                   onClick={() => navigate(`/product/${product.id}`)}
                   aria-label={`View details for ${product.name}`}
                 >
-                  <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
-                    {product.name[0]}
-                  </span>
+                  <CatalogImage
+                    src={getProductImageUrl(product)}
+                    alt={product.name}
+                    containerClassName="h-full w-full"
+                    imageClassName="object-contain p-3"
+                    placeholder={
+                      <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
+                        {product.name[0]}
+                      </span>
+                    }
+                    style={{ background: 'rgba(192,132,252,0.12)' }}
+                  />
                 </button>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2.5">
                   <span className="text-sm font-semibold text-[var(--text-h)]">{product.name}</span>

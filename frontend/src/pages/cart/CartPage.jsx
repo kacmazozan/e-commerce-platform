@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import CatalogImage from '../../components/catalog/CatalogImage'
 import API_BASE from '../../api'
+import { getProductImageUrl } from '../../lib/catalogAssets'
 
 function BackIcon() {
   return (
@@ -189,10 +191,19 @@ export default function CartPage({
                 >
                   <Link
                     to={`/product/${item.id}`}
-                    className="flex h-18 w-18 shrink-0 items-center justify-center rounded-lg bg-purple-400/12 no-underline"
+                    className="flex h-18 w-18 shrink-0 items-center justify-center rounded-lg no-underline"
                   >
-                    <span className="text-2xl font-bold text-purple-400">{item.name[0]}</span>
-                  </Link>
+                    <CatalogImage
+                      src={getProductImageUrl(item)}
+                      alt={item.name}
+                      containerClassName="h-18 w-18 shrink-0 rounded-lg"
+                      imageClassName="object-contain p-2"
+                      placeholder={
+                        <span className="text-2xl font-bold text-purple-400">{item.name[0]}</span>
+                      }
+                      style={{ background: 'rgba(192,132,252,0.12)' }}
+                    />
+                  </Link>   
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-center gap-2">
                       <Link

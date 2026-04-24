@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import CatalogImage from '../../components/catalog/CatalogImage'
+import { getProductImageUrl } from '../../lib/catalogAssets'
 
 function BackIcon() {
   return (
@@ -132,9 +134,18 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
                   to={`/product/${item.id}`}
                   className="flex aspect-[4/3] w-full items-center justify-center bg-purple-400/12 no-underline"
                 >
-                  <span className="text-5xl font-bold text-purple-400 opacity-50">
-                    {item.name[0]}
-                  </span>
+                  <CatalogImage
+                    src={getProductImageUrl(item)}
+                    alt={item.name}
+                    containerClassName="h-full w-full"
+                    imageClassName="object-contain p-3"
+                    placeholder={
+                      <span className="text-5xl font-bold text-purple-400 opacity-50">
+                        {item.name[0]}
+                      </span>
+                    }
+                    style={{ background: 'rgba(192,132,252,0.12)' }}
+                  />
                 </Link>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2">
                   <Link
