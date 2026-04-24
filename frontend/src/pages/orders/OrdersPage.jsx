@@ -132,6 +132,107 @@ function statusLabel(dbStatus) {
   }
 }
 
+/* ── Refund status badge ─────────────────────────────────── */
+
+function RefundBadge({ status, refundAmount }) {
+  const base = 'inline-block text-[10px] font-bold tracking-[0.5px] px-2 py-0.5 rounded-full ml-2'
+  const parsed = refundAmount != null ? parseFloat(refundAmount) : null
+  const amount = parsed != null && !Number.isNaN(parsed) ? ` · $${parsed.toFixed(2)}` : ''
+  switch (status) {
+    case 'pending':
+      return (
+        <span className={`${base} bg-amber-500/15 text-amber-600`}>Refund Pending{amount}</span>
+      )
+    case 'approved':
+      return (
+        <span className={`${base} bg-green-500/15 text-green-600`}>Refund Approved{amount}</span>
+      )
+    case 'rejected':
+      return <span className={`${base} bg-red-500/15 text-red-500`}>Refund Rejected{amount}</span>
+    default:
+      return null
+  }
+}
+
+/* ── Refund action button ────────────────────────────────── */
+
+function RefundActionButton({ item, orderCreatedAt, orderStatus, token, onRefundChange }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const daysOld = (Date.now() - new Date(orderCreatedAt).getTime()) / (1000 * 60 * 60 * 24)
+  const isWithin30Days = daysOld <= 30
+  const isDelivered = orderStatus === 'delivered'
+  const refundStatus = item.refund?.status ?? null
+
+  if (!isDelivered || !isWithin30Days) return null
+  if (refundStatus === 'approved' || refundStatus === 'rejected') return null
+
+  const isPending = refundStatus === 'pending'
+
+  async function handleRequest() {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/refunds`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ order_item_id: item.id }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to request refund')
+      }
+      onRefundChange()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleCancel() {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/refunds/${item.refund.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to cancel refund')
+      }
+      onRefundChange()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="mt-1.5 flex flex-col items-end gap-1">
+      <button
+        type="button"
+        disabled={loading}
+        onClick={isPending ? handleCancel : handleRequest}
+        className={`cursor-pointer rounded-[7px] border px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+          isPending
+            ? 'border-red-400/40 bg-transparent text-red-400 hover:border-red-400 hover:bg-red-400/10'
+            : 'border-[var(--border)] bg-transparent text-[var(--text)] hover:border-purple-400 hover:text-purple-400'
+        }`}
+      >
+        {loading ? 'Loading…' : isPending ? 'Cancel Refund Request' : 'Request Refund'}
+      </button>
+      {error && <span className="text-[11px] text-red-400">{error}</span>}
+    </div>
+  )
+}
+
 /* ── Sub-components ──────────────────────────────────────── */
 
 function DeliveryTimeline({ dbStatus }) {
@@ -176,45 +277,61 @@ function DeliveryTimeline({ dbStatus }) {
   )
 }
 
-function OrderItems({ items }) {
+function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange }) {
   return (
     <ul className="m-0 mb-4 flex list-none flex-col gap-3 p-0">
       {items.map((item) => {
         const hue = nameHue(item.product_name)
         const lineTotal = parseFloat(item.price) * item.quantity
         return (
-          <li
-            key={`${item.order_id}-${item.product_id}-${item.size ?? ''}`}
-            className="flex items-center gap-3.5"
-          >
-            <div
-              className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-[var(--border)]"
-              style={{
-                background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,12%)) 0%, hsl(${hue},45%,var(--cat-bg-l2,20%)) 100%)`,
-              }}
-            >
-              <span
+          <li key={item.id} className="flex flex-col gap-1">
+            <div className="flex items-center gap-3.5">
+              <div
+                className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-[var(--border)]"
                 style={{
-                  color: `hsl(${hue},70%,var(--cat-text-l,70%))`,
-                  fontSize: 18,
-                  fontWeight: 700,
-                  opacity: 0.5,
+                  background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,12%)) 0%, hsl(${hue},45%,var(--cat-bg-l2,20%)) 100%)`,
                 }}
               >
-                {item.product_name[0]}
-              </span>
+                <span
+                  style={{
+                    color: `hsl(${hue},70%,var(--cat-text-l,70%))`,
+                    fontSize: 18,
+                    fontWeight: 700,
+                    opacity: 0.5,
+                  }}
+                >
+                  {item.product_name[0]}
+                </span>
+              </div>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="flex items-center text-sm font-semibold text-[var(--text-h)]">
+                  {item.product_name}
+                  {item.refund && (
+                    <RefundBadge
+                      status={item.refund.status}
+                      refundAmount={item.refund.refund_amount}
+                    />
+                  )}
+                </span>
+                <span className="text-xs text-[var(--text)]">
+                  {item.size ? `Size ${item.size} · ` : ''}Qty {item.quantity}
+                </span>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className="shrink-0 text-sm font-bold text-[var(--text-h)]">
+                  ${lineTotal.toFixed(2)}
+                </span>
+                {token && (
+                  <RefundActionButton
+                    item={item}
+                    orderCreatedAt={orderCreatedAt}
+                    orderStatus={orderStatus}
+                    token={token}
+                    onRefundChange={onRefundChange}
+                  />
+                )}
+              </div>
             </div>
-            <div className="flex flex-1 flex-col gap-0.5">
-              <span className="text-sm font-semibold text-[var(--text-h)]">
-                {item.product_name}
-              </span>
-              <span className="text-xs text-[var(--text)]">
-                {item.size ? `Size ${item.size} · ` : ''}Qty {item.quantity}
-              </span>
-            </div>
-            <span className="shrink-0 text-sm font-bold text-[var(--text-h)]">
-              ${lineTotal.toFixed(2)}
-            </span>
           </li>
         )
       })}
@@ -233,26 +350,31 @@ export default function OrdersPage({ onBack, token }) {
   const [confirmId, setConfirmId] = useState(null)
   const [cancelError, setCancelError] = useState(null)
 
-  useEffect(() => {
-    fetch(`${API_BASE}/api/orders`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (r) => {
-        let data = null
-        try {
-          data = await r.json()
-        } catch {
-          data = null
-        }
-        if (!r.ok) {
-          setError(data?.error || 'Failed to load orders.')
-          return
-        }
-        if (Array.isArray(data?.orders)) setOrders(data.orders)
+  async function fetchOrders() {
+    setLoading(true)
+    setError(null)
+    try {
+      const r = await fetch(`${API_BASE}/api/orders`, {
+        headers: { Authorization: `Bearer ${token}` },
       })
-      .catch(() => setError('Network error. Please try again.'))
-      .finally(() => setLoading(false))
-  }, [token])
+      const data = await r.json().catch(() => null)
+      if (!r.ok) {
+        setError(data?.error || 'Failed to load orders.')
+        return
+      }
+      if (data?.orders) setOrders(data.orders)
+      else setError('Failed to load orders.')
+    } catch {
+      setError('Network error. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchOrders()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const currentOrders = orders.filter(isActive)
   const pastOrders = orders.filter((o) => !isActive(o))
@@ -342,7 +464,13 @@ export default function OrdersPage({ onBack, token }) {
 
                     <DeliveryTimeline dbStatus={order.status} />
 
-                    <OrderItems items={order.items} />
+                    <OrderItems
+                      items={order.items}
+                      orderCreatedAt={order.created_at}
+                      orderStatus={order.status}
+                      token={token}
+                      onRefundChange={fetchOrders}
+                    />
 
                     <div className="flex items-center justify-between border-t border-[var(--border)] pt-3.5 text-sm text-[var(--text)]">
                       <span>Order Total</span>
@@ -445,7 +573,13 @@ export default function OrdersPage({ onBack, token }) {
                       {expandedPast === order.id && (
                         <div className="animate-[expand-in_0.15s_ease] border-t border-[var(--border)] bg-[var(--bg)] px-5 pb-4">
                           <div className="pt-4">
-                            <OrderItems items={order.items} />
+                            <OrderItems
+                              items={order.items}
+                              orderCreatedAt={order.created_at}
+                              orderStatus={order.status}
+                              token={token}
+                              onRefundChange={fetchOrders}
+                            />
                           </div>
                           <div className="flex items-center justify-between border-t border-[var(--border)] pt-3.5 text-sm text-[var(--text)]">
                             <span>Order Total</span>

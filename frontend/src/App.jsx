@@ -182,19 +182,33 @@ function App() {
     if (!token) localStorage.setItem('guest_cart', JSON.stringify(cart))
   }, [cart, token])
 
-  // On mount: if already logged in, load cart and wishlist from server
+  // On mount: if already logged in, validate token and load cart and wishlist from server.
+  // A 401 here means the token is stale (e.g. DB was reset) — log out immediately so the
+  // user is not stuck in a broken "logged in" state with a non-functional session.
   useEffect(() => {
     if (!token) return
     fetch(`${API_BASE}/api/cart`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 401) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('guest_cart')
+          localStorage.removeItem('guest_wishlist')
+          setToken(null)
+          setUser(null)
+          setCart([])
+          setWishlist([])
+          return null
+        }
+        return r.json()
+      })
       .then((data) => {
-        if (data.items) setCart(data.items)
+        if (data?.items) setCart(data.items)
       })
       .catch(() => {})
     fetch(`${API_BASE}/api/wishlist`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => {
-        if (data.items) setWishlist(data.items)
+        if (data?.items) setWishlist(data.items)
       })
       .catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
