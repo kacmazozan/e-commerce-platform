@@ -141,7 +141,7 @@ docker compose exec backend node scripts/seed-products.js
 Route files in `backend/routes/`:
 
 - `auth.js` — `POST /api/auth/register`, `POST /api/auth/login`, password reset endpoints
-- `products.js` — public; `GET /api/products` (`?category=`, `?limit=`), `GET /api/products/search` (`?q=`)
+- `products.js` — public; `GET /api/products` (`?category=`, `?limit=`, `?sort=`), `GET /api/products/search` (`?q=`, `?limit=`, `?sort=`); valid sort values: `newest` (default), `price_asc`, `price_desc`, `popularity`
 - `cart.js` — authenticated; `GET/POST /api/cart`, `PUT /api/cart/:productId`, `DELETE /api/cart/:productId`, `DELETE /api/cart`
 - `checkout.js` — authenticated; `POST /api/checkout/reserve`, `DELETE /api/checkout/reserve`, `POST /api/checkout/confirm`
 - `admin.js` — `GET/POST/PUT/DELETE /api/admin/users`, `GET /api/admin/me`
@@ -169,7 +169,7 @@ Invoice generation and email delivery now live inside the Node backend. `backend
 
 Auth state (`token`, `adminToken`, `salesManagerToken`) held in `App`, initialised from `localStorage`. JWT decoded client-side via `src/utils/jwt.js`.
 
-Shared: `src/styles/dashboardStyles.js` (Tailwind constants), `src/components/DashboardLayout.jsx` (sidebar+header shell for admin and SM dashboards).
+Shared: `src/styles/dashboardStyles.js` (Tailwind constants), `src/components/DashboardLayout.jsx` (sidebar+header shell for admin and SM dashboards), `src/constants/sortOptions.js` (sort dropdown options for product listing pages).
 
 **Route guards:**
 
