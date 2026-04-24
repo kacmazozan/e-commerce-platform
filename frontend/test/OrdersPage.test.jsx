@@ -413,6 +413,7 @@ function mockFetch(ordersResponse) {
   )
 }
 
+
 describe('OrdersPage — refund button visibility', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
