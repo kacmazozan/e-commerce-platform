@@ -587,7 +587,7 @@ function App() {
           path="/orders"
           element={
             <RequireAuth token={token}>
-              <OrdersPage onBack={() => navigate(-1)} />
+              <OrdersPage onBack={() => navigate(-1)} token={token} />
             </RequireAuth>
           }
         />
