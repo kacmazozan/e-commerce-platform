@@ -191,6 +191,7 @@ export default function CartPage({
                 >
                   <Link
                     to={`/product/${item.id}`}
+                    aria-label={`View ${item.name}`}
                     className="flex h-18 w-18 shrink-0 items-center justify-center rounded-lg no-underline"
                   >
                     <CatalogImage
@@ -199,7 +200,9 @@ export default function CartPage({
                       containerClassName="h-18 w-18 shrink-0 rounded-lg"
                       imageClassName="object-contain p-2"
                       placeholder={
-                        <span className="text-2xl font-bold text-purple-400">{item.name[0]}</span>
+                        <span aria-hidden="true" className="text-2xl font-bold text-purple-400">
+                          {item.name[0]}
+                        </span>
                       }
                       style={{ background: 'rgba(192,132,252,0.12)' }}
                     />

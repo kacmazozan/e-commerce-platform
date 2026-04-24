@@ -52,7 +52,11 @@ const CANCELLABLE_STATUSES = ['pending', 'processing']
 // PATCH /api/orders/:id/cancel — cancel an order that hasn't shipped yet
 router.patch('/:id/cancel', async (req, res) => {
   const userId = req.user.userId
-  const orderId = parseInt(req.params.id)
+  const orderId = parseInt(req.params.id, 10)
+
+  if (isNaN(orderId) || orderId <= 0) {
+    return res.status(400).json({ error: 'Invalid order ID' })
+  }
 
   const orderResult = await pool.query(
     'SELECT id, status FROM orders WHERE id = $1 AND user_id = $2',
@@ -85,10 +89,16 @@ router.patch('/:id/cancel', async (req, res) => {
       )
     }
 
-    await client.query(
-      "UPDATE orders SET status = 'cancelled'::order_status, updated_at = NOW() WHERE id = $1",
-      [orderId]
+    const updateResult = await client.query(
+      `UPDATE orders SET status = 'cancelled'::order_status, updated_at = NOW()
+       WHERE id = $1 AND user_id = $2 AND status = ANY($3)`,
+      [orderId, userId, CANCELLABLE_STATUSES]
     )
+
+    if (updateResult.rowCount === 0) {
+      await client.query('ROLLBACK')
+      return res.status(409).json({ error: 'Order cannot be cancelled once it is in transit.' })
+    }
 
     await client.query('COMMIT')
     res.json({ message: 'Order cancelled successfully' })

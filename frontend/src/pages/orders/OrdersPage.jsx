@@ -179,11 +179,14 @@ function DeliveryTimeline({ dbStatus }) {
 function OrderItems({ items }) {
   return (
     <ul className="m-0 mb-4 flex list-none flex-col gap-3 p-0">
-      {items.map((item, i) => {
+      {items.map((item) => {
         const hue = nameHue(item.product_name)
         const lineTotal = parseFloat(item.price) * item.quantity
         return (
-          <li key={i} className="flex items-center gap-3.5">
+          <li
+            key={`${item.order_id}-${item.product_id}-${item.size ?? ''}`}
+            className="flex items-center gap-3.5"
+          >
             <div
               className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-[var(--border)]"
               style={{
@@ -234,10 +237,18 @@ export default function OrdersPage({ onBack, token }) {
     fetch(`${API_BASE}/api/orders`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.orders) setOrders(data.orders)
-        else setError('Failed to load orders.')
+      .then(async (r) => {
+        let data = null
+        try {
+          data = await r.json()
+        } catch {
+          data = null
+        }
+        if (!r.ok) {
+          setError(data?.error || 'Failed to load orders.')
+          return
+        }
+        if (Array.isArray(data?.orders)) setOrders(data.orders)
       })
       .catch(() => setError('Network error. Please try again.'))
       .finally(() => setLoading(false))

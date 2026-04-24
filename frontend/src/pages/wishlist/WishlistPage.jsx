@@ -132,6 +132,7 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
               >
                 <Link
                   to={`/product/${item.id}`}
+                  aria-label={`View ${item.name}`}
                   className="flex aspect-[4/3] w-full items-center justify-center bg-purple-400/12 no-underline"
                 >
                   <CatalogImage
@@ -140,7 +141,10 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
                     containerClassName="h-full w-full"
                     imageClassName="object-contain p-3"
                     placeholder={
-                      <span className="text-5xl font-bold text-purple-400 opacity-50">
+                      <span
+                        aria-hidden="true"
+                        className="text-5xl font-bold text-purple-400 opacity-50"
+                      >
                         {item.name[0]}
                       </span>
                     }
