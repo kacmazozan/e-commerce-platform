@@ -41,28 +41,27 @@ describe('GET /api/orders', () => {
   })
 
   it('returns grouped orders with null refund when no refund exists', async () => {
-    pool.query.mockResolvedValueOnce({
-      rows: [
-        {
-          order_id: 1,
-          status: 'delivered',
-          total: '149.99',
-          address: '123 Main St',
-          created_at: within30Days,
-          updated_at: within30Days,
-          item_id: 42,
-          product_id: 5,
-          product_name: 'Boots',
-          quantity: 1,
-          price: '149.99',
-          size: 'EU 42',
-          refund_id: null,
-          refund_status: null,
-          refund_amount: null,
-          requested_at: null,
-        },
-      ],
-    })
+    pool.query
+      .mockResolvedValueOnce({
+        rows: [{ id: 1, status: 'delivered', total: '149.99', address: '123 Main St', created_at: within30Days }],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 42,
+            order_id: 1,
+            quantity: 1,
+            price: '149.99',
+            size: 'EU 42',
+            product_id: 5,
+            product_name: 'Boots',
+            refund_id: null,
+            refund_status: null,
+            refund_amount: null,
+            requested_at: null,
+          },
+        ],
+      })
 
     const res = await request(app).get('/api/orders').set('Authorization', `Bearer ${userToken}`)
 
@@ -73,28 +72,27 @@ describe('GET /api/orders', () => {
   })
 
   it('returns refund sub-object when refund exists on item', async () => {
-    pool.query.mockResolvedValueOnce({
-      rows: [
-        {
-          order_id: 1,
-          status: 'delivered',
-          total: '149.99',
-          address: '123 Main St',
-          created_at: within30Days,
-          updated_at: within30Days,
-          item_id: 42,
-          product_id: 5,
-          product_name: 'Boots',
-          quantity: 1,
-          price: '149.99',
-          size: 'EU 42',
-          refund_id: 10,
-          refund_status: 'pending',
-          refund_amount: '149.99',
-          requested_at: now,
-        },
-      ],
-    })
+    pool.query
+      .mockResolvedValueOnce({
+        rows: [{ id: 1, status: 'delivered', total: '149.99', address: '123 Main St', created_at: within30Days }],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 42,
+            order_id: 1,
+            quantity: 1,
+            price: '149.99',
+            size: 'EU 42',
+            product_id: 5,
+            product_name: 'Boots',
+            refund_id: 10,
+            refund_status: 'pending',
+            refund_amount: '149.99',
+            requested_at: now,
+          },
+        ],
+      })
 
     const res = await request(app).get('/api/orders').set('Authorization', `Bearer ${userToken}`)
 
@@ -107,46 +105,40 @@ describe('GET /api/orders', () => {
   })
 
   it('groups multiple items under the same order', async () => {
-    pool.query.mockResolvedValueOnce({
-      rows: [
-        {
-          order_id: 1,
-          status: 'delivered',
-          total: '249.98',
-          address: null,
-          created_at: within30Days,
-          updated_at: within30Days,
-          item_id: 42,
-          product_id: 5,
-          product_name: 'Boots',
-          quantity: 1,
-          price: '149.99',
-          size: '',
-          refund_id: null,
-          refund_status: null,
-          refund_amount: null,
-          requested_at: null,
-        },
-        {
-          order_id: 1,
-          status: 'delivered',
-          total: '249.98',
-          address: null,
-          created_at: within30Days,
-          updated_at: within30Days,
-          item_id: 43,
-          product_id: 6,
-          product_name: 'Shirt',
-          quantity: 1,
-          price: '99.99',
-          size: 'M',
-          refund_id: null,
-          refund_status: null,
-          refund_amount: null,
-          requested_at: null,
-        },
-      ],
-    })
+    pool.query
+      .mockResolvedValueOnce({
+        rows: [{ id: 1, status: 'delivered', total: '249.98', address: null, created_at: within30Days }],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 42,
+            order_id: 1,
+            quantity: 1,
+            price: '149.99',
+            size: '',
+            product_id: 5,
+            product_name: 'Boots',
+            refund_id: null,
+            refund_status: null,
+            refund_amount: null,
+            requested_at: null,
+          },
+          {
+            id: 43,
+            order_id: 1,
+            quantity: 1,
+            price: '99.99',
+            size: 'M',
+            product_id: 6,
+            product_name: 'Shirt',
+            refund_id: null,
+            refund_status: null,
+            refund_amount: null,
+            requested_at: null,
+          },
+        ],
+      })
 
     const res = await request(app).get('/api/orders').set('Authorization', `Bearer ${userToken}`)
 

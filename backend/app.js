@@ -17,7 +17,6 @@ const productManagerInvoicesRouter = require('./routes/product-manager-invoices'
 const ordersRouter = require('./routes/orders')
 const notificationsRouter = require('./routes/notifications')
 const invoicesRouter = require('./routes/invoices')
-const ordersRouter = require('./routes/orders')
 const refundsRouter = require('./routes/refunds')
 
 const app = express()
@@ -41,7 +40,6 @@ app.use('/api/product-manager', productManagerRouter)
 app.use('/api/orders', ordersRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/invoices', invoicesRouter)
-app.use('/api/orders', ordersRouter)
 app.use('/api/refunds', refundsRouter)
 
 // Global error handler — catches unhandled errors from async route handlers
