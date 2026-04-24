@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
@@ -24,7 +24,16 @@ const pendingOrder = {
   address: '123 Main St',
   created_at: '2024-01-15T10:00:00Z',
   items: [
-    { order_id: 1, quantity: 1, price: '49.99', size: null, product_id: 1, product_name: 'Widget' },
+    {
+      id: 10,
+      order_id: 1,
+      quantity: 1,
+      price: '49.99',
+      size: null,
+      product_id: 1,
+      product_name: 'Widget',
+      refund: null,
+    },
   ],
 }
 
@@ -44,7 +53,16 @@ const deliveredOrder = {
   address: '789 Pine Rd',
   created_at: '2024-01-10T10:00:00Z',
   items: [
-    { order_id: 3, quantity: 2, price: '14.99', size: 'M', product_id: 2, product_name: 'Gadget' },
+    {
+      id: 11,
+      order_id: 3,
+      quantity: 2,
+      price: '14.99',
+      size: 'M',
+      product_id: 2,
+      product_name: 'Gadget',
+      refund: null,
+    },
   ],
 }
 
@@ -55,7 +73,16 @@ const processingOrder = {
   address: '654 Maple Dr',
   created_at: '2024-01-18T10:00:00Z',
   items: [
-    { order_id: 5, quantity: 1, price: '39.99', size: 'L', product_id: 3, product_name: 'Jacket' },
+    {
+      id: 12,
+      order_id: 5,
+      quantity: 1,
+      price: '39.99',
+      size: 'L',
+      product_id: 3,
+      product_name: 'Jacket',
+      refund: null,
+    },
   ],
 }
 
@@ -345,5 +372,194 @@ describe('OrdersPage', () => {
     expect(
       await screen.findByText(/order cannot be cancelled once it is in transit/i)
     ).toBeInTheDocument()
+  })
+})
+
+/* ── Refund button visibility ────────────────────────────── */
+
+const now = new Date()
+const within30Days = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+const outside30Days = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString()
+
+function makeOrder(overrides = {}) {
+  return {
+    id: 1,
+    status: 'delivered',
+    total: '149.99',
+    address: '123 Main',
+    created_at: within30Days,
+    items: [
+      {
+        id: 42,
+        product_id: 5,
+        product_name: 'Boots',
+        quantity: 1,
+        price: '149.99',
+        size: 'EU 42',
+        refund: null,
+      },
+    ],
+    ...overrides,
+  }
+}
+
+function mockFetch(ordersResponse) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ orders: [ordersResponse] }),
+    })
+  )
+}
+
+describe('OrdersPage — refund button visibility', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  async function expandPastOrder() {
+    const toggle = await screen.findByRole('button', { name: /#1/i })
+    await userEvent.click(toggle)
+  }
+
+  it('shows "Request Refund" for delivered order within 30 days with no refund', async () => {
+    mockFetch(makeOrder())
+    renderPage()
+
+    await expandPastOrder()
+    expect(screen.getByRole('button', { name: /request refund/i })).toBeInTheDocument()
+  })
+
+  it('hides button for delivered order older than 30 days', async () => {
+    mockFetch(makeOrder({ created_at: outside30Days }))
+    renderPage()
+
+    await expandPastOrder()
+    expect(screen.queryByRole('button', { name: /request refund/i })).not.toBeInTheDocument()
+  })
+
+  it('hides button for non-delivered order within 30 days', async () => {
+    mockFetch(makeOrder({ status: 'processing' }))
+    renderPage()
+
+    await screen.findByText('Boots')
+    expect(screen.queryByRole('button', { name: /request refund/i })).not.toBeInTheDocument()
+  })
+
+  it('shows "Cancel Refund Request" when item has a pending refund', async () => {
+    mockFetch(
+      makeOrder({
+        items: [
+          {
+            id: 42,
+            product_id: 5,
+            product_name: 'Boots',
+            quantity: 1,
+            price: '149.99',
+            size: 'EU 42',
+            refund: { id: 10, status: 'pending', refund_amount: '149.99', requested_at: now },
+          },
+        ],
+      })
+    )
+    renderPage()
+
+    await expandPastOrder()
+    expect(screen.getByRole('button', { name: /cancel refund request/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^request refund$/i })).not.toBeInTheDocument()
+  })
+
+  it('hides all refund buttons when item has an approved refund', async () => {
+    mockFetch(
+      makeOrder({
+        items: [
+          {
+            id: 42,
+            product_id: 5,
+            product_name: 'Boots',
+            quantity: 1,
+            price: '149.99',
+            size: 'EU 42',
+            refund: { id: 10, status: 'approved', refund_amount: '149.99', requested_at: now },
+          },
+        ],
+      })
+    )
+    renderPage()
+
+    await expandPastOrder()
+    expect(screen.queryByRole('button', { name: /request refund/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /cancel refund request/i })).not.toBeInTheDocument()
+  })
+
+  it('hides all refund buttons when item has a rejected refund', async () => {
+    mockFetch(
+      makeOrder({
+        items: [
+          {
+            id: 42,
+            product_id: 5,
+            product_name: 'Boots',
+            quantity: 1,
+            price: '149.99',
+            size: 'EU 42',
+            refund: { id: 10, status: 'rejected', refund_amount: '149.99', requested_at: now },
+          },
+        ],
+      })
+    )
+    renderPage()
+
+    await expandPastOrder()
+    expect(screen.queryByRole('button', { name: /request refund/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /cancel refund request/i })).not.toBeInTheDocument()
+  })
+
+  it('submitting refund re-fetches orders and shows cancel button', async () => {
+    const initialOrder = makeOrder()
+    const updatedOrder = makeOrder({
+      items: [
+        {
+          id: 42,
+          product_id: 5,
+          product_name: 'Boots',
+          quantity: 1,
+          price: '149.99',
+          size: 'EU 42',
+          refund: { id: 10, status: 'pending', refund_amount: '149.99', requested_at: now },
+        },
+      ],
+    })
+
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ orders: [initialOrder] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ refund: { id: 10, status: 'pending' } }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ orders: [updatedOrder] }),
+        })
+    )
+
+    renderPage()
+
+    const toggle = await screen.findByRole('button', { name: /#1/i })
+    await userEvent.click(toggle)
+
+    const requestBtn = await screen.findByRole('button', { name: /request refund/i })
+    await userEvent.click(requestBtn)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /cancel refund request/i })).toBeInTheDocument()
+    })
   })
 })
