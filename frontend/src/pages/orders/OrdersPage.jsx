@@ -22,6 +22,10 @@ function isActive(order) {
   return order.status !== 'delivered' && order.status !== 'cancelled'
 }
 
+function isCancellable(order) {
+  return order.status === 'pending' || order.status === 'processing'
+}
+
 function formatDate(isoStr) {
   return new Date(isoStr).toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -222,6 +226,9 @@ export default function OrdersPage({ onBack, token }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [expandedPast, setExpandedPast] = useState(null)
+  const [cancellingId, setCancellingId] = useState(null)
+  const [confirmId, setConfirmId] = useState(null)
+  const [cancelError, setCancelError] = useState(null)
 
   useEffect(() => {
     fetch(`${API_BASE}/api/orders`, {
@@ -241,6 +248,28 @@ export default function OrdersPage({ onBack, token }) {
 
   function togglePast(id) {
     setExpandedPast((prev) => (prev === id ? null : id))
+  }
+
+  async function handleCancel(orderId) {
+    setCancellingId(orderId)
+    setCancelError(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/orders/${orderId}/cancel`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setCancelError(data.error || 'Failed to cancel order.')
+        return
+      }
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o)))
+      setConfirmId(null)
+    } catch {
+      setCancelError('Network error. Please try again.')
+    } finally {
+      setCancellingId(null)
+    }
   }
 
   return (
@@ -310,6 +339,53 @@ export default function OrdersPage({ onBack, token }) {
                         ${parseFloat(order.total).toFixed(2)}
                       </span>
                     </div>
+
+                    {isCancellable(order) && (
+                      <div className="mt-4">
+                        {cancelError && cancellingId === null && confirmId === order.id && (
+                          <p className="mb-2 rounded-lg bg-red-400/8 px-3 py-2 text-center text-xs text-red-400">
+                            {cancelError}
+                          </p>
+                        )}
+                        {confirmId === order.id ? (
+                          <div className="flex items-center gap-2">
+                            <span className="flex-1 text-xs text-[var(--text)]">
+                              Are you sure you want to cancel this order?
+                            </span>
+                            <button
+                              type="button"
+                              className="cursor-pointer rounded-lg border border-red-400/40 bg-transparent px-3 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                              onClick={() => handleCancel(order.id)}
+                              disabled={cancellingId === order.id}
+                            >
+                              {cancellingId === order.id ? 'Cancelling…' : 'Yes, cancel'}
+                            </button>
+                            <button
+                              type="button"
+                              className="cursor-pointer rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition-colors hover:border-purple-400/40 hover:text-purple-400"
+                              onClick={() => {
+                                setConfirmId(null)
+                                setCancelError(null)
+                              }}
+                              disabled={cancellingId === order.id}
+                            >
+                              Keep order
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="cursor-pointer rounded-lg border border-red-400/30 bg-transparent px-4 py-2 text-xs font-semibold text-red-400 transition-colors hover:bg-red-400/10"
+                            onClick={() => {
+                              setConfirmId(order.id)
+                              setCancelError(null)
+                            }}
+                          >
+                            Cancel Order
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

@@ -47,4 +47,57 @@ router.get('/', async (req, res) => {
   res.json({ orders })
 })
 
+const CANCELLABLE_STATUSES = ['pending', 'processing']
+
+// PATCH /api/orders/:id/cancel — cancel an order that hasn't shipped yet
+router.patch('/:id/cancel', async (req, res) => {
+  const userId = req.user.userId
+  const orderId = parseInt(req.params.id)
+
+  const orderResult = await pool.query(
+    'SELECT id, status FROM orders WHERE id = $1 AND user_id = $2',
+    [orderId, userId]
+  )
+
+  if (orderResult.rows.length === 0) {
+    return res.status(404).json({ error: 'Order not found' })
+  }
+
+  const { status } = orderResult.rows[0]
+
+  if (!CANCELLABLE_STATUSES.includes(status)) {
+    return res.status(409).json({ error: 'Order cannot be cancelled once it is in transit.' })
+  }
+
+  const itemsResult = await pool.query(
+    'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
+    [orderId]
+  )
+
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+
+    for (const item of itemsResult.rows) {
+      await client.query(
+        'UPDATE products SET stock = stock + $1, updated_at = NOW() WHERE id = $2',
+        [item.quantity, item.product_id]
+      )
+    }
+
+    await client.query(
+      "UPDATE orders SET status = 'cancelled'::order_status, updated_at = NOW() WHERE id = $1",
+      [orderId]
+    )
+
+    await client.query('COMMIT')
+    res.json({ message: 'Order cancelled successfully' })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
+})
+
 module.exports = router
