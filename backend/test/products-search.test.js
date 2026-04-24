@@ -190,11 +190,11 @@ describe('GET /api/products/search — sort parameter', () => {
     await request(app).get('/api/products/search?q=laptop&sort=popularity')
 
     const [sql] = pool.query.mock.calls[0]
-    expect(sql).toContain('COALESCE(SUM(oi.quantity), 0)')
-    expect(sql).toContain('order_items')
+    expect(sql).toContain('COALESCE(oi.units_sold, 0)')
+    expect(sql).toContain('oi_agg')
   })
 
-  it('falls back to newest when ?sort= value is invalid', async () => {
+  it('falls back to newest when ?sort value is invalid', async () => {
     pool.query.mockResolvedValueOnce({ rows: [] })
 
     await request(app).get('/api/products/search?q=laptop&sort=bogus')
@@ -222,12 +222,12 @@ describe('GET /api/products/search — sort parameter', () => {
     expect(sql).toContain('CASE WHEN GREATEST')
   })
 
-  it('JOINs order_items in SQL for all sort values', async () => {
+  it('includes oi_agg CTE in SQL for all sort values', async () => {
     pool.query.mockResolvedValueOnce({ rows: [] })
 
     await request(app).get('/api/products/search?q=laptop&sort=newest')
 
     const [sql] = pool.query.mock.calls[0]
-    expect(sql).toContain('order_items')
+    expect(sql).toContain('oi_agg')
   })
 })

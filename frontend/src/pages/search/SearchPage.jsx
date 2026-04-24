@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import API_BASE from '../../api'
+import { SORT_OPTIONS } from '../../constants/sortOptions'
 
 function BackIcon() {
   return (
@@ -38,13 +39,6 @@ function SearchIcon() {
   )
 }
 
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'price_asc', label: 'Price: Low to High' },
-  { value: 'price_desc', label: 'Price: High to Low' },
-  { value: 'popularity', label: 'Most Popular' },
-]
-
 function HeartIcon({ filled }) {
   return (
     <svg
@@ -70,7 +64,7 @@ export default function SearchPage({
   wishlistItems = [],
 }) {
   const [products, setProducts] = useState([])
-  const [loadedQuery, setLoadedQuery] = useState(null)
+  const [loadedKey, setLoadedKey] = useState(null)
   const [inputValue, setInputValue] = useState(searchQuery)
   const [sort, setSort] = useState('newest')
   const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery)
@@ -83,7 +77,7 @@ export default function SearchPage({
   }
 
   const currentKey = `${searchQuery}::${sort}`
-  const loading = loadedQuery !== currentKey
+  const loading = loadedKey !== currentKey
 
   useEffect(() => {
     let cancelled = false
@@ -96,14 +90,14 @@ export default function SearchPage({
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
-          setLoadedQuery(currentKey)
+          setLoadedKey(currentKey)
         }
       })
       .catch(() => {
         if (!cancelled) {
           setProducts([])
           setError(true)
-          setLoadedQuery(currentKey)
+          setLoadedKey(currentKey)
         }
       })
     return () => {

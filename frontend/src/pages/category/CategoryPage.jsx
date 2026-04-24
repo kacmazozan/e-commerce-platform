@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import Footer from '../home/components/Footer'
 import API_BASE from '../../api'
+import { SORT_OPTIONS } from '../../constants/sortOptions'
 
 function BackIcon() {
   return (
@@ -37,13 +38,6 @@ function HeartIcon({ filled }) {
     </svg>
   )
 }
-
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'price_asc', label: 'Price: Low to High' },
-  { value: 'price_desc', label: 'Price: High to Low' },
-  { value: 'popularity', label: 'Most Popular' },
-]
 
 export default function CategoryPage({
   category,
