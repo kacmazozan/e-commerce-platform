@@ -128,13 +128,21 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
                 key={item.id}
                 className="flex flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[transform,box-shadow] duration-250 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35)]"
               >
-                <div className="flex aspect-[4/3] w-full items-center justify-center bg-purple-400/12">
+                <Link
+                  to={`/product/${item.id}`}
+                  className="flex aspect-[4/3] w-full items-center justify-center bg-purple-400/12 no-underline"
+                >
                   <span className="text-5xl font-bold text-purple-400 opacity-50">
                     {item.name[0]}
                   </span>
-                </div>
+                </Link>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2">
-                  <span className="text-[15px] font-medium text-[var(--text-h)]">{item.name}</span>
+                  <Link
+                    to={`/product/${item.id}`}
+                    className="text-[15px] font-medium text-[var(--text-h)] no-underline hover:text-purple-400"
+                  >
+                    {item.name}
+                  </Link>
                   {item.discounted_price != null ? (
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm text-red-400 line-through opacity-70">
@@ -158,7 +166,13 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
                     </span>
                   )}
                 </div>
-                <div className="flex justify-end px-4 pt-3 pb-4">
+                <div className="flex items-center gap-2 px-4 pt-3 pb-4">
+                  <Link
+                    to={`/product/${item.id}`}
+                    className="flex-1 rounded-lg border-none bg-purple-400 py-2 text-center text-[13px] font-semibold text-white no-underline transition-opacity hover:opacity-88"
+                  >
+                    Go to item
+                  </Link>
                   <button
                     type="button"
                     className="flex cursor-pointer items-center rounded-lg border border-[var(--border)] bg-transparent p-2.5 text-[var(--text)] transition-colors hover:border-[rgba(232,93,93,0.3)] hover:bg-[rgba(232,93,93,0.1)] hover:text-[#e85d5d]"
