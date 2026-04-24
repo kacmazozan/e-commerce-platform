@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import CatalogImage from '../../components/catalog/CatalogImage'
 import API_BASE from '../../api'
+import { getProductImageUrl } from '../../lib/catalogAssets'
 
 function BackIcon() {
   return (
@@ -184,9 +186,16 @@ export default function CartPage({
                   key={`${item.id}-${itemSize}`}
                   className={`flex items-center gap-4 rounded-2xl border p-4 shadow-[var(--shadow)] backdrop-blur-xl ${outOfStock ? 'border-red-400/30 bg-red-400/5' : 'border-[var(--glass-border)] bg-[var(--card-bg)]'}`}
                 >
-                  <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-lg bg-purple-400/12">
-                    <span className="text-2xl font-bold text-purple-400">{item.name[0]}</span>
-                  </div>
+                  <CatalogImage
+                    src={getProductImageUrl(item)}
+                    alt={item.name}
+                    containerClassName="h-18 w-18 shrink-0 rounded-lg"
+                    imageClassName="object-contain p-2"
+                    placeholder={
+                      <span className="text-2xl font-bold text-purple-400">{item.name[0]}</span>
+                    }
+                    style={{ background: 'rgba(192,132,252,0.12)' }}
+                  />
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-center gap-2">
                       <span className="overflow-hidden text-[15px] font-medium text-ellipsis whitespace-nowrap text-[var(--text-h)]">
