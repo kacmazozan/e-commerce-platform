@@ -164,9 +164,12 @@ export default function CartPage({
           >
             <BackIcon /> Back
           </button>
-          <span className="ml-auto text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
+          <Link
+            to="/"
+            className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
+          >
             FIER
-          </span>
+          </Link>
         </div>
       </header>
 
@@ -186,21 +189,32 @@ export default function CartPage({
                   key={`${item.id}-${itemSize}`}
                   className={`flex items-center gap-4 rounded-2xl border p-4 shadow-[var(--shadow)] backdrop-blur-xl ${outOfStock ? 'border-red-400/30 bg-red-400/5' : 'border-[var(--glass-border)] bg-[var(--card-bg)]'}`}
                 >
-                  <CatalogImage
-                    src={getProductImageUrl(item)}
-                    alt={item.name}
-                    containerClassName="h-18 w-18 shrink-0 rounded-lg"
-                    imageClassName="object-contain p-2"
-                    placeholder={
-                      <span className="text-2xl font-bold text-purple-400">{item.name[0]}</span>
-                    }
-                    style={{ background: 'rgba(192,132,252,0.12)' }}
-                  />
+                  <Link
+                    to={`/product/${item.id}`}
+                    aria-label={`View ${item.name}`}
+                    className="flex h-18 w-18 shrink-0 items-center justify-center rounded-lg no-underline"
+                  >
+                    <CatalogImage
+                      src={getProductImageUrl(item)}
+                      alt={item.name}
+                      containerClassName="h-18 w-18 shrink-0 rounded-lg"
+                      imageClassName="object-contain p-2"
+                      placeholder={
+                        <span aria-hidden="true" className="text-2xl font-bold text-purple-400">
+                          {item.name[0]}
+                        </span>
+                      }
+                      style={{ background: 'rgba(192,132,252,0.12)' }}
+                    />
+                  </Link>
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-center gap-2">
-                      <span className="overflow-hidden text-[15px] font-medium text-ellipsis whitespace-nowrap text-[var(--text-h)]">
+                      <Link
+                        to={`/product/${item.id}`}
+                        className="overflow-hidden text-[15px] font-medium text-ellipsis whitespace-nowrap text-[var(--text-h)] no-underline hover:text-purple-400"
+                      >
                         {item.name}
-                      </span>
+                      </Link>
                       {itemSize && (
                         <span className="shrink-0 rounded-full bg-purple-400/12 px-2 py-0.5 text-[11px] font-semibold text-purple-400">
                           {itemSize}
