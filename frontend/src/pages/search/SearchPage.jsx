@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import API_BASE from '../../api'
+import { SORT_OPTIONS } from '../../constants/sortOptions'
 
 function BackIcon() {
   return (
@@ -63,16 +64,25 @@ export default function SearchPage({
   wishlistItems = [],
 }) {
   const [products, setProducts] = useState([])
-  const [loadedQuery, setLoadedQuery] = useState(null)
+  const [loadedKey, setLoadedKey] = useState(null)
   const [inputValue, setInputValue] = useState(searchQuery)
+  const [sort, setSort] = useState('newest')
+  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery)
   const [error, setError] = useState(false)
   const navigate = useNavigate()
-  const loading = loadedQuery !== searchQuery
+
+  if (prevSearchQuery !== searchQuery) {
+    setPrevSearchQuery(searchQuery)
+    setSort('newest')
+  }
+
+  const currentKey = `${searchQuery}::${sort}`
+  const loading = loadedKey !== currentKey
 
   useEffect(() => {
     let cancelled = false
     setError(false)
-    fetch(`${API_BASE}/api/products/search?q=${encodeURIComponent(searchQuery)}`)
+    fetch(`${API_BASE}/api/products/search?q=${encodeURIComponent(searchQuery)}&sort=${sort}`)
       .then((r) => {
         if (!r.ok) throw new Error('Server error')
         return r.json()
@@ -80,20 +90,20 @@ export default function SearchPage({
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
-          setLoadedQuery(searchQuery)
+          setLoadedKey(currentKey)
         }
       })
       .catch(() => {
         if (!cancelled) {
           setProducts([])
           setError(true)
-          setLoadedQuery(searchQuery)
+          setLoadedKey(currentKey)
         }
       })
     return () => {
       cancelled = true
     }
-  }, [searchQuery])
+  }, [searchQuery, sort])
 
   useEffect(() => {
     setInputValue(searchQuery)
@@ -172,6 +182,24 @@ export default function SearchPage({
                   : `${products.length} product${products.length !== 1 ? 's' : ''} found`}
             </p>
           )}
+        </div>
+
+        <div className="mb-6 flex items-center justify-end">
+          <label htmlFor="search-sort" className="mr-2 text-[13px] text-[var(--text)] opacity-60">
+            Sort by
+          </label>
+          <select
+            id="search-sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-1.5 text-sm text-[var(--text-h)] outline-none focus:border-purple-400/50"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {loading && <p className="text-[var(--text)] opacity-60">Loading products…</p>}
