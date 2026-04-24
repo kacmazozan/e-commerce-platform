@@ -8,8 +8,8 @@
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "migrate:up": "node-pg-migrate up --migrations-dir migrations",
-    "migrate:down": "node-pg-migrate down --migrations-dir migrations",
+    "migrate:up": "node scripts/run-migrations.js up",
+    "migrate:down": "node scripts/run-migrations.js down",
     "seed:admin": "node scripts/seed-admin.js",
     "send:test-invoice": "node scripts/send-test-invoice.js",
     "dev": "nodemon server.js"
