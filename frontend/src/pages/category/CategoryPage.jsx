@@ -68,7 +68,6 @@ export default function CategoryPage({
     let cancelled = false
     const requestKey = `${category.title}::${sort}`
 
-    setError(false)
     fetchJsonWithRetry(
       `${API_BASE}/api/products?category=${encodeURIComponent(category.title)}&sort=${sort}`,
       { attempts: 1 }

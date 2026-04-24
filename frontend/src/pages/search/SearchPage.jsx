@@ -85,7 +85,6 @@ export default function SearchPage({
     let cancelled = false
     const requestKey = `${searchQuery}::${sort}`
 
-    setError(false)
     fetch(`${API_BASE}/api/products/search?q=${encodeURIComponent(searchQuery)}&sort=${sort}`)
       .then((r) => {
         if (!r.ok) throw new Error('Server error')
