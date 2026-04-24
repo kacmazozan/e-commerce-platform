@@ -43,7 +43,15 @@ describe('GET /api/orders', () => {
   it('returns grouped orders with null refund when no refund exists', async () => {
     pool.query
       .mockResolvedValueOnce({
-        rows: [{ id: 1, status: 'delivered', total: '149.99', address: '123 Main St', created_at: within30Days }],
+        rows: [
+          {
+            id: 1,
+            status: 'delivered',
+            total: '149.99',
+            address: '123 Main St',
+            created_at: within30Days,
+          },
+        ],
       })
       .mockResolvedValueOnce({
         rows: [
@@ -74,7 +82,15 @@ describe('GET /api/orders', () => {
   it('returns refund sub-object when refund exists on item', async () => {
     pool.query
       .mockResolvedValueOnce({
-        rows: [{ id: 1, status: 'delivered', total: '149.99', address: '123 Main St', created_at: within30Days }],
+        rows: [
+          {
+            id: 1,
+            status: 'delivered',
+            total: '149.99',
+            address: '123 Main St',
+            created_at: within30Days,
+          },
+        ],
       })
       .mockResolvedValueOnce({
         rows: [
@@ -107,7 +123,9 @@ describe('GET /api/orders', () => {
   it('groups multiple items under the same order', async () => {
     pool.query
       .mockResolvedValueOnce({
-        rows: [{ id: 1, status: 'delivered', total: '249.98', address: null, created_at: within30Days }],
+        rows: [
+          { id: 1, status: 'delivered', total: '249.98', address: null, created_at: within30Days },
+        ],
       })
       .mockResolvedValueOnce({
         rows: [
