@@ -2,6 +2,7 @@ const request = require('supertest')
 
 jest.mock('../db', () => ({
   query: jest.fn(),
+  connect: jest.fn(),
 }))
 
 const pool = require('../db')
@@ -144,5 +145,120 @@ describe('GET /api/orders', () => {
     const res = await request(app).get('/api/orders').set('Authorization', `Bearer ${userToken}`)
 
     expect(res.status).toBe(500)
+  })
+})
+
+function makeClient(queryResponses = []) {
+  let callCount = 0
+  const client = {
+    query: jest.fn().mockImplementation(() => {
+      const response = queryResponses[callCount] ?? { rows: [] }
+      callCount++
+      return Promise.resolve(response)
+    }),
+    release: jest.fn(),
+  }
+  return client
+}
+
+describe('PATCH /api/orders/:id/cancel', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns 401 when no token provided', async () => {
+    const res = await request(app).patch('/api/orders/1/cancel')
+
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 404 when order does not exist or belongs to another user', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] }) // order not found
+
+    const res = await request(app)
+      .patch('/api/orders/999/cancel')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Order not found')
+  })
+
+  it('returns 409 when order status is shipped', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, status: 'shipped' }] })
+
+    const res = await request(app)
+      .patch('/api/orders/1/cancel')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('Order cannot be cancelled once it is in transit.')
+  })
+
+  it('returns 409 when order status is delivered', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, status: 'delivered' }] })
+
+    const res = await request(app)
+      .patch('/api/orders/1/cancel')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('Order cannot be cancelled once it is in transit.')
+  })
+
+  it('returns 409 when order status is already cancelled', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, status: 'cancelled' }] })
+
+    const res = await request(app)
+      .patch('/api/orders/1/cancel')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('Order cannot be cancelled once it is in transit.')
+  })
+
+  it('successfully cancels a pending order: restores stock and returns success message', async () => {
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 10, status: 'pending' }] }) // order lookup
+      .mockResolvedValueOnce({
+        rows: [
+          { product_id: 1, quantity: 2 },
+          { product_id: 2, quantity: 1 },
+        ],
+      }) // order items
+
+    const client = makeClient([
+      { rows: [] }, // BEGIN
+      { rows: [] }, // UPDATE products stock (item 1)
+      { rows: [] }, // UPDATE products stock (item 2)
+      { rows: [] }, // UPDATE orders SET status = 'cancelled'
+      { rows: [] }, // COMMIT
+    ])
+    pool.connect.mockResolvedValueOnce(client)
+
+    const res = await request(app)
+      .patch('/api/orders/10/cancel')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.message).toBe('Order cancelled successfully')
+  })
+
+  it('successfully cancels a processing order', async () => {
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 20, status: 'processing' }] }) // order lookup
+      .mockResolvedValueOnce({ rows: [{ product_id: 3, quantity: 5 }] }) // order items
+
+    const client = makeClient([
+      { rows: [] }, // BEGIN
+      { rows: [] }, // UPDATE products stock
+      { rows: [] }, // UPDATE orders SET status = 'cancelled'
+      { rows: [] }, // COMMIT
+    ])
+    pool.connect.mockResolvedValueOnce(client)
+
+    const res = await request(app)
+      .patch('/api/orders/20/cancel')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.message).toBe('Order cancelled successfully')
   })
 })
