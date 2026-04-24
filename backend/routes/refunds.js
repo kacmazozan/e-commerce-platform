@@ -34,20 +34,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Refund window expired (30 days)' })
     }
 
-    const existing = await pool.query('SELECT id FROM refunds WHERE order_item_id = $1', [
-      order_item_id,
-    ])
-    if (existing.rows.length > 0) {
-      return res.status(409).json({ error: 'Refund already requested for this item' })
-    }
-
-    const refundAmount = (parseFloat(item.price) * item.quantity).toFixed(2)
     const insert = await pool.query(
       `INSERT INTO refunds (order_item_id, user_id, status, refund_amount, reason)
-       VALUES ($1, $2, 'pending', $3, $4)
+       SELECT $1, $2, 'pending', (price * quantity)::numeric(10,2), $3
+       FROM order_items WHERE id = $1
+       ON CONFLICT (order_item_id) DO NOTHING
        RETURNING id, status, refund_amount, reason, requested_at`,
-      [order_item_id, req.user.userId, refundAmount, reason || null]
+      [order_item_id, req.user.userId, reason || null]
     )
+
+    if (insert.rows.length === 0) {
+      return res.status(409).json({ error: 'Refund already requested for this item' })
+    }
 
     res.status(201).json({ refund: { order_item_id, ...insert.rows[0] } })
   } catch (err) {
@@ -95,7 +93,10 @@ router.delete('/:id', async (req, res) => {
       return res.status(409).json({ error: `Cannot cancel a ${rows[0].status} refund request` })
     }
 
-    await pool.query('DELETE FROM refunds WHERE id = $1', [refundId])
+    await pool.query('DELETE FROM refunds WHERE id = $1 AND user_id = $2', [
+      refundId,
+      req.user.userId,
+    ])
     res.status(204).send()
   } catch (err) {
     console.error(err)

@@ -233,7 +233,7 @@ describe('POST /api/refunds', () => {
           { id: 42, quantity: 1, price: '99.99', created_at: within30Days, status: 'delivered' },
         ],
       })
-      .mockResolvedValueOnce({ rows: [{ id: 10 }] })
+      .mockResolvedValueOnce({ rows: [] }) // ON CONFLICT DO NOTHING — no row inserted
 
     const res = await request(app)
       .post('/api/refunds')
@@ -250,7 +250,6 @@ describe('POST /api/refunds', () => {
           { id: 42, quantity: 2, price: '75.00', created_at: within30Days, status: 'delivered' },
         ],
       })
-      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [
           { id: 10, status: 'pending', refund_amount: '150.00', reason: null, requested_at: now },

@@ -136,7 +136,8 @@ function statusLabel(dbStatus) {
 
 function RefundBadge({ status, refundAmount }) {
   const base = 'inline-block text-[10px] font-bold tracking-[0.5px] px-2 py-0.5 rounded-full ml-2'
-  const amount = refundAmount ? ` · $${parseFloat(refundAmount).toFixed(2)}` : ''
+  const parsed = refundAmount != null ? parseFloat(refundAmount) : null
+  const amount = parsed != null && !Number.isNaN(parsed) ? ` · $${parsed.toFixed(2)}` : ''
   switch (status) {
     case 'pending':
       return (
@@ -356,8 +357,12 @@ export default function OrdersPage({ onBack, token }) {
       const r = await fetch(`${API_BASE}/api/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = await r.json()
-      if (data.orders) setOrders(data.orders)
+      const data = await r.json().catch(() => null)
+      if (!r.ok) {
+        setError(data?.error || 'Failed to load orders.')
+        return
+      }
+      if (data?.orders) setOrders(data.orders)
       else setError('Failed to load orders.')
     } catch {
       setError('Network error. Please try again.')
