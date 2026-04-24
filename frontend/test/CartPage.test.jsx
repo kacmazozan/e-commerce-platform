@@ -269,3 +269,35 @@ describe('CartPage — discounted items', () => {
     expect(screen.getByText('$20.99')).toBeInTheDocument()
   })
 })
+
+describe('CartPage — product links', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('item name is a link pointing to /product/1', () => {
+    renderPage()
+
+    const nameLink = screen.getByRole('link', { name: 'Widget' })
+    expect(nameLink).toBeInTheDocument()
+    expect(nameLink).toHaveAttribute('href', '/product/1')
+  })
+
+  it('item thumbnail is a link pointing to /product/1', () => {
+    renderPage()
+
+    // The thumbnail link wraps the first letter of item name. Query all links to /product/1.
+    const allLinks = screen.getAllByRole('link')
+    const productLinks = allLinks.filter((l) => l.getAttribute('href') === '/product/1')
+    // There should be 2 links: thumbnail and name
+    expect(productLinks.length).toBe(2)
+  })
+
+  it('FIER logo links to /', () => {
+    renderPage()
+
+    const fierLink = screen.getByRole('link', { name: 'FIER' })
+    expect(fierLink).toBeInTheDocument()
+    expect(fierLink).toHaveAttribute('href', '/')
+  })
+})

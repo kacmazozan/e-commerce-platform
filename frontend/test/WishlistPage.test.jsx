@@ -91,4 +91,36 @@ describe('WishlistPage', () => {
 
     expect(onBack).toHaveBeenCalledOnce()
   })
+
+  it('"Go to item" link is rendered for each wishlist item', () => {
+    renderPage()
+
+    expect(screen.getByRole('link', { name: /go to item/i })).toBeInTheDocument()
+  })
+
+  it('"Go to item" link points to /product/1 for item with id 1', () => {
+    renderPage()
+
+    const link = screen.getByRole('link', { name: /go to item/i })
+    expect(link).toHaveAttribute('href', '/product/1')
+  })
+
+  it('item name is a link pointing to /product/1', () => {
+    renderPage()
+
+    const nameLink = screen.getByRole('link', { name: 'Widget' })
+    expect(nameLink).toBeInTheDocument()
+    expect(nameLink).toHaveAttribute('href', '/product/1')
+  })
+
+  it('item image area is a link pointing to /product/1', () => {
+    renderPage()
+
+    // The image area link wraps the first letter of the item name as an accessible indicator.
+    // Query all links and find the one pointing to /product/1 that is NOT the name or go-to-item link.
+    const allLinks = screen.getAllByRole('link')
+    const productLinks = allLinks.filter((l) => l.getAttribute('href') === '/product/1')
+    // There should be 3 links to /product/1: image area, name, and "Go to item"
+    expect(productLinks.length).toBe(3)
+  })
 })
