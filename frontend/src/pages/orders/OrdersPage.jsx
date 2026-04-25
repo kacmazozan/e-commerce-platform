@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import API_BASE from '../../api'
@@ -306,6 +306,16 @@ function ReviewModal({ item, token, onClose }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const dialogRef = useRef(null)
+
+  useEffect(() => {
+    dialogRef.current?.focus()
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -321,7 +331,7 @@ function ReviewModal({ item, token, onClose }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ rating, content: content.trim() || null, anonymous }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Failed to submit review')
       setSuccess(true)
     } catch (err) {
@@ -336,10 +346,19 @@ function ReviewModal({ item, token, onClose }) {
       className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-6 shadow-xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-modal-title"
+        tabIndex={-1}
+        className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-6 shadow-xl focus:outline-none"
+      >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
-            <h2 className="m-0 text-[18px] font-bold text-[var(--text-h)]">Review Product</h2>
+            <h2 id="review-modal-title" className="m-0 text-[18px] font-bold text-[var(--text-h)]">
+              Review Product
+            </h2>
             <p className="mt-0.5 text-[13px] text-[var(--text)] opacity-60">{item.product_name}</p>
           </div>
           <button
