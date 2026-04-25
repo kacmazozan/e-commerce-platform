@@ -87,7 +87,7 @@ function PMOrders({ token }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="submit" className={btnSearch}>
+          <button type="button" type="submit" className={btnSearch}>
             Search
           </button>
         </form>
@@ -150,7 +150,7 @@ function PMOrders({ token }) {
                   </td>
                   <td className={tdClass}>{new Date(o.created_at).toLocaleDateString()}</td>
                   <td className={tdClass}>
-                    <button className={btnEdit} onClick={() => viewOrder(o.id)}>
+                    <button type="button" className={btnEdit} onClick={() => viewOrder(o.id)}>
                       View
                     </button>
                   </td>
@@ -164,6 +164,7 @@ function PMOrders({ token }) {
       {pagination.totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between text-sm">
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page <= 1}
             onClick={() => fetchOrders(pagination.page - 1)}
@@ -174,6 +175,7 @@ function PMOrders({ token }) {
             Page {pagination.page} of {pagination.totalPages} ({pagination.total} orders)
           </span>
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => fetchOrders(pagination.page + 1)}
@@ -282,7 +284,7 @@ function PMOrders({ token }) {
               </>
             )}
             <div className="mt-5 flex justify-end">
-              <button className={btnBase} onClick={() => setDetail(null)}>
+              <button type="button" className={btnBase} onClick={() => setDetail(null)}>
                 Close
               </button>
             </div>

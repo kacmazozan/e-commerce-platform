@@ -8,9 +8,10 @@
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "migrate:up": "node-pg-migrate up --migrations-dir migrations",
-    "migrate:down": "node-pg-migrate down --migrations-dir migrations",
+    "migrate:up": "node scripts/run-migrations.js up",
+    "migrate:down": "node scripts/run-migrations.js down",
     "seed:admin": "node scripts/seed-admin.js",
+    "send:test-invoice": "node scripts/send-test-invoice.js",
     "dev": "nodemon server.js"
   },
   "keywords": [],
@@ -24,7 +25,9 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "node-pg-migrate": "^8.0.4",
+    "nodemailer": "^8.0.5",
     "nodemon": "^3.1.10",
+    "pdfkit": "^0.18.0",
     "pg": "^8.20.0"
   },
   "devDependencies": {

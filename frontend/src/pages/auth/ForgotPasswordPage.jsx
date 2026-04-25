@@ -54,6 +54,7 @@ function ForgotPasswordPage({ onBack }) {
 
   const themeToggle = (
     <button
+      type="button"
       onClick={toggleTheme}
       className="fixed top-6 right-6 z-[200] flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-h)] shadow-[var(--shadow)] backdrop-blur-xl transition-all hover:border-purple-400/40 hover:bg-purple-400/12 hover:text-purple-400"
       aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
@@ -75,7 +76,11 @@ function ForgotPasswordPage({ onBack }) {
             If an account exists for <strong>{email}</strong>, you'll receive a password reset link
             shortly.
           </p>
-          <Button onClick={onBack} className="w-full bg-purple-400 text-white hover:bg-purple-300">
+          <Button
+            type="button"
+            onClick={onBack}
+            className="w-full bg-purple-400 text-white hover:bg-purple-300"
+          >
             Back to sign in
           </Button>
         </div>

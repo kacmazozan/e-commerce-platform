@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import WishlistPage from '../src/pages/wishlist/WishlistPage'
 
 const regularItem = { id: 1, name: 'Widget', price: '19.99', available_stock: '5' }
@@ -12,19 +13,19 @@ const discountedItem = {
   discount_percent: 20,
   available_stock: '3',
 }
-const outOfStockItem = { id: 3, name: 'Gone', price: '10.00', available_stock: '0' }
 
 const defaultProps = {
   onBack: vi.fn(),
   wishlistItems: [regularItem],
   onRemove: vi.fn(),
-  onAddToCart: vi.fn(),
-  onRemoveFromCart: vi.fn(),
-  cartItems: [],
 }
 
 function renderPage(props = {}) {
-  return render(<WishlistPage {...defaultProps} {...props} />)
+  return render(
+    <MemoryRouter>
+      <WishlistPage {...defaultProps} {...props} />
+    </MemoryRouter>
+  )
 }
 
 describe('WishlistPage', () => {
@@ -67,44 +68,6 @@ describe('WishlistPage', () => {
     expect(screen.getByText('$16.00')).toBeInTheDocument()
   })
 
-  it('renders "Add to Cart" button for in-stock item not in cart', () => {
-    renderPage()
-
-    expect(screen.getByRole('button', { name: /add to cart/i })).toBeInTheDocument()
-  })
-
-  it('calls onAddToCart with item when "Add to Cart" is clicked', async () => {
-    const onAddToCart = vi.fn()
-    renderPage({ onAddToCart })
-
-    await userEvent.click(screen.getByRole('button', { name: /add to cart/i }))
-
-    expect(onAddToCart).toHaveBeenCalledWith(regularItem)
-  })
-
-  it('renders "Remove from Cart" button when item is already in cart', () => {
-    renderPage({ cartItems: [{ id: 1 }] })
-
-    expect(screen.getByRole('button', { name: /remove from cart/i })).toBeInTheDocument()
-  })
-
-  it('calls onRemoveFromCart with item id when "Remove from Cart" is clicked', async () => {
-    const onRemoveFromCart = vi.fn()
-    renderPage({ cartItems: [{ id: 1 }], onRemoveFromCart })
-
-    await userEvent.click(screen.getByRole('button', { name: /remove from cart/i }))
-
-    expect(onRemoveFromCart).toHaveBeenCalledWith(1)
-  })
-
-  it('renders disabled "Out of Stock" button for out-of-stock item', () => {
-    renderPage({ wishlistItems: [outOfStockItem] })
-
-    const btn = screen.getByRole('button', { name: /out of stock/i })
-    expect(btn).toBeInTheDocument()
-    expect(btn).toBeDisabled()
-  })
-
   it('renders trash button for each item', () => {
     renderPage()
 
@@ -127,5 +90,37 @@ describe('WishlistPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /back/i }))
 
     expect(onBack).toHaveBeenCalledOnce()
+  })
+
+  it('"Go to item" link is rendered for each wishlist item', () => {
+    renderPage()
+
+    expect(screen.getByRole('link', { name: /go to item/i })).toBeInTheDocument()
+  })
+
+  it('"Go to item" link points to /product/1 for item with id 1', () => {
+    renderPage()
+
+    const link = screen.getByRole('link', { name: /go to item/i })
+    expect(link).toHaveAttribute('href', '/product/1')
+  })
+
+  it('item name is a link pointing to /product/1', () => {
+    renderPage()
+
+    const nameLink = screen.getByRole('link', { name: 'Widget' })
+    expect(nameLink).toBeInTheDocument()
+    expect(nameLink).toHaveAttribute('href', '/product/1')
+  })
+
+  it('item image area is a link pointing to /product/1', () => {
+    renderPage()
+
+    // The image area link wraps the first letter of the item name as an accessible indicator.
+    // Query all links and find the one pointing to /product/1 that is NOT the name or go-to-item link.
+    const allLinks = screen.getAllByRole('link')
+    const productLinks = allLinks.filter((l) => l.getAttribute('href') === '/product/1')
+    // There should be 3 links to /product/1: image area, name, and "Go to item"
+    expect(productLinks.length).toBe(3)
   })
 })

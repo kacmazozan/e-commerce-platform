@@ -15,7 +15,6 @@ describe('GET /api/products/search', () => {
     price: '1299.99',
     stock: 10,
     category: 'Computers',
-    image_url: null,
     created_at: new Date().toISOString(),
     available_stock: 10,
     discount_percent: null,
@@ -141,5 +140,94 @@ describe('GET /api/products/search', () => {
 
     const [, params] = pool.query.mock.calls[0]
     expect(params[1]).toBe(100)
+  })
+})
+
+// ─── GET /api/products/search — sort parameter ───────────────────────────────
+
+describe('GET /api/products/search — sort parameter', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('defaults to newest when no sort param is given', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/search?q=laptop')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.created_at DESC')
+  })
+
+  it('sorts by newest when ?sort=newest', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/search?q=laptop&sort=newest')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.created_at DESC')
+  })
+
+  it('sorts by price ascending when ?sort=price_asc', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/search?q=laptop&sort=price_asc')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.price ASC')
+  })
+
+  it('sorts by price descending when ?sort=price_desc', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/search?q=laptop&sort=price_desc')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.price DESC')
+  })
+
+  it('sorts by popularity when ?sort=popularity', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/search?q=laptop&sort=popularity')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('COALESCE(oi.units_sold, 0)')
+    expect(sql).toContain('oi_agg')
+  })
+
+  it('falls back to newest when ?sort value is invalid', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/search?q=laptop&sort=bogus')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.created_at DESC')
+  })
+
+  it('applies price_asc sort even when q is empty', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/search?sort=price_asc')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).not.toMatch(/ILIKE/)
+    expect(sql).toContain('p.price ASC')
+  })
+
+  it('includes stock-pin sentinel in SQL for price_asc sort', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/search?q=laptop&sort=price_asc')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('CASE WHEN GREATEST')
+  })
+
+  it('includes oi_agg CTE in SQL for all sort values', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/search?q=laptop&sort=newest')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('oi_agg')
   })
 })

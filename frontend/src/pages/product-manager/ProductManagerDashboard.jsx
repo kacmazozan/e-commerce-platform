@@ -6,26 +6,29 @@ import PMProducts from './PMProducts'
 import PMCategories from './PMCategories'
 import PMInventory from './PMInventory'
 import PMOrders from './PMOrders'
+import PMDeliveries from './PMDeliveries'
+import PMInvoices from './PMInvoices'
 import PMComments from './PMComments'
 import './ProductManagerDashboard.css'
 
 const PM_API = `${API_BASE}/api/product-manager`
 
 function PMOverview({ token, onNavigate }) {
-  const [stats, setStats] = useState({ products: 0, orders: 0, lowStock: 0 })
+  const [stats, setStats] = useState({ products: 0, orders: 0, lowStock: 0, categories: 0 })
 
   useEffect(() => {
     async function fetchStats() {
       try {
         const headers = { Authorization: `Bearer ${token}` }
-        const [pRes, oRes] = await Promise.all([
+        const [pRes, oRes, cRes] = await Promise.all([
           fetch(`${PM_API}/products?page=1&limit=1`, { headers }),
           fetch(`${PM_API}/orders?page=1&limit=1`, { headers }),
+          fetch(`${PM_API}/categories`, { headers }),
         ])
         const pData = pRes.ok ? await pRes.json() : {}
         const oData = oRes.ok ? await oRes.json() : {}
+        const cData = cRes.ok ? await cRes.json() : {}
 
-        // Fetch low-stock count (stock < 10)
         const lsRes = await fetch(`${PM_API}/products?page=1&limit=1&lowStock=true`, { headers })
         const lsData = lsRes.ok ? await lsRes.json() : {}
 
@@ -33,6 +36,7 @@ function PMOverview({ token, onNavigate }) {
           products: pData.pagination?.total ?? 0,
           orders: oData.pagination?.total ?? 0,
           lowStock: lsData.pagination?.total ?? 0,
+          categories: cData.categories?.length ?? 0,
         })
       } catch {
         // stats stay at 0
@@ -44,6 +48,7 @@ function PMOverview({ token, onNavigate }) {
   return (
     <div className="mb-7 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
       <button
+        type="button"
         className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-purple-400 hover:bg-purple-400/12"
         onClick={() => onNavigate('products')}
       >
@@ -52,6 +57,18 @@ function PMOverview({ token, onNavigate }) {
         </span>
         <span className="text-[13px] tracking-wide text-[var(--text)] uppercase opacity-70">
           Total Products
+        </span>
+      </button>
+      <button
+        type="button"
+        className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-purple-400 hover:bg-purple-400/12"
+        onClick={() => onNavigate('categories')}
+      >
+        <span className="text-[28px] font-semibold tracking-tight text-[var(--text-h)]">
+          {stats.categories}
+        </span>
+        <span className="text-[13px] tracking-wide text-[var(--text)] uppercase opacity-70">
+          Total Categories
         </span>
       </button>
       <button
@@ -66,6 +83,7 @@ function PMOverview({ token, onNavigate }) {
         </span>
       </button>
       <button
+        type="button"
         className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-purple-400 hover:bg-purple-400/12"
         onClick={() => onNavigate('orders')}
       >
@@ -113,6 +131,8 @@ function ProductManagerDashboard({ token, onLogout }) {
     { key: 'categories', label: 'Categories', icon: <CategoriesIcon /> },
     { key: 'inventory', label: 'Inventory', icon: <InventoryIcon /> },
     { key: 'orders', label: 'Orders', icon: <OrdersIcon /> },
+    { key: 'deliveries', label: 'Deliveries', icon: <DeliveriesIcon /> },
+    { key: 'invoices', label: 'Invoices', icon: <InvoicesIcon /> },
     { key: 'comments', label: 'Comments', icon: <CommentsIcon /> },
   ]
 
@@ -130,6 +150,8 @@ function ProductManagerDashboard({ token, onLogout }) {
       {activeSection === 'categories' && <PMCategories token={token} />}
       {activeSection === 'inventory' && <PMInventory token={token} />}
       {activeSection === 'orders' && <PMOrders token={token} />}
+      {activeSection === 'deliveries' && <PMDeliveries token={token} />}
+      {activeSection === 'invoices' && <PMInvoices token={token} />}
       {activeSection === 'comments' && <PMComments token={token} />}
     </DashboardLayout>
   )
@@ -218,6 +240,43 @@ function OrdersIcon() {
       <line x1="16" y1="13" x2="8" y2="13" />
       <line x1="16" y1="17" x2="8" y2="17" />
       <polyline points="10 9 9 9 8 9" />
+    </svg>
+  )
+}
+
+function DeliveriesIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="1" y="3" width="15" height="13" rx="1" />
+      <path d="M16 8h4l3 5v3h-7V8z" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  )
+}
+
+function InvoicesIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="13" y2="17" />
+      <line x1="8" y1="9" x2="10" y2="9" />
     </svg>
   )
 }

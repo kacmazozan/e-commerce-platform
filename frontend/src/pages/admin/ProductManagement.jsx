@@ -125,11 +125,11 @@ function ProductManagement({ token }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="submit" className={btnSearch}>
+          <button type="button" type="submit" className={btnSearch}>
             Search
           </button>
         </form>
-        <button className={btnCreate} onClick={() => setModal({ mode: 'create' })}>
+        <button type="button" className={btnCreate} onClick={() => setModal({ mode: 'create' })}>
           + New Product
         </button>
       </div>
@@ -198,12 +198,17 @@ function ProductManagement({ token }) {
                   <TableCell>
                     <div className="flex gap-1.5">
                       <button
+                        type="button"
                         className={btnEdit}
                         onClick={() => setModal({ mode: 'edit', product: p })}
                       >
                         Edit
                       </button>
-                      <button className={btnDelete} onClick={() => setDeleteConfirm(p)}>
+                      <button
+                        type="button"
+                        className={btnDelete}
+                        onClick={() => setDeleteConfirm(p)}
+                      >
                         Delete
                       </button>
                     </div>
@@ -219,6 +224,7 @@ function ProductManagement({ token }) {
       {pagination.totalPages > 1 && (
         <div className="mt-5 flex items-center justify-center gap-4">
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page <= 1}
             onClick={() => fetchProducts(pagination.page - 1)}
@@ -229,6 +235,7 @@ function ProductManagement({ token }) {
             Page {pagination.page} of {pagination.totalPages} ({pagination.total} products)
           </span>
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => fetchProducts(pagination.page + 1)}
@@ -261,10 +268,14 @@ function ProductManagement({ token }) {
             cannot be undone.
           </p>
           <div className="flex justify-end gap-2">
-            <button className={btnBase} onClick={() => setDeleteConfirm(null)}>
+            <button type="button" className={btnBase} onClick={() => setDeleteConfirm(null)}>
               Cancel
             </button>
-            <button className={btnDanger} onClick={() => handleDelete(deleteConfirm.id)}>
+            <button
+              type="button"
+              className={btnDanger}
+              onClick={() => handleDelete(deleteConfirm.id)}
+            >
               Delete
             </button>
           </div>
@@ -281,7 +292,6 @@ function ProductModal({ mode, product, onClose, onCreate, onUpdate }) {
   const [price, setPrice] = useState(product?.price || '')
   const [stock, setStock] = useState(product?.stock ?? 0)
   const [category, setCategory] = useState(product?.category || '')
-  const [imageUrl, setImageUrl] = useState(product?.image_url || '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -297,7 +307,6 @@ function ProductModal({ mode, product, onClose, onCreate, onUpdate }) {
         price: parseFloat(price),
         stock: Number.isNaN(parsedStock) ? 0 : parsedStock,
         category,
-        image_url: imageUrl,
       }
       if (mode === 'create') {
         await onCreate(body)
@@ -377,22 +386,12 @@ function ProductModal({ mode, product, onClose, onCreate, onUpdate }) {
               placeholder="e.g. Footwear"
             />
           </div>
-          <div className="mb-4 flex flex-col gap-1.5">
-            <label className="text-[13px] font-medium text-[var(--text-h)]">Image URL</label>
-            <input
-              type="text"
-              className={fieldInputClass}
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://…"
-            />
-          </div>
           {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
           <div className="mt-6 flex justify-end gap-2">
             <button type="button" className={btnBase} onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className={btnCreate} disabled={saving}>
+            <button type="button" type="submit" className={btnCreate} disabled={saving}>
               {saving ? 'Saving…' : mode === 'create' ? 'Create' : 'Save Changes'}
             </button>
           </div>

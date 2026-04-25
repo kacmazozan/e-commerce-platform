@@ -2,11 +2,13 @@ import { useState } from 'react'
 import DashboardLayout from '../../components/DashboardLayout'
 import PriceManagement from './PriceManagement'
 import DiscountManagement from './DiscountManagement'
+import SMInvoices from './SMInvoices'
 import { decodeJwtPayload } from '../../utils/jwt'
 
 const sections = [
   { key: 'products', label: 'Products', icon: <PriceTagIcon /> },
   { key: 'discounts', label: 'Discounts', icon: <DiscountIcon /> },
+  { key: 'invoices', label: 'Invoices', icon: <InvoiceIcon /> },
 ]
 
 export default function SalesManagerDashboard({ token, onLogout }) {
@@ -24,6 +26,7 @@ export default function SalesManagerDashboard({ token, onLogout }) {
     >
       {activeSection === 'products' && <PriceManagement token={token} />}
       {activeSection === 'discounts' && <DiscountManagement token={token} />}
+      {activeSection === 'invoices' && <SMInvoices token={token} />}
     </DashboardLayout>
   )
 }
@@ -57,6 +60,25 @@ function DiscountIcon() {
       <line x1="19" y1="5" x2="5" y2="19" />
       <circle cx="6.5" cy="6.5" r="2.5" />
       <circle cx="17.5" cy="17.5" r="2.5" />
+    </svg>
+  )
+}
+
+function InvoiceIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
     </svg>
   )
 }

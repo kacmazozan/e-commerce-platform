@@ -17,6 +17,7 @@ export default function DashboardLayout({
           {sections.map((s) => (
             <button
               key={s.key}
+              type="button"
               className={`flex cursor-pointer items-center gap-2.5 rounded-md border-none px-3 py-2.5 text-left font-[inherit] text-[15px] transition-all duration-150 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 ${
                 activeSection === s.key
                   ? 'border-l-2 border-purple-400 bg-purple-400/15 font-medium text-purple-400'
@@ -31,6 +32,7 @@ export default function DashboardLayout({
         </nav>
         <div className="border-t border-[var(--border)] px-3 py-4">
           <button
+            type="button"
             className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border-none bg-transparent px-3 py-2.5 text-left font-[inherit] text-[15px] text-[var(--text)] transition-all duration-150 hover:bg-red-500/10 hover:text-red-400 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0"
             onClick={onLogout}
           >

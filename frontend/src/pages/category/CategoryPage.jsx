@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import CatalogImage from '../../components/catalog/CatalogImage'
+import Footer from '../home/components/Footer'
 import API_BASE from '../../api'
+import { SORT_OPTIONS } from '../../constants/sortOptions'
+import { getProductImageUrl } from '../../lib/catalogAssets'
+import { fetchJsonWithRetry } from '../../lib/fetchJsonWithRetry'
 
 function BackIcon() {
   return (
@@ -15,25 +21,6 @@ function BackIcon() {
     >
       <line x1="19" y1="12" x2="5" y2="12" />
       <polyline points="12 19 5 12 12 5" />
-    </svg>
-  )
-}
-
-function CartIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <path d="M16 10a4 4 0 01-8 0" />
     </svg>
   )
 }
@@ -58,58 +45,83 @@ function HeartIcon({ filled }) {
 export default function CategoryPage({
   category,
   onBack,
-  onAddToCart,
-  onRemoveFromCart,
   onAddToWishlist,
   onRemoveFromWishlist,
-  cartItems = [],
   wishlistItems = [],
 }) {
   const [products, setProducts] = useState([])
-  const [loadedCategory, setLoadedCategory] = useState(null)
-  const loading = loadedCategory !== category.title
+  const [loadedKey, setLoadedKey] = useState(null)
+  const [sort, setSort] = useState('newest')
+  const [prevCategoryTitle, setPrevCategoryTitle] = useState(category.title)
+  const [error, setError] = useState(false)
+  const navigate = useNavigate()
+
+  if (prevCategoryTitle !== category.title) {
+    setPrevCategoryTitle(category.title)
+    setSort('newest')
+  }
+
+  const currentKey = `${category.title}::${sort}`
+  const loading = loadedKey !== currentKey
 
   useEffect(() => {
     let cancelled = false
-    fetch(`${API_BASE}/api/products?category=${encodeURIComponent(category.title)}`)
-      .then((r) => r.json())
+    const requestKey = `${category.title}::${sort}`
+
+    fetchJsonWithRetry(
+      `${API_BASE}/api/products?category=${encodeURIComponent(category.title)}&sort=${sort}`,
+      { attempts: 1 }
+    )
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
-          setLoadedCategory(category.title)
+          setError(false)
+          setLoadedKey(requestKey)
         }
       })
       .catch(() => {
         if (!cancelled) {
           setProducts([])
-          setLoadedCategory(category.title)
+          setLoadedKey(requestKey)
+          setError(true)
         }
       })
     return () => {
       cancelled = true
     }
-  }, [category.title])
+  }, [category.title, sort])
 
-  const cartIds = new Set(cartItems.map((i) => i.id))
   const wishlistIds = new Set(wishlistItems.map((i) => i.id))
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
+      <div
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(170deg, var(--bg) 0%, var(--bg-gradient-to) 25%, var(--accent-bg) 50%, var(--bg-gradient-to) 75%, var(--bg) 100%)',
+        }}
+        aria-hidden="true"
+      />
       <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
           <button
+            type="button"
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
             onClick={onBack}
           >
             <BackIcon /> Back
           </button>
-          <span className="ml-auto text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
+          <Link
+            to="/"
+            className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
+          >
             FIER
-          </span>
+          </Link>
         </div>
       </header>
 
-      <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
+      <main className="relative z-[1] mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
         <div className="mb-10">
           <p className="m-0 mb-2.5 text-[11px] font-bold tracking-[5px] text-purple-400 uppercase">
             Collection
@@ -120,23 +132,64 @@ export default function CategoryPage({
           <p className="m-0 text-[15px] text-[var(--text)]">{category.subtitle}</p>
         </div>
 
+        <div className="mb-6 flex items-center justify-end">
+          <label htmlFor="category-sort" className="mr-2 text-[13px] text-[var(--text)] opacity-60">
+            Sort by
+          </label>
+          <select
+            id="category-sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-1.5 text-sm text-[var(--text-h)] outline-none focus:border-purple-400/50"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {loading && <p className="text-[var(--text)] opacity-60">Loading products…</p>}
+        {!loading && error && (
+          <p className="mb-6 text-[15px] text-red-400">
+            Failed to load products for this category.
+          </p>
+        )}
+        {!loading && !error && products.length === 0 && (
+          <p className="mb-6 text-[15px] text-[var(--text)]">No products found in this category.</p>
+        )}
         <div className="grid [grid-template-columns:repeat(4,1fr)] gap-5 max-[1024px]:[grid-template-columns:repeat(3,1fr)] max-[720px]:[grid-template-columns:repeat(2,1fr)] max-[720px]:gap-3.5 max-[420px]:[grid-template-columns:1fr]">
           {products.map((product) => {
-            const inCart = cartIds.has(product.id)
             const inWishlist = wishlistIds.has(product.id)
             const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
-            const outOfStock = availableStock === 0
             return (
               <div
                 key={product.id}
                 className="flex flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-250 hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
               >
-                <div className="flex aspect-[3/4] w-full items-center justify-center border-b border-[var(--glass-border)] bg-purple-400/12">
-                  <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
-                    {product.name[0]}
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  className="flex aspect-[3/4] w-full cursor-pointer items-center justify-center border-b border-[var(--glass-border)] bg-purple-400/12 p-0"
+                  onClick={() => navigate(`/product/${product.id}`)}
+                  aria-label={`View details for ${product.name}`}
+                >
+                  <CatalogImage
+                    src={getProductImageUrl({
+                      ...product,
+                      category: product.category ?? category.title,
+                    })}
+                    alt={product.name}
+                    containerClassName="h-full w-full"
+                    imageClassName="object-contain p-3"
+                    placeholder={
+                      <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
+                        {product.name[0]}
+                      </span>
+                    }
+                    style={{ background: 'rgba(192,132,252,0.12)' }}
+                  />
+                </button>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2.5">
                   <span className="text-sm font-semibold text-[var(--text-h)]">{product.name}</span>
                   {product.discounted_price != null ? (
@@ -170,28 +223,9 @@ export default function CategoryPage({
                         : `${availableStock} in stock`}
                   </span>
                 </div>
-                <div className="flex gap-2 px-3 pb-3.5">
+                <div className="flex justify-end px-3 pb-3.5">
                   <button
-                    className={
-                      outOfStock
-                        ? 'flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-transparent px-3 py-2.5 text-[13px] font-semibold text-[var(--text)] opacity-40'
-                        : inCart
-                          ? 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-400 bg-transparent px-3 py-2.5 text-[13px] font-semibold text-purple-400 transition-opacity hover:opacity-88'
-                          : 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-none bg-purple-400 px-3 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88'
-                    }
-                    disabled={outOfStock && !inCart}
-                    onClick={() =>
-                      outOfStock
-                        ? undefined
-                        : inCart
-                          ? onRemoveFromCart && onRemoveFromCart(product.id)
-                          : onAddToCart && onAddToCart(product)
-                    }
-                  >
-                    <CartIcon />{' '}
-                    {outOfStock ? 'Out of Stock' : inCart ? 'Remove from Cart' : 'Add to Cart'}
-                  </button>
-                  <button
+                    type="button"
                     className={
                       inWishlist
                         ? 'flex h-[38px] w-[38px] shrink-0 cursor-pointer items-center justify-center rounded-lg border border-purple-400 bg-purple-400/12 text-purple-400 transition-colors'
@@ -212,6 +246,7 @@ export default function CategoryPage({
           })}
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

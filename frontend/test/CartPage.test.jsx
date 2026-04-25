@@ -60,7 +60,7 @@ describe('CartPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /decrease quantity/i }))
 
-    expect(onUpdateQuantity).toHaveBeenCalledWith(1, 1)
+    expect(onUpdateQuantity).toHaveBeenCalledWith(1, '', 1)
   })
 
   it('calls onUpdateQuantity with incremented value when plus is clicked', async () => {
@@ -69,7 +69,7 @@ describe('CartPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /increase quantity/i }))
 
-    expect(onUpdateQuantity).toHaveBeenCalledWith(1, 3)
+    expect(onUpdateQuantity).toHaveBeenCalledWith(1, '', 3)
   })
 
   it('calls onRemove when remove button is clicked', async () => {
@@ -78,7 +78,7 @@ describe('CartPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /remove item/i }))
 
-    expect(onRemove).toHaveBeenCalledWith(1)
+    expect(onRemove).toHaveBeenCalledWith(1, '')
   })
 
   it('shows "Login to Checkout" button when not logged in', () => {
@@ -267,5 +267,37 @@ describe('CartPage — discounted items', () => {
 
     // discounted_price is $16.00 × 1 = $16.00, plus $4.99 shipping = $20.99
     expect(screen.getByText('$20.99')).toBeInTheDocument()
+  })
+})
+
+describe('CartPage — product links', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('item name is a link pointing to /product/1', () => {
+    renderPage()
+
+    const nameLink = screen.getByRole('link', { name: 'Widget' })
+    expect(nameLink).toBeInTheDocument()
+    expect(nameLink).toHaveAttribute('href', '/product/1')
+  })
+
+  it('item thumbnail is a link pointing to /product/1', () => {
+    renderPage()
+
+    // The thumbnail link wraps the first letter of item name. Query all links to /product/1.
+    const allLinks = screen.getAllByRole('link')
+    const productLinks = allLinks.filter((l) => l.getAttribute('href') === '/product/1')
+    // There should be 2 links: thumbnail and name
+    expect(productLinks.length).toBe(2)
+  })
+
+  it('FIER logo links to /', () => {
+    renderPage()
+
+    const fierLink = screen.getByRole('link', { name: 'FIER' })
+    expect(fierLink).toBeInTheDocument()
+    expect(fierLink).toHaveAttribute('href', '/')
   })
 })

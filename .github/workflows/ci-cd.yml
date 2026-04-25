@@ -12,13 +12,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20.19.x'
-          cache: 'npm'
+          node-version: "24.x"
+          cache: "npm"
           cache-dependency-path: |
             frontend/package-lock.json
             backend/package-lock.json
@@ -55,13 +55,13 @@ jobs:
       JWT_SECRET: test-secret
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20.19.x'
-          cache: 'npm'
+          node-version: "24.x"
+          cache: "npm"
           cache-dependency-path: |
             frontend/package-lock.json
             backend/package-lock.json
@@ -87,13 +87,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20.19.x'
-          cache: 'npm'
+          node-version: "24.x"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies

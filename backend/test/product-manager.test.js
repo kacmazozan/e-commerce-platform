@@ -37,9 +37,12 @@ describe('GET /api/product-manager/categories', () => {
     expect(res.status).toBe(403)
   })
 
-  it('returns category list for product manager', async () => {
+  it('returns category list with product counts for product manager', async () => {
     pool.query.mockResolvedValueOnce({
-      rows: [{ category: 'Electronics' }, { category: 'Footwear' }],
+      rows: [
+        { name: 'Electronics', product_count: 3 },
+        { name: 'Footwear', product_count: 0 },
+      ],
     })
 
     const res = await request(app)
@@ -48,7 +51,10 @@ describe('GET /api/product-manager/categories', () => {
 
     expect(res.status).toBe(200)
     expect(res.body).toHaveProperty('categories')
-    expect(res.body.categories).toEqual(['Electronics', 'Footwear'])
+    expect(res.body.categories).toEqual([
+      { name: 'Electronics', product_count: 3 },
+      { name: 'Footwear', product_count: 0 },
+    ])
   })
 })
 
@@ -165,7 +171,7 @@ describe('POST /api/product-manager/products', () => {
 
   it('creates product successfully', async () => {
     pool.query.mockResolvedValueOnce({
-      rows: [{ id: 1, name: 'Test', price: '10.00', stock: 5, category: null, image_url: null }],
+      rows: [{ id: 1, name: 'Test', price: '10.00', stock: 5, category: null }],
     })
 
     const res = await request(app)
@@ -347,6 +353,93 @@ describe('GET /api/product-manager/orders/:id', () => {
   })
 })
 
+// ─── PATCH /api/product-manager/orders/:id/status ────────────────────────────
+
+describe('PATCH /api/product-manager/orders/:id/status', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns 401 with no token', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/1/status')
+      .send({ status: 'shipped' })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 403 with customer token', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/1/status')
+      .set('Authorization', `Bearer ${customerToken}`)
+      .send({ status: 'shipped' })
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 400 for invalid status', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/1/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'pending' })
+    expect(res.status).toBe(400)
+    expect(res.body).toHaveProperty('error')
+  })
+
+  it('returns 400 when status is missing', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/1/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({})
+    expect(res.status).toBe(400)
+    expect(res.body).toHaveProperty('error')
+  })
+
+  it('returns 400 for non-numeric order ID', async () => {
+    const res = await request(app)
+      .patch('/api/product-manager/orders/abc/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'shipped' })
+    expect(res.status).toBe(400)
+    expect(res.body).toHaveProperty('error')
+  })
+
+  it('returns 404 when order not found', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    const res = await request(app)
+      .patch('/api/product-manager/orders/9999/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'shipped' })
+
+    expect(res.status).toBe(404)
+  })
+
+  it('updates order status successfully', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [{ id: 1, status: 'shipped', updated_at: new Date().toISOString() }],
+    })
+
+    const res = await request(app)
+      .patch('/api/product-manager/orders/1/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'shipped' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.order.status).toBe('shipped')
+  })
+
+  it('marks order as delivered successfully', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [{ id: 2, status: 'delivered', updated_at: new Date().toISOString() }],
+    })
+
+    const res = await request(app)
+      .patch('/api/product-manager/orders/2/status')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ status: 'delivered' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.order.status).toBe('delivered')
+  })
+})
+
 // ─── GET /api/product-manager/comments ───────────────────────────────────────
 
 describe('GET /api/product-manager/comments', () => {
@@ -467,5 +560,217 @@ describe('PUT /api/product-manager/comments/:id/reject', () => {
 
     expect(res.status).toBe(200)
     expect(res.body.comment.status).toBe('rejected')
+  })
+})
+
+// ─── GET /api/product-manager/products/:id/images ────────────────────────────
+
+describe('GET /api/product-manager/products/:id/images', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns 401 with no token', async () => {
+    const res = await request(app).get('/api/product-manager/products/1/images')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 403 with customer token', async () => {
+    const res = await request(app)
+      .get('/api/product-manager/products/1/images')
+      .set('Authorization', `Bearer ${customerToken}`)
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 400 for invalid product id', async () => {
+    const res = await request(app)
+      .get('/api/product-manager/products/abc/images')
+      .set('Authorization', `Bearer ${pmToken}`)
+    expect(res.status).toBe(400)
+    expect(res.body).toHaveProperty('error')
+  })
+
+  it('returns 200 with images array for pm token', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        { id: 10, url: 'https://example.com/img1.jpg', alt: 'Front' },
+        { id: 11, url: 'https://example.com/img2.jpg', alt: 'Back' },
+      ],
+    })
+
+    const res = await request(app)
+      .get('/api/product-manager/products/1/images')
+      .set('Authorization', `Bearer ${pmToken}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('images')
+    expect(res.body.images).toHaveLength(2)
+    expect(res.body.images[0].url).toBe('https://example.com/img1.jpg')
+  })
+})
+
+// ─── POST /api/product-manager/products/:id/images ───────────────────────────
+
+describe('POST /api/product-manager/products/:id/images', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns 401 with no token', async () => {
+    const res = await request(app)
+      .post('/api/product-manager/products/1/images')
+      .send({ url: 'https://example.com/img.jpg' })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 400 when url is missing', async () => {
+    const res = await request(app)
+      .post('/api/product-manager/products/1/images')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ alt: 'No url here' })
+    expect(res.status).toBe(400)
+    expect(res.body).toHaveProperty('error')
+  })
+
+  it('returns 400 for invalid product id', async () => {
+    const res = await request(app)
+      .post('/api/product-manager/products/abc/images')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ url: 'https://example.com/img.jpg' })
+    expect(res.status).toBe(400)
+    expect(res.body).toHaveProperty('error')
+  })
+
+  it('returns 201 with image on success', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 20,
+          product_id: 1,
+          url: 'https://example.com/img.jpg',
+          alt: 'Side view',
+        },
+      ],
+    })
+
+    const res = await request(app)
+      .post('/api/product-manager/products/1/images')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ url: 'https://example.com/img.jpg', alt: 'Side view' })
+
+    expect(res.status).toBe(201)
+    expect(res.body).toHaveProperty('image')
+    expect(res.body.image.url).toBe('https://example.com/img.jpg')
+  })
+})
+
+// ─── DELETE /api/product-manager/products/:id/images/:imageId ────────────────
+
+describe('DELETE /api/product-manager/products/:id/images/:imageId', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns 401 with no token', async () => {
+    const res = await request(app).delete('/api/product-manager/products/1/images/10')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 404 when image not found', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    const res = await request(app)
+      .delete('/api/product-manager/products/1/images/999')
+      .set('Authorization', `Bearer ${pmToken}`)
+
+    expect(res.status).toBe(404)
+    expect(res.body).toHaveProperty('error')
+  })
+
+  it('returns 200 with message on success', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 10 }] })
+
+    const res = await request(app)
+      .delete('/api/product-manager/products/1/images/10')
+      .set('Authorization', `Bearer ${pmToken}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('message')
+  })
+})
+
+// ─── POST /api/product-manager/products — detail fields ──────────────────────
+
+describe('POST /api/product-manager/products — detail fields', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('creates product with all detail fields and passes 13 parameters to pool.query', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 1,
+          name: 'Merino Sweater',
+          price: '89.99',
+          stock: 10,
+          category: "Women's Clothing",
+          country_of_origin: 'Turkey',
+          material: 'Merino Wool',
+          model_height: '175cm',
+          model_chest: '88cm',
+          model_waist: '68cm',
+          model_hips: '94cm',
+          model_size: 'S',
+          sizes: ['XS', 'S', 'M', 'L'],
+        },
+      ],
+    })
+
+    const res = await request(app)
+      .post('/api/product-manager/products')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({
+        name: 'Merino Sweater',
+        price: 89.99,
+        stock: 10,
+        category: "Women's Clothing",
+        country_of_origin: 'Turkey',
+        material: 'Merino Wool',
+        model_height: '175cm',
+        model_chest: '88cm',
+        model_waist: '68cm',
+        model_hips: '94cm',
+        model_size: 'S',
+        sizes: ['XS', 'S', 'M', 'L'],
+      })
+
+    expect(res.status).toBe(201)
+    expect(res.body).toHaveProperty('product')
+
+    const [, params] = pool.query.mock.calls[0]
+    expect(params).toHaveLength(13)
+  })
+})
+
+// ─── PUT /api/product-manager/products/:id — detail fields ───────────────────
+
+describe('PUT /api/product-manager/products/:id — detail fields', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('updates material and sizes on an existing product successfully', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }] }).mockResolvedValueOnce({
+      rows: [
+        {
+          id: 1,
+          name: 'Merino Sweater',
+          price: '89.99',
+          stock: 10,
+          material: 'Cashmere',
+          sizes: ['S', 'M', 'L', 'XL'],
+        },
+      ],
+    })
+
+    const res = await request(app)
+      .put('/api/product-manager/products/1')
+      .set('Authorization', `Bearer ${pmToken}`)
+      .send({ material: 'Cashmere', sizes: ['S', 'M', 'L', 'XL'] })
+
+    expect(res.status).toBe(200)
+    expect(res.body.product.material).toBe('Cashmere')
+    expect(res.body.product.sizes).toEqual(['S', 'M', 'L', 'XL'])
   })
 })

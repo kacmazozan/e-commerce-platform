@@ -119,7 +119,7 @@ function PMInventory({ token }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="submit" className={btnSearch}>
+          <button type="button" type="submit" className={btnSearch}>
             Search
           </button>
         </form>
@@ -171,13 +171,18 @@ function PMInventory({ token }) {
                           autoFocus
                         />
                         <button
+                          type="button"
                           className={`${btnCreate} px-2.5 py-1 text-xs`}
                           disabled={saving}
                           onClick={() => saveStock(p.id)}
                         >
                           {saving ? '…' : 'Save'}
                         </button>
-                        <button className={`${btnBase} px-2.5 py-1 text-xs`} onClick={cancelEdit}>
+                        <button
+                          type="button"
+                          className={`${btnBase} px-2.5 py-1 text-xs`}
+                          onClick={cancelEdit}
+                        >
                           Cancel
                         </button>
                       </div>
@@ -191,7 +196,7 @@ function PMInventory({ token }) {
                   </td>
                   <td className={tdClass}>
                     {editingId !== p.id && (
-                      <button className={btnEdit} onClick={() => startEdit(p)}>
+                      <button type="button" className={btnEdit} onClick={() => startEdit(p)}>
                         Edit Stock
                       </button>
                     )}
@@ -206,6 +211,7 @@ function PMInventory({ token }) {
       {pagination.totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between text-sm">
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page <= 1}
             onClick={() => fetchProducts(pagination.page - 1)}
@@ -216,6 +222,7 @@ function PMInventory({ token }) {
             Page {pagination.page} of {pagination.totalPages} ({pagination.total} products)
           </span>
           <button
+            type="button"
             className={btnBase}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => fetchProducts(pagination.page + 1)}

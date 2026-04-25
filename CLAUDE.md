@@ -10,6 +10,8 @@ An e-commerce platform (Sabanci University CS308 course project) with a React fr
 
 When writing commit messages, follow [Conventional Commits](.claude/conventional-commits.md). Do **not** add `Co-Authored-By: Claude ...` trailers.
 
+When opening GitHub bug issues, follow [Bug Issue Template](.claude/issue-bug-template.md).
+
 ## Commands
 
 ### Frontend (`frontend/`)
@@ -72,21 +74,22 @@ docker compose down -v      # Stop and remove containers AND all volumes (see wa
 > **Warning — `down -v`:** Removes **all** volumes, including the named `postgres_data` volume. All database data (users, products, orders) will be lost. Only use this to fix stale anonymous `node_modules` volumes when `nodemon` or other packages are not found inside the container despite being in `package.json`. After running, bring the stack back up — seeds run automatically.
 
 On every `docker compose up`, the backend entrypoint (`backend/entrypoint.sh`) automatically:
+
 1. Waits for PostgreSQL to accept connections
 2. Runs all pending migrations (`npm run migrate:up`)
 3. Seeds all dev accounts and products (all seeds are idempotent — safe to re-run)
 
 **Dev credentials (defined in `docker-compose.yml`):**
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | `admin@example.com` | `admin123456` |
-| Sales Manager | `salesmanager@example.com` | `salesmanager123456` |
+| Role            | Email                        | Password               |
+| --------------- | ---------------------------- | ---------------------- |
+| Admin           | `admin@example.com`          | `admin123456`          |
+| Sales Manager   | `salesmanager@example.com`   | `salesmanager123456`   |
 | Product Manager | `productmanager@example.com` | `productmanager123456` |
 
 Products (56 items across 8 categories) are also seeded automatically.
 
-Services: frontend → <http://localhost:5173>, backend → <http://localhost:3000>, PostgreSQL → localhost:5432, invoice-api → <http://localhost:8080>, MailHog UI → <http://localhost:8025>
+Services: frontend → <http://localhost:5173>, backend → <http://localhost:3000>, PostgreSQL → localhost:5432, MailHog UI → <http://localhost:8025>
 
 Each service has a `Dockerfile` (production) and `Dockerfile.dev` (development). `docker-compose.yml` uses the dev Dockerfiles with volume mounts for hot reload.
 
@@ -138,7 +141,7 @@ docker compose exec backend node scripts/seed-products.js
 Route files in `backend/routes/`:
 
 - `auth.js` — `POST /api/auth/register`, `POST /api/auth/login`, password reset endpoints
-- `products.js` — public; `GET /api/products` (`?category=`, `?limit=`), `GET /api/products/search` (`?q=`)
+- `products.js` — public; `GET /api/products` (`?category=`, `?limit=`, `?sort=`), `GET /api/products/search` (`?q=`, `?limit=`, `?sort=`); valid sort values: `newest` (default), `price_asc`, `price_desc`, `popularity`
 - `cart.js` — authenticated; `GET/POST /api/cart`, `PUT /api/cart/:productId`, `DELETE /api/cart/:productId`, `DELETE /api/cart`
 - `checkout.js` — authenticated; `POST /api/checkout/reserve`, `DELETE /api/checkout/reserve`, `POST /api/checkout/confirm`
 - `admin.js` — `GET/POST/PUT/DELETE /api/admin/users`, `GET /api/admin/me`
@@ -148,6 +151,7 @@ Route files in `backend/routes/`:
 - `sales-manager-products.js` — `GET /api/sales-manager/products` (`?category=`, `?q=`), `GET /api/sales-manager/products/categories`, `PATCH /api/sales-manager/products/:id/price`, `POST /api/sales-manager/products/discount`, `DELETE /api/sales-manager/products/:id/discount`
 - `notifications.js` — authenticated; `GET /api/notifications`, `PATCH /api/notifications/:id/read`, `PATCH /api/notifications/read-all`, `DELETE /api/notifications`
 - `wishlist.js` — authenticated; `GET/POST /api/wishlist`, `DELETE /api/wishlist/:productId`
+- `invoices.js` — `GET /api/invoices/health`, `POST /api/invoices/generate`; checkout confirmation also queues invoice email delivery automatically
 
 Middleware in `backend/middleware/`:
 
@@ -155,9 +159,9 @@ Middleware in `backend/middleware/`:
 - `admin.js` — requires `role === 'admin'`; stack with `auth.js` on all admin routes
 - `sales-manager.js` — requires `role === 'sales_manager'`; stack with `auth.js` on all SM routes
 
-### Invoice service (`backend/invoice_api/`, `backend/pkg/`)
+### Invoice service
 
-A separate Python FastAPI microservice on port 8080. Entry point: `invoice_api/main.py`. Shared library in `backend/pkg/`: `pkg/mailer/` (SMTP via MailHog), `pkg/invoice/` (PDF via wkhtmltopdf + Jinja2). Dependencies: `backend/requirements-invoice.txt`.
+Invoice generation and email delivery now live inside the Node backend. `backend/services/invoice.js` handles request validation, totals, and PDF creation with `pdfkit`; `backend/services/mailer.js` sends mail over SMTP (MailHog in local Docker); `backend/services/invoice-workflow.js` ties generation and delivery together. The public API is exposed from `backend/routes/invoices.js`.
 
 ### Frontend
 
@@ -165,7 +169,7 @@ A separate Python FastAPI microservice on port 8080. Entry point: `invoice_api/m
 
 Auth state (`token`, `adminToken`, `salesManagerToken`) held in `App`, initialised from `localStorage`. JWT decoded client-side via `src/utils/jwt.js`.
 
-Shared: `src/styles/dashboardStyles.js` (Tailwind constants), `src/components/DashboardLayout.jsx` (sidebar+header shell for admin and SM dashboards).
+Shared: `src/styles/dashboardStyles.js` (Tailwind constants), `src/components/DashboardLayout.jsx` (sidebar+header shell for admin and SM dashboards), `src/constants/sortOptions.js` (sort dropdown options for product listing pages).
 
 **Route guards:**
 
@@ -176,6 +180,7 @@ Shared: `src/styles/dashboardStyles.js` (Tailwind constants), `src/components/Da
 `src/api.js` exports `API_BASE` from `VITE_API_BASE_URL`, falling back to `http://localhost:3000`.
 
 Pages live in `src/pages/<section>/`. Key SM pages:
+
 - `DiscountManagement` (`src/pages/sales-manager/DiscountManagement.jsx`) — paginated product table with category filter, search bar, and bulk discount apply/remove
 - `NotificationBell` (`src/pages/home/components/NotificationBell.jsx`) — price-drop notifications for logged-in customers; mark-read, mark-all-read, clear-all
 
@@ -191,7 +196,7 @@ Role enum: `auth.user_role` — `customer`, `sales_manager`, `product_manager`, 
 
 **Backend** — Jest + Supertest. Tests in `backend/test/`. DB pool always mocked.
 
-**Invoice service** — pytest. Tests in `backend/tests/`. `backend/conftest.py` adds `backend/` to `sys.path`.
+**Invoices** — Jest + Supertest. Tests in `backend/test/invoices.test.js` and `backend/test/invoice-models.test.js`.
 
 ## Environment
 

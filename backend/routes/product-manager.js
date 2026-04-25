@@ -12,10 +12,56 @@ router.use(requireProductManager)
 
 // GET /api/product-manager/categories
 router.get('/categories', async (req, res) => {
-  const result = await pool.query(
-    'SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category'
-  )
-  res.json({ categories: result.rows.map((r) => r.category) })
+  const result = await pool.query(`
+    SELECT c.name, COUNT(p.id)::int AS product_count
+    FROM categories c
+    LEFT JOIN products p ON p.category = c.name
+    GROUP BY c.name
+    ORDER BY c.name
+  `)
+  res.json({ categories: result.rows })
+})
+
+// POST /api/product-manager/categories
+router.post('/categories', async (req, res) => {
+  const name = (req.body.name || '').trim()
+  if (!name) return res.status(400).json({ error: 'Category name is required' })
+  if (name.length > 100) {
+    return res.status(400).json({ error: 'Category name must be 100 characters or fewer' })
+  }
+  try {
+    const result = await pool.query('INSERT INTO categories (name) VALUES ($1) RETURNING *', [name])
+    res.status(201).json({ category: result.rows[0] })
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Category already exists' })
+    throw err
+  }
+})
+
+// DELETE /api/product-manager/categories/:name
+router.delete('/categories/:name', async (req, res) => {
+  const name = req.params.name
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query(
+      'DELETE FROM order_items WHERE product_id IN (SELECT id FROM products WHERE category = $1)',
+      [name]
+    )
+    await client.query('DELETE FROM products WHERE category = $1', [name])
+    const result = await client.query('DELETE FROM categories WHERE name = $1 RETURNING id', [name])
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Category not found' })
+    }
+    await client.query('COMMIT')
+    res.json({ message: 'Category and its products deleted successfully' })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 })
 
 // GET /api/product-manager/products
@@ -25,6 +71,16 @@ router.get('/products', async (req, res) => {
   const offset = (page - 1) * limit
   const search = (req.query.search || '').trim()
   const category = (req.query.category || '').trim()
+  const sort = (req.query.sort || '').trim()
+
+  const SORT_MAP = {
+    alpha: 'name ASC',
+    price_asc: 'price ASC',
+    price_desc: 'price DESC',
+    stock_asc: 'stock ASC',
+    stock_desc: 'stock DESC',
+  }
+  const orderBy = SORT_MAP[sort] || 'created_at DESC'
 
   let where = []
   let params = []
@@ -50,7 +106,7 @@ router.get('/products', async (req, res) => {
   const total = parseInt(countResult.rows[0].count)
 
   const dataResult = await pool.query(
-    `SELECT * FROM products ${whereClause} ORDER BY created_at DESC LIMIT $${idx} OFFSET $${idx + 1}`,
+    `SELECT * FROM products ${whereClause} ORDER BY ${orderBy} LIMIT $${idx} OFFSET $${idx + 1}`,
     [...params, limit, offset]
   )
 
@@ -69,7 +125,21 @@ router.get('/products/:id', async (req, res) => {
 
 // POST /api/product-manager/products
 router.post('/products', async (req, res) => {
-  const { name, description, price, stock, category, image_url } = req.body
+  const {
+    name,
+    description,
+    price,
+    stock,
+    category,
+    country_of_origin,
+    material,
+    model_height,
+    model_chest,
+    model_waist,
+    model_hips,
+    model_size,
+    sizes,
+  } = req.body
   if (!name || price == null) return res.status(400).json({ error: 'Name and price are required' })
   if (parseFloat(price) < 0 || Number.isNaN(parseFloat(price)))
     return res.status(400).json({ error: 'Price must be a non-negative number' })
@@ -83,16 +153,26 @@ router.post('/products', async (req, res) => {
     return res.status(400).json({ error: 'Stock must be a non-negative integer' })
   }
 
+  const sizesArr = Array.isArray(sizes) ? sizes : null
+
   const result = await pool.query(
-    `INSERT INTO products (name, description, price, stock, category, image_url)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    `INSERT INTO products (name, description, price, stock, category,
+       country_of_origin, material, model_height, model_chest, model_waist, model_hips, model_size, sizes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [
       name,
       description || null,
       price,
       Number.isFinite(parsedStock) ? parsedStock : 0,
       category || null,
-      image_url || null,
+      country_of_origin || null,
+      material || null,
+      model_height || null,
+      model_chest || null,
+      model_waist || null,
+      model_hips || null,
+      model_size || null,
+      sizesArr,
     ]
   )
   res.status(201).json({ product: result.rows[0] })
@@ -100,7 +180,21 @@ router.post('/products', async (req, res) => {
 
 // PUT /api/product-manager/products/:id
 router.put('/products/:id', async (req, res) => {
-  const { name, description, price, stock, category, image_url } = req.body
+  const {
+    name,
+    description,
+    price,
+    stock,
+    category,
+    country_of_origin,
+    material,
+    model_height,
+    model_chest,
+    model_waist,
+    model_hips,
+    model_size,
+    sizes,
+  } = req.body
   const productId = req.params.id
 
   const existing = await pool.query('SELECT id FROM products WHERE id = $1', [productId])
@@ -141,9 +235,44 @@ router.put('/products/:id', async (req, res) => {
     params.push(category)
     idx++
   }
-  if (image_url !== undefined) {
-    sets.push(`image_url = $${idx}`)
-    params.push(image_url)
+  if (country_of_origin !== undefined) {
+    sets.push(`country_of_origin = $${idx}`)
+    params.push(country_of_origin || null)
+    idx++
+  }
+  if (material !== undefined) {
+    sets.push(`material = $${idx}`)
+    params.push(material || null)
+    idx++
+  }
+  if (model_height !== undefined) {
+    sets.push(`model_height = $${idx}`)
+    params.push(model_height || null)
+    idx++
+  }
+  if (model_chest !== undefined) {
+    sets.push(`model_chest = $${idx}`)
+    params.push(model_chest || null)
+    idx++
+  }
+  if (model_waist !== undefined) {
+    sets.push(`model_waist = $${idx}`)
+    params.push(model_waist || null)
+    idx++
+  }
+  if (model_hips !== undefined) {
+    sets.push(`model_hips = $${idx}`)
+    params.push(model_hips || null)
+    idx++
+  }
+  if (model_size !== undefined) {
+    sets.push(`model_size = $${idx}`)
+    params.push(model_size || null)
+    idx++
+  }
+  if (sizes !== undefined) {
+    sets.push(`sizes = $${idx}`)
+    params.push(Array.isArray(sizes) ? sizes : null)
     idx++
   }
 
@@ -223,6 +352,27 @@ router.get('/orders', async (req, res) => {
     orders: dataResult.rows,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   })
+})
+
+// PATCH /api/product-manager/orders/:id/status
+router.patch('/orders/:id/status', async (req, res) => {
+  const orderId = Number(req.params.id)
+  if (!Number.isInteger(orderId) || orderId <= 0) {
+    return res.status(400).json({ error: 'Invalid order ID' })
+  }
+  const { status } = req.body
+  const VALID_STATUSES = ['processing', 'shipped', 'delivered', 'cancelled']
+  if (!status || !VALID_STATUSES.includes(status)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid status. Must be one of: processing, shipped, delivered, cancelled' })
+  }
+  const result = await pool.query(
+    `UPDATE orders SET status = $1::order_status, updated_at = NOW() WHERE id = $2 RETURNING id, status, updated_at`,
+    [status, orderId]
+  )
+  if (result.rows.length === 0) return res.status(404).json({ error: 'Order not found' })
+  res.json({ order: result.rows[0] })
 })
 
 // GET /api/product-manager/orders/:id
@@ -318,6 +468,44 @@ router.put('/comments/:id/reject', async (req, res) => {
   )
   if (result.rows.length === 0) return res.status(404).json({ error: 'Comment not found' })
   res.json({ comment: result.rows[0] })
+})
+
+// ─── Product Images ──────────────────────────────────────────────────────────
+
+// GET /api/product-manager/products/:id/images
+router.get('/products/:id/images', async (req, res) => {
+  const productId = parseInt(req.params.id, 10)
+  if (!Number.isInteger(productId) || productId <= 0)
+    return res.status(400).json({ error: 'Invalid product ID' })
+  const result = await pool.query(
+    `SELECT id, url, alt FROM product_images WHERE product_id = $1 ORDER BY id ASC`,
+    [productId]
+  )
+  res.json({ images: result.rows })
+})
+
+// POST /api/product-manager/products/:id/images
+router.post('/products/:id/images', async (req, res) => {
+  const productId = parseInt(req.params.id, 10)
+  if (!Number.isInteger(productId) || productId <= 0)
+    return res.status(400).json({ error: 'Invalid product ID' })
+  const { url, alt } = req.body
+  if (!url) return res.status(400).json({ error: 'url is required' })
+  const result = await pool.query(
+    `INSERT INTO product_images (product_id, url, alt) VALUES ($1, $2, $3) RETURNING *`,
+    [productId, url, alt || null]
+  )
+  res.status(201).json({ image: result.rows[0] })
+})
+
+// DELETE /api/product-manager/products/:id/images/:imageId
+router.delete('/products/:id/images/:imageId', async (req, res) => {
+  const result = await pool.query(
+    `DELETE FROM product_images WHERE id = $1 AND product_id = $2 RETURNING id`,
+    [req.params.imageId, req.params.id]
+  )
+  if (result.rows.length === 0) return res.status(404).json({ error: 'Image not found' })
+  res.json({ message: 'Image deleted' })
 })
 
 module.exports = router

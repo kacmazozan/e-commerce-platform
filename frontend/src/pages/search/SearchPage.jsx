@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
+import CatalogImage from '../../components/catalog/CatalogImage'
 import API_BASE from '../../api'
+import { SORT_OPTIONS } from '../../constants/sortOptions'
+import { getProductImageUrl } from '../../lib/catalogAssets'
 
 function BackIcon() {
   return (
@@ -38,25 +41,6 @@ function SearchIcon() {
   )
 }
 
-function CartIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <path d="M16 10a4 4 0 01-8 0" />
-    </svg>
-  )
-}
-
 function HeartIcon({ filled }) {
   return (
     <svg
@@ -77,24 +61,31 @@ function HeartIcon({ filled }) {
 export default function SearchPage({
   searchQuery,
   onBack,
-  onAddToCart,
-  onRemoveFromCart,
   onAddToWishlist,
   onRemoveFromWishlist,
-  cartItems = [],
   wishlistItems = [],
 }) {
   const [products, setProducts] = useState([])
-  const [loadedQuery, setLoadedQuery] = useState(null)
+  const [loadedKey, setLoadedKey] = useState(null)
   const [inputValue, setInputValue] = useState(searchQuery)
+  const [sort, setSort] = useState('newest')
+  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery)
   const [error, setError] = useState(false)
   const navigate = useNavigate()
-  const loading = loadedQuery !== searchQuery
+
+  if (prevSearchQuery !== searchQuery) {
+    setPrevSearchQuery(searchQuery)
+    setSort('newest')
+  }
+
+  const currentKey = `${searchQuery}::${sort}`
+  const loading = loadedKey !== currentKey
 
   useEffect(() => {
     let cancelled = false
-    setError(false)
-    fetch(`${API_BASE}/api/products/search?q=${encodeURIComponent(searchQuery)}`)
+    const requestKey = `${searchQuery}::${sort}`
+
+    fetch(`${API_BASE}/api/products/search?q=${encodeURIComponent(searchQuery)}&sort=${sort}`)
       .then((r) => {
         if (!r.ok) throw new Error('Server error')
         return r.json()
@@ -102,20 +93,20 @@ export default function SearchPage({
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
-          setLoadedQuery(searchQuery)
+          setLoadedKey(requestKey)
         }
       })
       .catch(() => {
         if (!cancelled) {
           setProducts([])
           setError(true)
-          setLoadedQuery(searchQuery)
+          setLoadedKey(requestKey)
         }
       })
     return () => {
       cancelled = true
     }
-  }, [searchQuery])
+  }, [searchQuery, sort])
 
   useEffect(() => {
     setInputValue(searchQuery)
@@ -128,7 +119,6 @@ export default function SearchPage({
       navigate(q ? '/search?q=' + encodeURIComponent(q) : '/search', { replace: true })
   }
 
-  const cartIds = new Set(cartItems.map((i) => i.id))
   const wishlistIds = new Set(wishlistItems.map((i) => i.id))
 
   return (
@@ -136,6 +126,7 @@ export default function SearchPage({
       <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
           <button
+            type="button"
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
             onClick={onBack}
           >
@@ -166,9 +157,12 @@ export default function SearchPage({
               Search
             </button>
           </form>
-          <span className="ml-auto shrink-0 text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
+          <Link
+            to="/"
+            className="ml-auto shrink-0 cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
+          >
             FIER
-          </span>
+          </Link>
         </div>
       </header>
 
@@ -193,24 +187,54 @@ export default function SearchPage({
           )}
         </div>
 
+        <div className="mb-6 flex items-center justify-end">
+          <label htmlFor="search-sort" className="mr-2 text-[13px] text-[var(--text)] opacity-60">
+            Sort by
+          </label>
+          <select
+            id="search-sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-1.5 text-sm text-[var(--text-h)] outline-none focus:border-purple-400/50"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {loading && <p className="text-[var(--text)] opacity-60">Loading products…</p>}
 
         <div className="grid [grid-template-columns:repeat(4,1fr)] gap-5 max-[1024px]:[grid-template-columns:repeat(3,1fr)] max-[720px]:[grid-template-columns:repeat(2,1fr)] max-[720px]:gap-3.5 max-[420px]:[grid-template-columns:1fr]">
           {products.map((product) => {
-            const inCart = cartIds.has(product.id)
             const inWishlist = wishlistIds.has(product.id)
             const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
-            const outOfStock = availableStock === 0
             return (
               <div
                 key={product.id}
                 className="flex flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-250 hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
               >
-                <div className="flex aspect-[3/4] w-full items-center justify-center border-b border-[var(--glass-border)] bg-purple-400/12">
-                  <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
-                    {product.name[0]}
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  className="flex aspect-[3/4] w-full cursor-pointer items-center justify-center border-b border-[var(--glass-border)] bg-purple-400/12 p-0"
+                  onClick={() => navigate(`/product/${product.id}`)}
+                  aria-label={`View details for ${product.name}`}
+                >
+                  <CatalogImage
+                    src={getProductImageUrl(product)}
+                    alt={product.name}
+                    containerClassName="h-full w-full"
+                    imageClassName="object-contain p-3"
+                    placeholder={
+                      <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
+                        {product.name[0]}
+                      </span>
+                    }
+                    style={{ background: 'rgba(192,132,252,0.12)' }}
+                  />
+                </button>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2.5">
                   <span className="text-sm font-semibold text-[var(--text-h)]">{product.name}</span>
                   {product.discounted_price != null ? (
@@ -244,28 +268,9 @@ export default function SearchPage({
                         : `${availableStock} in stock`}
                   </span>
                 </div>
-                <div className="flex gap-2 px-3 pb-3.5">
+                <div className="flex justify-end px-3 pb-3.5">
                   <button
-                    className={
-                      outOfStock
-                        ? 'flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-transparent px-3 py-2.5 text-[13px] font-semibold text-[var(--text)] opacity-40'
-                        : inCart
-                          ? 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-400 bg-transparent px-3 py-2.5 text-[13px] font-semibold text-purple-400 transition-opacity hover:opacity-88'
-                          : 'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-none bg-purple-400 px-3 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88'
-                    }
-                    disabled={outOfStock && !inCart}
-                    onClick={() =>
-                      outOfStock
-                        ? undefined
-                        : inCart
-                          ? onRemoveFromCart && onRemoveFromCart(product.id)
-                          : onAddToCart && onAddToCart(product)
-                    }
-                  >
-                    <CartIcon />{' '}
-                    {outOfStock ? 'Out of Stock' : inCart ? 'Remove from Cart' : 'Add to Cart'}
-                  </button>
-                  <button
+                    type="button"
                     className={
                       inWishlist
                         ? 'flex h-[38px] w-[38px] shrink-0 cursor-pointer items-center justify-center rounded-lg border border-purple-400 bg-purple-400/12 text-purple-400 transition-colors'

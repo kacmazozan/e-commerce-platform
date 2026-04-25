@@ -20,6 +20,9 @@ node scripts/seed-sales-manager.js
 echo "Seeding product manager..."
 node scripts/seed-product-manager.js
 
+echo "Seeding categories..."
+node scripts/seed-categories.js
+
 echo "Seeding products..."
 node scripts/seed-products.js
 

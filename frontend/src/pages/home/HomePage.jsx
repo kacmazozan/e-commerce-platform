@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { MiniCartIcon, StarRating } from '../../components/icons'
+import { useNavigate } from 'react-router-dom'
+import { StarRating } from '../../components/icons'
+import CatalogImage from '../../components/catalog/CatalogImage'
 import Navbar from './components/Navbar'
 import HeroBanner from './components/HeroBanner'
 import Footer from './components/Footer'
 import API_BASE from '../../api'
+import { getCategoryImageUrl, getProductImageUrl } from '../../lib/catalogAssets'
+import { fetchJsonWithRetry } from '../../lib/fetchJsonWithRetry'
 
 const CATEGORIES = [
   { id: 1, title: "Women's Clothing", subtitle: 'New arrivals every week', hue: 280 },
@@ -103,17 +107,26 @@ export default function HomePage({
   onLogout,
   cartCount = 0,
   wishlistCount = 0,
-  onAddToCart,
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [newReleases, setNewReleases] = useState([])
+  const navigate = useNavigate()
   const releasesRef = useRef(null)
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/products?limit=8`)
-      .then((r) => r.json())
-      .then((data) => setNewReleases(data.products ?? []))
-      .catch(() => setNewReleases([]))
+    let cancelled = false
+
+    fetchJsonWithRetry(`${API_BASE}/api/products?limit=8`)
+      .then((data) => {
+        if (!cancelled) setNewReleases(data.products ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setNewReleases([])
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   function scrollReleases(dir) {
@@ -154,7 +167,10 @@ export default function HomePage({
           <h2 className="m-0 text-[28px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
             Browse Categories
           </h2>
-          <button className="shrink-0 cursor-pointer border-none bg-transparent p-1 text-[13px] font-semibold tracking-[0.3px] text-purple-400 transition-opacity hover:opacity-75">
+          <button
+            type="button"
+            className="shrink-0 cursor-pointer border-none bg-transparent p-1 text-[13px] font-semibold tracking-[0.3px] text-purple-400 transition-opacity hover:opacity-75"
+          >
             View All
           </button>
         </div>
@@ -162,23 +178,30 @@ export default function HomePage({
         <div className="grid grid-cols-4 gap-5 max-[720px]:grid-cols-2 max-[720px]:gap-3.5 max-[420px]:grid-cols-1 max-lg:grid-cols-3">
           {CATEGORIES.map((cat) => (
             <button
+              type="button"
               key={cat.id}
               className="flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] p-0 text-left shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
               onClick={() => onNavigate('category', cat)}
             >
-              <div
-                className="flex aspect-[3/4] w-full items-center justify-center border-b border-[var(--glass-border)]"
+              <CatalogImage
+                src={getCategoryImageUrl(cat.title)}
+                alt={cat.title}
+                loading="eager"
+                containerClassName="aspect-[3/4] w-full border-b border-[var(--glass-border)]"
+                imageClassName="object-cover"
+                placeholderClassName=""
+                placeholder={
+                  <span
+                    className="text-[64px] font-bold opacity-35 select-none"
+                    style={{ color: `hsl(${cat.hue},70%,var(--cat-text-l,70%))` }}
+                  >
+                    {cat.title[0]}
+                  </span>
+                }
                 style={{
                   background: `linear-gradient(160deg, hsl(${cat.hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${cat.hue},45%,var(--cat-bg-l2,17%)) 100%)`,
                 }}
-              >
-                <span
-                  className="text-[64px] font-bold opacity-35 select-none"
-                  style={{ color: `hsl(${cat.hue},70%,var(--cat-text-l,70%))` }}
-                >
-                  {cat.title[0]}
-                </span>
-              </div>
+              />
               <div className="flex flex-col gap-1 p-4">
                 <span className="text-[15px] font-semibold text-[var(--text-h)]">{cat.title}</span>
                 <span className="text-[13px] text-[var(--text)]">{cat.subtitle}</span>
@@ -202,6 +225,7 @@ export default function HomePage({
           <div className="flex items-center gap-2">
             {[-1, 1].map((dir) => (
               <button
+                type="button"
                 key={dir}
                 className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--card-bg)] text-[var(--text-h)] backdrop-blur-xl transition-[background,border-color,color] hover:border-purple-400/40 hover:bg-purple-400/18 hover:text-purple-400"
                 onClick={() => scrollReleases(dir)}
@@ -225,7 +249,10 @@ export default function HomePage({
                 </svg>
               </button>
             ))}
-            <button className="shrink-0 cursor-pointer border-none bg-transparent p-1 text-[13px] font-semibold tracking-[0.3px] text-purple-400 transition-opacity hover:opacity-75">
+            <button
+              type="button"
+              className="shrink-0 cursor-pointer border-none bg-transparent p-1 text-[13px] font-semibold tracking-[0.3px] text-purple-400 transition-opacity hover:opacity-75"
+            >
               View All
             </button>
           </div>
@@ -238,25 +265,35 @@ export default function HomePage({
           {newReleases.map((product) => {
             const hue = CATEGORY_HUE[product.category] ?? 280
             const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
-            const outOfStock = availableStock === 0
             return (
               <div
                 key={product.id}
                 className="flex w-[210px] shrink-0 [scroll-snap-align:start] flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
               >
-                <div
-                  className="relative flex aspect-[2/3] w-full items-center justify-center border-b border-[var(--glass-border)]"
-                  style={{
-                    background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
-                  }}
+                <button
+                  type="button"
+                  className="relative flex aspect-[2/3] w-full cursor-pointer items-center justify-center border-b border-[var(--glass-border)] p-0"
+                  onClick={() => navigate(`/product/${product.id}`)}
+                  aria-label={`View details for ${product.name}`}
                 >
-                  <span
-                    className="text-[56px] font-bold opacity-40 select-none"
-                    style={{ color: `hsl(${hue},70%,var(--cat-text-l,70%))` }}
-                  >
-                    {product.name[0]}
-                  </span>
-                </div>
+                  <CatalogImage
+                    src={getProductImageUrl(product)}
+                    alt={product.name}
+                    containerClassName="h-full w-full"
+                    imageClassName="object-contain p-3"
+                    placeholder={
+                      <span
+                        className="text-[56px] font-bold opacity-40 select-none"
+                        style={{ color: `hsl(${hue},70%,var(--cat-text-l,70%))` }}
+                      >
+                        {product.name[0]}
+                      </span>
+                    }
+                    style={{
+                      background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${hue},50%,var(--cat-bg-l2,20%)) 100%)`,
+                    }}
+                  />
+                </button>
                 <div className="flex flex-col gap-[3px] px-3.5 pt-3 pb-3.5">
                   <span className="text-[11px] font-semibold tracking-[1.5px] text-[var(--text)] uppercase">
                     {product.category}
@@ -264,7 +301,7 @@ export default function HomePage({
                   <span className="text-[13px] leading-[1.3] font-semibold text-[var(--text-h)]">
                     {product.name}
                   </span>
-                  <div className="mt-2 flex items-center justify-between">
+                  <div className="mt-2">
                     {product.discounted_price != null ? (
                       <div className="flex flex-col gap-0.5">
                         <span className="text-[13px] text-red-400 line-through opacity-70">
@@ -282,18 +319,6 @@ export default function HomePage({
                         ${parseFloat(product.price).toFixed(2)}
                       </span>
                     )}
-                    <button
-                      className={
-                        outOfStock
-                          ? 'flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg border border-[var(--border)] bg-transparent text-[var(--text)] opacity-30'
-                          : 'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text)] transition-[background,color,border-color] hover:border-purple-400 hover:bg-purple-400 hover:text-white'
-                      }
-                      aria-label="Add to cart"
-                      disabled={outOfStock}
-                      onClick={() => !outOfStock && onAddToCart && onAddToCart(product)}
-                    >
-                      <MiniCartIcon />
-                    </button>
                   </div>
                   <span
                     className={
