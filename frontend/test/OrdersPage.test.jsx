@@ -558,6 +558,9 @@ describe('OrdersPage — refund button visibility', () => {
     const requestBtn = await screen.findByRole('button', { name: /request refund/i })
     await userEvent.click(requestBtn)
 
+    const confirmYes = await screen.findByRole('button', { name: /^yes$/i })
+    await userEvent.click(confirmYes)
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /cancel refund request/i })).toBeInTheDocument()
     })
