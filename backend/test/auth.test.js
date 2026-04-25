@@ -3,6 +3,7 @@ const request = require('supertest')
 // Mock the database pool before importing the app
 jest.mock('../db', () => ({
   query: jest.fn(),
+  connect: jest.fn(),
 }))
 
 const pool = require('../db')
@@ -33,9 +34,14 @@ describe('POST /api/auth/register', () => {
   })
 
   it('returns 201 with a token on successful registration', async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [] }) // no existing user
-      .mockResolvedValueOnce({ rows: [{ id: 1, email: 'new@example.com', role: 'customer' }] })
+    const mockClient = { query: jest.fn(), release: jest.fn() }
+    pool.connect.mockResolvedValueOnce(mockClient)
+    pool.query.mockResolvedValueOnce({ rows: [] }) // no existing user
+    mockClient.query
+      .mockResolvedValueOnce(undefined) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ id: 1, email: 'new@example.com', role: 'customer' }] }) // INSERT users
+      .mockResolvedValueOnce(undefined) // INSERT customers
+      .mockResolvedValueOnce(undefined) // COMMIT
 
     const res = await request(app)
       .post('/api/auth/register')
@@ -43,6 +49,7 @@ describe('POST /api/auth/register', () => {
 
     expect(res.status).toBe(201)
     expect(res.body).toHaveProperty('token')
+    expect(mockClient.release).toHaveBeenCalled()
   })
 })
 
