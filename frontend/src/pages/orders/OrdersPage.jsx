@@ -489,7 +489,7 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
           <li key={item.id} className="flex flex-col gap-1">
             <div className="flex items-center gap-3.5">
               <div
-                className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-[var(--border)]"
+                className="flex h-[64px] w-[64px] shrink-0 items-center justify-center rounded-lg border border-[var(--border)]"
                 style={{
                   background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,12%)) 0%, hsl(${hue},45%,var(--cat-bg-l2,20%)) 100%)`,
                 }}
@@ -497,7 +497,7 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
                 <span
                   style={{
                     color: `hsl(${hue},70%,var(--cat-text-l,70%))`,
-                    fontSize: 18,
+                    fontSize: 22,
                     fontWeight: 700,
                     opacity: 0.5,
                   }}
@@ -505,7 +505,7 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
                   {item.product_name[0]}
                 </span>
               </div>
-              <div className="flex flex-1 flex-col gap-0.5">
+              <div className="flex flex-1 flex-col gap-2">
                 <span className="flex items-center text-sm font-semibold text-[var(--text-h)]">
                   {item.product_name}
                   {item.refund && (
@@ -519,7 +519,7 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
                   {item.size ? `Size ${item.size} · ` : ''}Qty {item.quantity}
                 </span>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
+              <div className="flex shrink-0 flex-col items-end gap-2">
                 <span className="shrink-0 text-sm font-bold text-[var(--text-h)]">
                   ${lineTotal.toFixed(2)}
                 </span>

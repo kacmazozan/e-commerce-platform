@@ -145,7 +145,7 @@ router.get('/:id/reviews', async (req, res) => {
     pool.query(
       `SELECT r.id, r.rating, r.content, r.created_at, r.anonymous, c.name AS customer_name
        FROM product_reviews r
-       JOIN auth.customers c ON c.customer_id = r.user_id
+       LEFT JOIN auth.customers c ON c.customer_id = r.user_id
        WHERE r.product_id = $1 AND r.status = 'approved' AND r.content IS NOT NULL
        ORDER BY r.created_at DESC`,
       [productId]
@@ -158,7 +158,7 @@ router.get('/:id/reviews', async (req, res) => {
     rating: r.rating,
     content: r.content,
     created_at: r.created_at,
-    author_name: r.anonymous ? 'Anonymous' : r.customer_name,
+    author_name: r.anonymous ? 'Anonymous' : r.customer_name || 'User',
   }))
 
   res.json({

@@ -8,7 +8,7 @@ const authenticate = require('../middleware/auth')
 const router = express.Router()
 
 router.post('/register', async (req, res) => {
-  const { email, password } = req.body
+  const { email, password, name } = req.body
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' })
@@ -25,6 +25,12 @@ router.post('/register', async (req, res) => {
     [email, password_hash, 'customer']
   )
   const user = result.rows[0]
+
+  const displayName = (name && name.trim()) || email.split('@')[0]
+  await pool.query(
+    'INSERT INTO auth.customers (customer_id, name, tax_id, home_address) VALUES ($1, $2, $3, $4)',
+    [user.id, displayName, email, '']
+  )
 
   const token = jwt.sign(
     { userId: user.id, email: user.email, role: user.role },
