@@ -412,7 +412,7 @@ function DeliveryTimeline({ dbStatus }) {
   const uiStatus = mapStatus(dbStatus)
   const activeIdx = STATUS_INDEX[uiStatus] ?? 0
   return (
-    <div className="mb-6 flex items-start overflow-x-auto pb-1">
+    <div className="mb-6 flex items-start overflow-x-auto pt-2 pb-1">
       {TIMELINE_STEPS.map((step, i) => {
         const done = i < activeIdx
         const current = i === activeIdx
