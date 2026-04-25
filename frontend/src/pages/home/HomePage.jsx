@@ -163,16 +163,10 @@ export default function HomePage({
 
       {/* ── Category grid ── */}
       <main className={`${sectionCls} ${sectionDividerCls}`}>
-        <div className="mb-8 flex items-end justify-between">
+        <div className="mb-8">
           <h2 className="m-0 text-[28px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
             Browse Categories
           </h2>
-          <button
-            type="button"
-            className="shrink-0 cursor-pointer border-none bg-transparent p-1 text-[13px] font-semibold tracking-[0.3px] text-purple-400 transition-opacity hover:opacity-75"
-          >
-            View All
-          </button>
         </div>
 
         <div className="grid grid-cols-4 gap-5 max-[720px]:grid-cols-2 max-[720px]:gap-3.5 max-[420px]:grid-cols-1 max-lg:grid-cols-3">
@@ -249,12 +243,6 @@ export default function HomePage({
                 </svg>
               </button>
             ))}
-            <button
-              type="button"
-              className="shrink-0 cursor-pointer border-none bg-transparent p-1 text-[13px] font-semibold tracking-[0.3px] text-purple-400 transition-opacity hover:opacity-75"
-            >
-              View All
-            </button>
           </div>
         </div>
 

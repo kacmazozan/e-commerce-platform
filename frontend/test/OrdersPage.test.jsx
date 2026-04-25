@@ -516,6 +516,21 @@ describe('OrdersPage — refund button visibility', () => {
     expect(screen.queryByRole('button', { name: /cancel refund request/i })).not.toBeInTheDocument()
   })
 
+  it('"Write a Review" button is visible for a delivered order item', async () => {
+    mockFetch(makeOrder())
+    renderPage()
+    const toggle = await screen.findByRole('button', { name: /#1/i })
+    await userEvent.click(toggle)
+    expect(screen.getByRole('button', { name: /write a review/i })).toBeInTheDocument()
+  })
+
+  it('"Write a Review" button is NOT visible for a non-delivered order', async () => {
+    mockFetch(makeOrder({ status: 'processing' }))
+    renderPage()
+    await screen.findByText('Boots')
+    expect(screen.queryByRole('button', { name: /write a review/i })).not.toBeInTheDocument()
+  })
+
   it('submitting refund re-fetches orders and shows cancel button', async () => {
     const initialOrder = makeOrder()
     const updatedOrder = makeOrder({
@@ -558,8 +573,150 @@ describe('OrdersPage — refund button visibility', () => {
     const requestBtn = await screen.findByRole('button', { name: /request refund/i })
     await userEvent.click(requestBtn)
 
+    const confirmYes = await screen.findByRole('button', { name: /^yes$/i })
+    await userEvent.click(confirmYes)
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /cancel refund request/i })).toBeInTheDocument()
     })
+  })
+})
+
+/* ── Review modal ────────────────────────────────────────── */
+
+describe('OrdersPage — review modal', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  async function openReviewModal() {
+    mockFetch(makeOrder())
+    renderPage()
+    const toggle = await screen.findByRole('button', { name: /#1/i })
+    await userEvent.click(toggle)
+    await userEvent.click(screen.getByRole('button', { name: /write a review/i }))
+  }
+
+  it('clicking "Write a Review" opens the review modal', async () => {
+    await openReviewModal()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Review Product')).toBeInTheDocument()
+  })
+
+  it('pressing Escape closes the modal', async () => {
+    await openReviewModal()
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('submitting without a rating shows a validation error', async () => {
+    await openReviewModal()
+    await userEvent.click(screen.getByRole('button', { name: /submit review/i }))
+    expect(screen.getByText(/please select a star rating/i)).toBeInTheDocument()
+  })
+
+  it('submitting with a rating calls POST with correct payload and shows success', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ orders: [makeOrder()] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 1, rating: 4 }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+    const toggle = await screen.findByRole('button', { name: /#1/i })
+    await userEvent.click(toggle)
+    await userEvent.click(screen.getByRole('button', { name: /write a review/i }))
+
+    await userEvent.click(screen.getByRole('button', { name: /rate 4 stars/i }))
+    await userEvent.click(screen.getByRole('button', { name: /submit review/i }))
+
+    expect(await screen.findByText(/thank you for your review/i)).toBeInTheDocument()
+    const postCall = fetchMock.mock.calls.find(
+      (c) => typeof c[0] === 'string' && c[0].includes('/api/products/') && c[1]?.method === 'POST'
+    )
+    expect(postCall).toBeDefined()
+    const body = JSON.parse(postCall[1].body)
+    expect(body.rating).toBe(4)
+    expect(body.anonymous).toBe(true)
+  })
+
+  it('unchecking the display name checkbox sends anonymous=false in the payload', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ orders: [makeOrder()] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 1, rating: 3 }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+    const toggle = await screen.findByRole('button', { name: /#1/i })
+    await userEvent.click(toggle)
+    await userEvent.click(screen.getByRole('button', { name: /write a review/i }))
+
+    await userEvent.click(screen.getByRole('button', { name: /rate 3 stars/i }))
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: /submit review/i }))
+
+    await screen.findByText(/thank you for your review/i)
+    const postCall = fetchMock.mock.calls.find(
+      (c) => typeof c[0] === 'string' && c[0].includes('/api/products/') && c[1]?.method === 'POST'
+    )
+    const body = JSON.parse(postCall[1].body)
+    expect(body.anonymous).toBe(false)
+  })
+
+  it('shows an error when the review POST fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ orders: [makeOrder()] }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({ error: 'You have already reviewed this product' }),
+        })
+    )
+    renderPage()
+    const toggle = await screen.findByRole('button', { name: /#1/i })
+    await userEvent.click(toggle)
+    await userEvent.click(screen.getByRole('button', { name: /write a review/i }))
+    await userEvent.click(screen.getByRole('button', { name: /rate 5 stars/i }))
+    await userEvent.click(screen.getByRole('button', { name: /submit review/i }))
+    expect(await screen.findByText(/you have already reviewed/i)).toBeInTheDocument()
+  })
+
+  it('shows a fallback error when the POST response body is not JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ orders: [makeOrder()] }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: () => Promise.reject(new SyntaxError('Unexpected token')),
+        })
+    )
+    renderPage()
+    const toggle = await screen.findByRole('button', { name: /#1/i })
+    await userEvent.click(toggle)
+    await userEvent.click(screen.getByRole('button', { name: /write a review/i }))
+    await userEvent.click(screen.getByRole('button', { name: /rate 2 stars/i }))
+    await userEvent.click(screen.getByRole('button', { name: /submit review/i }))
+    expect(await screen.findByText(/failed to submit review/i)).toBeInTheDocument()
   })
 })

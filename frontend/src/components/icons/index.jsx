@@ -53,20 +53,24 @@ export function SearchIcon() {
 }
 
 export function StarRating({ rating }) {
+  const empty = !rating
   return (
-    <div className="flex gap-0.5 text-amber-400" aria-label={`${rating} out of 5 stars`}>
+    <div
+      className={`flex gap-0.5 ${empty ? 'text-gray-300' : 'text-amber-400'}`}
+      aria-label={empty ? 'No ratings yet' : `${rating} out of 5 stars`}
+    >
       {[1, 2, 3, 4, 5].map((n) => (
         <svg
           key={n}
           width="14"
           height="14"
           viewBox="0 0 24 24"
-          fill={n <= rating ? 'currentColor' : 'none'}
+          fill={!empty && n <= rating ? 'currentColor' : 'none'}
           stroke="currentColor"
           strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={n <= rating ? '' : 'opacity-25'}
+          className={!empty && n <= rating ? '' : 'opacity-40'}
         >
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
         </svg>

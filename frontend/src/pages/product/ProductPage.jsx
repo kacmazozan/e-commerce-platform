@@ -100,40 +100,6 @@ function AccordionRow({ title, children }) {
   )
 }
 
-function StarSelector({ value, onChange }) {
-  const [hovered, setHovered] = useState(0)
-  const active = hovered || value
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          className="cursor-pointer border-none bg-transparent p-0.5 text-amber-400 transition-transform hover:scale-110"
-          onMouseEnter={() => setHovered(n)}
-          onMouseLeave={() => setHovered(0)}
-          onClick={() => onChange(n)}
-          aria-label={`Rate ${n} stars`}
-        >
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill={active >= n ? 'currentColor' : 'none'}
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={active >= n ? '' : 'opacity-30'}
-          >
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-          </svg>
-        </button>
-      ))}
-    </div>
-  )
-}
-
 export default function ProductPage({
   productId,
   onBack,
@@ -141,7 +107,6 @@ export default function ProductPage({
   onAddToWishlist,
   onRemoveFromWishlist,
   wishlistItems = [],
-  token = null,
 }) {
   const [product, setProduct] = useState(null)
   const [images, setImages] = useState([])
@@ -152,12 +117,9 @@ export default function ProductPage({
   const [sizeError, setSizeError] = useState(false)
 
   const [reviews, setReviews] = useState([])
+  const [avgRating, setAvgRating] = useState(null)
+  const [totalRatings, setTotalRatings] = useState(0)
   const [reviewsLoading, setReviewsLoading] = useState(true)
-  const [rating, setRating] = useState(0)
-  const [content, setContent] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState('')
-  const [submitSuccess, setSubmitSuccess] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -182,6 +144,8 @@ export default function ProductPage({
       const res = await fetch(`${API_BASE}/api/products/${productId}/reviews`)
       const data = await res.json()
       setReviews(data.reviews || [])
+      setAvgRating(data.avgRating ?? null)
+      setTotalRatings(data.totalRatings ?? 0)
     } catch {
       // ignore
     } finally {
@@ -192,32 +156,6 @@ export default function ProductPage({
   useEffect(() => {
     fetchReviews()
   }, [fetchReviews])
-
-  async function handleSubmitReview(e) {
-    e.preventDefault()
-    if (!rating) {
-      setSubmitError('Please select a rating')
-      return
-    }
-    setSubmitting(true)
-    setSubmitError('')
-    try {
-      const res = await fetch(`${API_BASE}/api/products/${productId}/reviews`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ rating, content }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to submit review')
-      setSubmitSuccess(true)
-      setRating(0)
-      setContent('')
-    } catch (err) {
-      setSubmitError(err.message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   function handleAddToCart() {
     if (product.sizes && product.sizes.length > 0 && !selectedSize) {
@@ -268,10 +206,6 @@ export default function ProductPage({
   const outOfStock = availableStock === 0
   const inWishlist = wishlistItems.some((i) => i.id === product.id)
   const galleryImages = getResolvedProductImages(product, images)
-  const avgRating =
-    reviews.length > 0
-      ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
-      : null
   const avgRatingRounded = avgRating ? Math.round(parseFloat(avgRating)) : null
 
   const hasModelInfo =
@@ -419,11 +353,13 @@ export default function ProductPage({
                 {product.name}
               </h1>
 
-              {avgRating && (
+              {!reviewsLoading && (
                 <div className="mt-2 flex items-center gap-2">
                   <StarRating rating={avgRatingRounded} />
                   <span className="text-[13px] text-[var(--text)] opacity-70">
-                    {avgRating} ({reviews.length} review{reviews.length !== 1 ? 's' : ''})
+                    {avgRating
+                      ? `${avgRating} (${totalRatings} review${totalRatings !== 1 ? 's' : ''})`
+                      : 'No reviews'}
                   </span>
                 </div>
               )}
@@ -595,15 +531,17 @@ export default function ProductPage({
           <div className="mb-6 flex items-center justify-between">
             <h2 className="m-0 text-[22px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
               Customer Reviews
-              {reviews.length > 0 && (
+              {totalRatings > 0 && (
                 <span className="ml-2 text-[18px] font-normal text-[var(--text)] opacity-60">
-                  ({reviews.length})
+                  ({totalRatings})
                 </span>
               )}
             </h2>
-            {avgRating && (
+            {!reviewsLoading && (
               <div className="flex items-center gap-2">
-                <span className="text-[28px] font-bold text-[var(--text-h)]">{avgRating}</span>
+                {avgRating && (
+                  <span className="text-[28px] font-bold text-[var(--text-h)]">{avgRating}</span>
+                )}
                 <StarRating rating={avgRatingRounded} />
               </div>
             )}
@@ -612,9 +550,7 @@ export default function ProductPage({
           {reviewsLoading ? (
             <p className="text-[13px] text-[var(--text)] opacity-60">Loading reviews…</p>
           ) : reviews.length === 0 ? (
-            <p className="text-[14px] text-[var(--text)] opacity-50">
-              No reviews yet. Be the first to share your experience!
-            </p>
+            <p className="text-[14px] text-[var(--text)] opacity-50">No reviews yet.</p>
           ) : (
             <div className="mb-8 grid gap-4 sm:grid-cols-2">
               {reviews.map((r) => (
@@ -622,7 +558,7 @@ export default function ProductPage({
                   key={r.id}
                   className="rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5"
                 >
-                  <div className="mb-3 flex items-center justify-between">
+                  <div className="mb-2 flex items-center justify-between">
                     <StarRating rating={r.rating} />
                     <span className="text-[11px] text-[var(--text)] opacity-50">
                       {new Date(r.created_at).toLocaleDateString('en-US', {
@@ -632,6 +568,9 @@ export default function ProductPage({
                       })}
                     </span>
                   </div>
+                  <p className="mb-2 text-[12px] font-semibold text-[var(--text)] opacity-60">
+                    {r.author_name}
+                  </p>
                   {r.content && (
                     <p className="m-0 text-[14px] leading-relaxed text-[var(--text-h)]">
                       {r.content}
@@ -641,52 +580,6 @@ export default function ProductPage({
               ))}
             </div>
           )}
-
-          {/* Write a review */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-6">
-            <h3 className="m-0 mb-4 text-[16px] font-semibold text-[var(--text-h)]">
-              Write a Review
-            </h3>
-            {!token ? (
-              <p className="text-[14px] text-[var(--text)] opacity-70">
-                <Link to="/login" className="text-purple-400 underline">
-                  Log in
-                </Link>{' '}
-                to share your experience with this product.
-              </p>
-            ) : submitSuccess ? (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-[14px] text-emerald-400">
-                Thank you! Your review has been submitted and will appear once approved.
-              </div>
-            ) : (
-              <form onSubmit={handleSubmitReview} className="space-y-4">
-                <div>
-                  <p className="mb-2 text-[13px] font-semibold text-[var(--text)]">Your Rating</p>
-                  <StarSelector value={rating} onChange={setRating} />
-                </div>
-                <div>
-                  <p className="mb-2 text-[13px] font-semibold text-[var(--text)]">
-                    Your Review <span className="font-normal opacity-50">(optional)</span>
-                  </p>
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Share what you liked, how it fits, or anything helpful for others…"
-                    rows={4}
-                    className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-[14px] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus:border-purple-400/50 focus:outline-none"
-                  />
-                </div>
-                {submitError && <p className="text-[13px] text-red-400">{submitError}</p>}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="cursor-pointer rounded-xl border-none bg-purple-400 px-6 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {submitting ? 'Submitting…' : 'Submit Review'}
-                </button>
-              </form>
-            )}
-          </div>
         </section>
 
         {/* ── Info accordion ── */}

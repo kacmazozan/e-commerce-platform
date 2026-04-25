@@ -97,13 +97,7 @@ function CategoryRoute({
   )
 }
 
-function ProductRoute({
-  onAddToCart,
-  onAddToWishlist,
-  onRemoveFromWishlist,
-  wishlistItems,
-  token,
-}) {
+function ProductRoute({ onAddToCart, onAddToWishlist, onRemoveFromWishlist, wishlistItems }) {
   const { id } = useParams()
   const navigate = useNavigate()
   return (
@@ -114,7 +108,6 @@ function ProductRoute({
       onAddToWishlist={onAddToWishlist}
       onRemoveFromWishlist={onRemoveFromWishlist}
       wishlistItems={wishlistItems}
-      token={token}
     />
   )
 }
@@ -563,7 +556,6 @@ function App() {
               onAddToWishlist={addToWishlist}
               onRemoveFromWishlist={removeFromWishlist}
               wishlistItems={wishlist}
-              token={token}
             />
           }
         />

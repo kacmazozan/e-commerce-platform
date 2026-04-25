@@ -407,31 +407,39 @@ describe('GET /api/products/:id/reviews', () => {
   })
 
   it('returns 200 with empty reviews array when no approved reviews', async () => {
-    pool.query.mockResolvedValueOnce({ rows: [] })
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ total_ratings: 0, avg_rating: null }] })
+      .mockResolvedValueOnce({ rows: [] })
 
     const res = await request(app).get('/api/products/1/reviews')
 
     expect(res.status).toBe(200)
-    expect(res.body).toEqual({ reviews: [] })
+    expect(res.body).toEqual({ avgRating: null, totalRatings: 0, reviews: [] })
   })
 
   it('returns 200 with approved reviews', async () => {
-    pool.query.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 5,
-          rating: 4,
-          content: 'Great product!',
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: 6,
-          rating: 5,
-          content: 'Love it.',
-          created_at: new Date().toISOString(),
-        },
-      ],
-    })
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ total_ratings: 2, avg_rating: '4.5' }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 5,
+            rating: 4,
+            content: 'Great product!',
+            created_at: new Date().toISOString(),
+            anonymous: false,
+            customer_name: 'Alice',
+          },
+          {
+            id: 6,
+            rating: 5,
+            content: 'Love it.',
+            created_at: new Date().toISOString(),
+            anonymous: false,
+            customer_name: 'Bob',
+          },
+        ],
+      })
 
     const res = await request(app).get('/api/products/1/reviews')
 

@@ -213,26 +213,28 @@ describe('ProductPage', () => {
     })
   })
 
-  // 13. Review form when token is provided
-  it('shows the review form when token is provided', async () => {
+  // 13. No review submission form on product page (form was moved to Past Orders)
+  it('does not show a review submission form on the product page', async () => {
     stubFetch()
 
-    renderPage({ token: 'fake-jwt-token' })
+    renderPage()
 
     await screen.findByText('Merino Sweater')
 
-    expect(screen.getByRole('button', { name: /submit review/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /submit review/i })).not.toBeInTheDocument()
   })
 
-  // 14. Log in prompt when token is null
-  it('shows Log in prompt when token is null', async () => {
+  // 14. No log-in-to-review prompt on product page (prompt was moved to Past Orders)
+  it('does not show a log-in-to-review prompt on the product page', async () => {
     stubFetch()
 
-    renderPage({ token: null })
+    renderPage()
 
     await screen.findByText('Merino Sweater')
 
-    expect(screen.getByRole('link', { name: /log in/i })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /log in to write a review/i })
+    ).not.toBeInTheDocument()
   })
 
   // 15. Calls onBack when Back button clicked

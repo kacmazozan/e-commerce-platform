@@ -8,7 +8,7 @@ const authenticate = require('../middleware/auth')
 const router = express.Router()
 
 router.post('/register', async (req, res) => {
-  const { email, password } = req.body
+  const { email, password, name } = req.body
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' })
@@ -20,11 +20,29 @@ router.post('/register', async (req, res) => {
   }
 
   const password_hash = await bcrypt.hash(password, 10)
-  const result = await pool.query(
-    'INSERT INTO auth.users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role',
-    [email, password_hash, 'customer']
-  )
-  const user = result.rows[0]
+
+  const client = await pool.connect()
+  let user
+  try {
+    await client.query('BEGIN')
+    const result = await client.query(
+      'INSERT INTO auth.users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role',
+      [email, password_hash, 'customer']
+    )
+    user = result.rows[0]
+
+    const displayName = (name && name.trim()) || email.split('@')[0]
+    await client.query(
+      'INSERT INTO auth.customers (customer_id, name, tax_id, home_address) VALUES ($1, $2, $3, $4)',
+      [user.id, displayName, email, '']
+    )
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 
   const token = jwt.sign(
     { userId: user.id, email: user.email, role: user.role },

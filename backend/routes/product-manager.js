@@ -413,7 +413,8 @@ router.get('/comments', async (req, res) => {
     return res.status(400).json({ error: 'Invalid status value' })
   }
 
-  let where = []
+  // Only show reviews that have comment content — rating-only reviews are auto-approved
+  let where = ['r.content IS NOT NULL']
   let params = []
   let idx = 1
 
@@ -423,7 +424,7 @@ router.get('/comments', async (req, res) => {
     idx++
   }
 
-  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : ''
+  const whereClause = `WHERE ${where.join(' AND ')}`
 
   const countResult = await pool.query(
     `SELECT COUNT(*) FROM product_reviews r ${whereClause}`,
@@ -432,7 +433,7 @@ router.get('/comments', async (req, res) => {
   const total = parseInt(countResult.rows[0].count)
 
   const dataResult = await pool.query(
-    `SELECT r.id, r.rating, r.content, r.status, r.created_at,
+    `SELECT r.id, r.rating, r.content, r.status, r.created_at, r.anonymous,
             p.name AS product_name,
             u.email AS customer_email
      FROM product_reviews r

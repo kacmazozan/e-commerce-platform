@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import API_BASE from '../../api'
 
@@ -101,7 +102,7 @@ function statusPillClass(status) {
   switch (status) {
     case 'placed':
     case 'pending':
-      return `${base} bg-slate-500/15 text-slate-500`
+      return `${base} bg-slate-500/15 text-[var(--text-h)]`
     case 'processing':
       return `${base} bg-amber-500/15 text-amber-600`
     case 'shipped':
@@ -159,6 +160,7 @@ function RefundBadge({ status, refundAmount }) {
 function RefundActionButton({ item, orderCreatedAt, orderStatus, token, onRefundChange }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [confirming, setConfirming] = useState(false)
 
   const daysOld = (Date.now() - new Date(orderCreatedAt).getTime()) / (1000 * 60 * 60 * 24)
   const isWithin30Days = daysOld <= 30
@@ -215,21 +217,240 @@ function RefundActionButton({ item, orderCreatedAt, orderStatus, token, onRefund
   }
 
   return (
-    <div className="mt-1.5 flex flex-col items-end gap-1">
-      <button
-        type="button"
-        disabled={loading}
-        onClick={isPending ? handleCancel : handleRequest}
-        className={`cursor-pointer rounded-[7px] border px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-          isPending
-            ? 'border-red-400/40 bg-transparent text-red-400 hover:border-red-400 hover:bg-red-400/10'
-            : 'border-[var(--border)] bg-transparent text-[var(--text)] hover:border-purple-400 hover:text-purple-400'
-        }`}
-      >
-        {loading ? 'Loading…' : isPending ? 'Cancel Refund Request' : 'Request Refund'}
-      </button>
+    <div className="flex flex-col items-end gap-1">
+      {!isPending && confirming ? (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[var(--text)]">Request a refund?</span>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              handleRequest()
+              setConfirming(false)
+            }}
+            className="cursor-pointer rounded-[7px] border border-red-400/40 bg-transparent px-3 py-1.5 text-xs leading-none font-semibold text-red-400 transition-colors hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? 'Loading…' : 'Yes'}
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              setConfirming(false)
+              setError(null)
+            }}
+            className="cursor-pointer rounded-[7px] border border-[var(--border)] bg-transparent px-3 py-1.5 text-xs leading-none font-semibold text-[var(--text)] transition-colors hover:border-purple-400/40 hover:text-purple-400 disabled:opacity-50"
+          >
+            No
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={loading}
+          onClick={isPending ? handleCancel : () => setConfirming(true)}
+          className={`cursor-pointer rounded-[7px] border px-3 py-1.5 text-xs leading-none font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            isPending
+              ? 'border-red-400/40 bg-transparent text-red-400 hover:border-red-400 hover:bg-red-400/10'
+              : 'border-[var(--border)] bg-transparent text-[var(--text)] hover:border-purple-400 hover:text-purple-400'
+          }`}
+        >
+          {loading ? 'Loading…' : isPending ? 'Cancel Refund Request' : 'Request Refund'}
+        </button>
+      )}
       {error && <span className="text-[11px] text-red-400">{error}</span>}
     </div>
+  )
+}
+
+/* ── Review components ───────────────────────────────────── */
+
+function StarSelector({ value, onChange }) {
+  const [hovered, setHovered] = useState(0)
+  const active = hovered || value
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          className="cursor-pointer border-none bg-transparent p-0.5 text-amber-400 transition-transform hover:scale-110"
+          onMouseEnter={() => setHovered(n)}
+          onMouseLeave={() => setHovered(0)}
+          onClick={() => onChange(n)}
+          aria-label={`Rate ${n} stars`}
+        >
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 24 24"
+            fill={active >= n ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={active >= n ? '' : 'opacity-30'}
+          >
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function ReviewModal({ item, token, onClose }) {
+  const [rating, setRating] = useState(0)
+  const [content, setContent] = useState('')
+  const [anonymous, setAnonymous] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  const dialogRef = useRef(null)
+
+  useEffect(() => {
+    dialogRef.current?.focus()
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!rating) {
+      setError('Please select a star rating.')
+      return
+    }
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/products/${item.product_id}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rating, content: content.trim() || null, anonymous }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to submit review')
+      setSuccess(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-modal-title"
+        tabIndex={-1}
+        className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-6 shadow-xl focus:outline-none"
+      >
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h2 id="review-modal-title" className="m-0 text-[18px] font-bold text-[var(--text-h)]">
+              Review Product
+            </h2>
+            <p className="mt-0.5 text-[13px] text-[var(--text)] opacity-60">{item.product_name}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-lg border-none bg-transparent p-1.5 text-[var(--text)] transition-colors hover:bg-[var(--border)] hover:text-[var(--text-h)]"
+            aria-label="Close"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {success ? (
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-[14px] text-emerald-400">
+            Thank you for your review! Your rating is live. If you left a comment, it will appear
+            after a quick review.
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <p className="mb-2 text-[13px] font-semibold text-[var(--text)]">Your Rating</p>
+              <StarSelector value={rating} onChange={setRating} />
+            </div>
+
+            <div>
+              <p className="mb-2 text-[13px] font-semibold text-[var(--text)]">
+                Comment <span className="font-normal opacity-50">(optional)</span>
+              </p>
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Share what you liked, how it fits, or anything helpful for others…"
+                rows={3}
+                className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-[14px] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus:border-purple-400/50 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <span className="text-[13px] font-semibold text-[var(--text)]">Display name</span>
+              <input
+                type="checkbox"
+                checked={!anonymous}
+                onChange={(e) => setAnonymous(!e.target.checked)}
+                className="h-4 w-4 cursor-pointer accent-purple-400"
+              />
+            </div>
+
+            {error && <p className="text-[13px] text-red-400">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full cursor-pointer rounded-xl border-none bg-purple-400 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? 'Submitting…' : 'Submit Review'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+function WriteReviewButton({ item, orderStatus, token }) {
+  const [open, setOpen] = useState(false)
+
+  if (orderStatus !== 'delivered') return null
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="cursor-pointer rounded-[7px] border border-purple-400/40 bg-purple-400/10 px-3 py-1.5 text-xs leading-none font-semibold text-purple-400 transition-colors hover:border-purple-400/70 hover:bg-purple-400/20"
+      >
+        Write a Review
+      </button>
+      {open && <ReviewModal item={item} token={token} onClose={() => setOpen(false)} />}
+    </>
   )
 }
 
@@ -239,7 +460,7 @@ function DeliveryTimeline({ dbStatus }) {
   const uiStatus = mapStatus(dbStatus)
   const activeIdx = STATUS_INDEX[uiStatus] ?? 0
   return (
-    <div className="mb-6 flex items-start overflow-x-auto pb-1">
+    <div className="mb-6 flex items-start overflow-x-auto pt-2 pb-1">
       {TIMELINE_STEPS.map((step, i) => {
         const done = i < activeIdx
         const current = i === activeIdx
@@ -287,7 +508,7 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
           <li key={item.id} className="flex flex-col gap-1">
             <div className="flex items-center gap-3.5">
               <div
-                className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-[var(--border)]"
+                className="flex h-[64px] w-[64px] shrink-0 items-center justify-center rounded-lg border border-[var(--border)]"
                 style={{
                   background: `linear-gradient(160deg, hsl(${hue},35%,var(--cat-bg-l,12%)) 0%, hsl(${hue},45%,var(--cat-bg-l2,20%)) 100%)`,
                 }}
@@ -295,7 +516,7 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
                 <span
                   style={{
                     color: `hsl(${hue},70%,var(--cat-text-l,70%))`,
-                    fontSize: 18,
+                    fontSize: 22,
                     fontWeight: 700,
                     opacity: 0.5,
                   }}
@@ -303,7 +524,7 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
                   {item.product_name[0]}
                 </span>
               </div>
-              <div className="flex flex-1 flex-col gap-0.5">
+              <div className="flex flex-1 flex-col gap-2">
                 <span className="flex items-center text-sm font-semibold text-[var(--text-h)]">
                   {item.product_name}
                   {item.refund && (
@@ -317,18 +538,21 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
                   {item.size ? `Size ${item.size} · ` : ''}Qty {item.quantity}
                 </span>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
+              <div className="flex shrink-0 flex-col items-end gap-2">
                 <span className="shrink-0 text-sm font-bold text-[var(--text-h)]">
                   ${lineTotal.toFixed(2)}
                 </span>
                 {token && (
-                  <RefundActionButton
-                    item={item}
-                    orderCreatedAt={orderCreatedAt}
-                    orderStatus={orderStatus}
-                    token={token}
-                    onRefundChange={onRefundChange}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <RefundActionButton
+                      item={item}
+                      orderCreatedAt={orderCreatedAt}
+                      orderStatus={orderStatus}
+                      token={token}
+                      onRefundChange={onRefundChange}
+                    />
+                    <WriteReviewButton item={item} orderStatus={orderStatus} token={token} />
+                  </div>
                 )}
               </div>
             </div>
