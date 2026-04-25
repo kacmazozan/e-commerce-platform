@@ -160,6 +160,7 @@ function RefundBadge({ status, refundAmount }) {
 function RefundActionButton({ item, orderCreatedAt, orderStatus, token, onRefundChange }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [confirming, setConfirming] = useState(false)
 
   const daysOld = (Date.now() - new Date(orderCreatedAt).getTime()) / (1000 * 60 * 60 * 24)
   const isWithin30Days = daysOld <= 30
@@ -217,18 +218,46 @@ function RefundActionButton({ item, orderCreatedAt, orderStatus, token, onRefund
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <button
-        type="button"
-        disabled={loading}
-        onClick={isPending ? handleCancel : handleRequest}
-        className={`cursor-pointer rounded-[7px] border px-3 py-1.5 text-xs leading-none font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-          isPending
-            ? 'border-red-400/40 bg-transparent text-red-400 hover:border-red-400 hover:bg-red-400/10'
-            : 'border-[var(--border)] bg-transparent text-[var(--text)] hover:border-purple-400 hover:text-purple-400'
-        }`}
-      >
-        {loading ? 'Loading…' : isPending ? 'Cancel Refund Request' : 'Request Refund'}
-      </button>
+      {!isPending && confirming ? (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[var(--text)]">Request a refund?</span>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              handleRequest()
+              setConfirming(false)
+            }}
+            className="cursor-pointer rounded-[7px] border border-red-400/40 bg-transparent px-3 py-1.5 text-xs leading-none font-semibold text-red-400 transition-colors hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? 'Loading…' : 'Yes'}
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              setConfirming(false)
+              setError(null)
+            }}
+            className="cursor-pointer rounded-[7px] border border-[var(--border)] bg-transparent px-3 py-1.5 text-xs leading-none font-semibold text-[var(--text)] transition-colors hover:border-purple-400/40 hover:text-purple-400 disabled:opacity-50"
+          >
+            No
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={loading}
+          onClick={isPending ? handleCancel : () => setConfirming(true)}
+          className={`cursor-pointer rounded-[7px] border px-3 py-1.5 text-xs leading-none font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            isPending
+              ? 'border-red-400/40 bg-transparent text-red-400 hover:border-red-400 hover:bg-red-400/10'
+              : 'border-[var(--border)] bg-transparent text-[var(--text)] hover:border-purple-400 hover:text-purple-400'
+          }`}
+        >
+          {loading ? 'Loading…' : isPending ? 'Cancel Refund Request' : 'Request Refund'}
+        </button>
+      )}
       {error && <span className="text-[11px] text-red-400">{error}</span>}
     </div>
   )
@@ -496,7 +525,6 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
                 </span>
                 {token && (
                   <div className="flex items-center gap-1.5">
-                    <WriteReviewButton item={item} orderStatus={orderStatus} token={token} />
                     <RefundActionButton
                       item={item}
                       orderCreatedAt={orderCreatedAt}
@@ -504,6 +532,7 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
                       token={token}
                       onRefundChange={onRefundChange}
                     />
+                    <WriteReviewButton item={item} orderStatus={orderStatus} token={token} />
                   </div>
                 )}
               </div>
