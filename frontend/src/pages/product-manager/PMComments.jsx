@@ -138,7 +138,14 @@ function PMComments({ token }) {
                 <tr key={c.id} className="transition-colors hover:bg-[var(--card-bg)]/60">
                   <td className={tdClass}>{c.id}</td>
                   <td className={tdClass}>{c.product_name || '—'}</td>
-                  <td className={tdClass}>{c.customer_email || c.user_email || '—'}</td>
+                  <td className={tdClass}>
+                    {c.customer_email || c.user_email || '—'}
+                    {c.anonymous && (
+                      <span className="ml-1.5 rounded-full bg-slate-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400">
+                        anon
+                      </span>
+                    )}
+                  </td>
                   <td className={tdClass}>{c.rating != null ? `${c.rating}/5` : '—'}</td>
                   <td className={`${tdClass} max-w-[200px]`}>
                     {truncate(c.content || c.comment || c.text)}

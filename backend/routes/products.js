@@ -129,22 +129,43 @@ router.get('/', async (req, res) => {
   res.json({ products: result.rows })
 })
 
-// GET /api/products/:id/reviews — approved reviews for a product (public)
+// GET /api/products/:id/reviews — ratings aggregate + approved comment cards (public)
 router.get('/:id/reviews', async (req, res) => {
   const productId = parseInt(req.params.id, 10)
   if (!Number.isInteger(productId) || productId <= 0) {
     return res.status(400).json({ error: 'Invalid product ID' })
   }
 
-  const result = await pool.query(
-    `SELECT r.id, r.rating, r.content, r.created_at
-     FROM product_reviews r
-     WHERE r.product_id = $1 AND r.status = 'approved'
-     ORDER BY r.created_at DESC`,
-    [productId]
-  )
+  const [aggResult, cardsResult] = await Promise.all([
+    pool.query(
+      `SELECT COUNT(*)::int AS total_ratings, ROUND(AVG(rating)::numeric, 1) AS avg_rating
+       FROM product_reviews WHERE product_id = $1`,
+      [productId]
+    ),
+    pool.query(
+      `SELECT r.id, r.rating, r.content, r.created_at, r.anonymous, c.name AS customer_name
+       FROM product_reviews r
+       JOIN auth.customers c ON c.customer_id = r.user_id
+       WHERE r.product_id = $1 AND r.status = 'approved' AND r.content IS NOT NULL
+       ORDER BY r.created_at DESC`,
+      [productId]
+    ),
+  ])
 
-  res.json({ reviews: result.rows })
+  const { total_ratings, avg_rating } = aggResult.rows[0]
+  const reviews = cardsResult.rows.map((r) => ({
+    id: r.id,
+    rating: r.rating,
+    content: r.content,
+    created_at: r.created_at,
+    author_name: r.anonymous ? 'Anonymous' : r.customer_name,
+  }))
+
+  res.json({
+    avgRating: avg_rating,
+    totalRatings: total_ratings,
+    reviews,
+  })
 })
 
 // POST /api/products/:id/reviews — submit a review (authenticated customers only)
@@ -176,10 +197,15 @@ router.post('/:id/reviews', authenticate, async (req, res) => {
     return res.status(409).json({ error: 'You have already reviewed this product' })
   }
 
+  const content = req.body.content?.trim() || null
+  const anonymous = req.body.anonymous === true
+  // Rating is immediately visible; comments need PM approval
+  const status = content ? 'pending' : 'approved'
+
   const result = await pool.query(
-    `INSERT INTO product_reviews (product_id, user_id, rating, content, status)
-     VALUES ($1, $2, $3, $4, 'pending') RETURNING id, rating, content, status, created_at`,
-    [productId, req.user.userId, rating, req.body.content || null]
+    `INSERT INTO product_reviews (product_id, user_id, rating, content, status, anonymous)
+     VALUES ($1, $2, $3, $4, $5::review_status, $6) RETURNING id, rating, content, status, created_at`,
+    [productId, req.user.userId, rating, content, status, anonymous]
   )
 
   res.status(201).json({ review: result.rows[0] })
