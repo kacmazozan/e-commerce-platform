@@ -102,7 +102,7 @@ function statusPillClass(status) {
   switch (status) {
     case 'placed':
     case 'pending':
-      return `${base} bg-slate-500/15 text-slate-500`
+      return `${base} bg-slate-500/15 text-[var(--text-h)]`
     case 'processing':
       return `${base} bg-amber-500/15 text-amber-600`
     case 'shipped':
