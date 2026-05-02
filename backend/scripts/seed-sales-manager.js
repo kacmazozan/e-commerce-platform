@@ -46,7 +46,9 @@ async function seedSalesManager() {
     await client.query('BEGIN')
     const hash = await bcrypt.hash(PASSWORD, 10)
     const result = await client.query(
-      'INSERT INTO auth.users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role',
+      `INSERT INTO auth.users (email, password_hash, role, email_verified_at)
+       VALUES ($1, $2, $3, NOW())
+       RETURNING id, email, role`,
       [EMAIL, hash, 'sales_manager']
     )
     const userId = result.rows[0].id

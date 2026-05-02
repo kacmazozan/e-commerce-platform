@@ -20,9 +20,14 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@db:5432/ecommerce
       JWT_SECRET: dev-secret-change-in-production
-      SMTP_HOST: mailserver
-      SMTP_PORT: 1025
-      SENDER_EMAIL: invoices@fier.com
+      MIGRATION_CHECK_ORDER: ${MIGRATION_CHECK_ORDER:-false}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      SMTP_HOST: ${SMTP_HOST:-mailserver}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SENDER_EMAIL: ${SENDER_EMAIL:-invoices@fier.com}
       ADMIN_EMAIL: admin@example.com
       ADMIN_PASSWORD: admin123456
       SALES_MANAGER_EMAIL: salesmanager@example.com

@@ -10,12 +10,17 @@ function LoginPage({ onLogin, onForgotPassword, onRegister }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [unverifiedEmail, setUnverifiedEmail] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resending, setResending] = useState(false)
   const { theme, toggleTheme } = useTheme()
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setNotice('')
+    setUnverifiedEmail('')
     setLoading(true)
 
     try {
@@ -26,7 +31,10 @@ function LoginPage({ onLogin, onForgotPassword, onRegister }) {
       })
       const data = await res.json()
 
-      if (!res.ok) {
+      if (data.code === 'EMAIL_NOT_VERIFIED') {
+        setUnverifiedEmail(data.email || email)
+        setNotice(data.error || 'Please verify your email before signing in.')
+      } else if (!res.ok) {
         setError(data.error || 'Login failed')
       } else {
         onLogin(data.token)
@@ -35,6 +43,34 @@ function LoginPage({ onLogin, onForgotPassword, onRegister }) {
       setError('Could not connect to server')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleResendVerification() {
+    const targetEmail = unverifiedEmail || email
+    if (!targetEmail) return
+
+    setError('')
+    setNotice('')
+    setResending(true)
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Could not send verification email')
+      } else {
+        setNotice(data.message || 'Verification email sent.')
+      }
+    } catch {
+      setError('Could not connect to server')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -100,6 +136,24 @@ function LoginPage({ onLogin, onForgotPassword, onRegister }) {
             <p className="text-sm text-red-400" role="alert">
               {error}
             </p>
+          )}
+          {notice && (
+            <div
+              className="rounded-lg border border-purple-400/30 bg-purple-400/10 p-3 text-sm text-[var(--text-h)]"
+              role="status"
+            >
+              <p>{notice}</p>
+              {unverifiedEmail && (
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={resending}
+                  className="mt-2 cursor-pointer border-0 bg-transparent p-0 text-sm text-purple-400 underline underline-offset-2 hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {resending ? 'Sending…' : 'Send verification email again'}
+                </button>
+              )}
+            </div>
           )}
 
           <Button

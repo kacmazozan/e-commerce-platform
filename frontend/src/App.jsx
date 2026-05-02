@@ -17,6 +17,7 @@ import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
+import VerifyEmailPage from './pages/auth/VerifyEmailPage'
 import HomePage from './pages/home/HomePage'
 import CartPage from './pages/cart/CartPage'
 import CheckoutPage from './pages/checkout/CheckoutPage'
@@ -360,57 +361,6 @@ function App() {
     }
   }
 
-  async function handleSignup(t) {
-    const payload = decodeJwtPayload(t)
-    if (!payload) return
-    localStorage.setItem('token', t)
-
-    // Signup: merge guest cart and wishlist into the new server records
-    const guestCartItems = cart.filter((item) => item.id)
-    const guestWishlistItems = wishlist.filter((item) => item.id)
-
-    await Promise.all([
-      ...guestCartItems.map((item) =>
-        fetch(`${API_BASE}/api/cart`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
-          body: JSON.stringify({ productId: item.id, quantity: item.quantity }),
-        }).catch(() => {})
-      ),
-      ...guestWishlistItems.map((item) =>
-        fetch(`${API_BASE}/api/wishlist`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
-          body: JSON.stringify({ productId: item.id }),
-        }).catch(() => {})
-      ),
-    ])
-
-    // Fetch merged cart and wishlist from server
-    const [cartRes, wishlistRes] = await Promise.all([
-      fetch(`${API_BASE}/api/cart`, { headers: { Authorization: `Bearer ${t}` } }).catch(
-        () => null
-      ),
-      fetch(`${API_BASE}/api/wishlist`, { headers: { Authorization: `Bearer ${t}` } }).catch(
-        () => null
-      ),
-    ])
-    const cartData = await cartRes?.json().catch(() => null)
-    const wishlistData = await wishlistRes?.json().catch(() => null)
-
-    setToken(t)
-    setUser({ email: payload.email })
-    if (cartData?.items) {
-      localStorage.removeItem('guest_cart')
-      setCart(cartData.items)
-    }
-    if (wishlistData?.items) {
-      localStorage.removeItem('guest_wishlist')
-      setWishlist(wishlistData.items)
-    }
-    navigate('/')
-  }
-
   function handleAdminLogin(t) {
     localStorage.setItem('adminToken', t)
     setAdminToken(t)
@@ -488,10 +438,7 @@ function App() {
             />
           }
         />
-        <Route
-          path="/register"
-          element={<RegisterPage onBack={() => navigate('/login')} onSignup={handleSignup} />}
-        />
+        <Route path="/register" element={<RegisterPage onBack={() => navigate('/login')} />} />
         <Route
           path="/forgot-password"
           element={<ForgotPasswordPage onBack={() => navigate('/login')} />}
@@ -499,6 +446,10 @@ function App() {
         <Route
           path="/reset-password"
           element={<ResetPasswordPage onBack={() => navigate('/login')} />}
+        />
+        <Route
+          path="/verify-email"
+          element={<VerifyEmailPage onBack={() => navigate('/login')} />}
         />
         <Route
           path="/cart"
