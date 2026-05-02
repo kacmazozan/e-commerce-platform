@@ -20,7 +20,9 @@ async function seedAdmin() {
 
     const hash = await bcrypt.hash(PASSWORD, 10)
     const result = await pool.query(
-      'INSERT INTO auth.users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role',
+      `INSERT INTO auth.users (email, password_hash, role, email_verified_at)
+       VALUES ($1, $2, $3, NOW())
+       RETURNING id, email, role`,
       [EMAIL, hash, 'admin']
     )
 

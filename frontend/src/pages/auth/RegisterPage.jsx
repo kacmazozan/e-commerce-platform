@@ -6,21 +6,32 @@ import { useTheme } from '../../context/ThemeContext'
 import { SunIcon, MoonIcon } from '../../components/icons'
 import API_BASE from '../../api'
 
-function RegisterPage({ onBack, onSignup }) {
+function RegisterPage({ onBack }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState('')
+  const [verificationEmailSent, setVerificationEmailSent] = useState(true)
   const { theme, toggleTheme } = useTheme()
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setNotice('')
 
     if (password !== confirm) {
       setError('Passwords do not match')
+      return
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
       return
     }
 
@@ -34,14 +45,46 @@ function RegisterPage({ onBack, onSignup }) {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.message || 'Registration failed')
+        setError(data.error || data.message || 'Registration failed')
       } else {
-        onSignup(data.token)
+        setRegisteredEmail(data.email || email)
+        setVerificationEmailSent(data.emailSent !== false)
+        setNotice(data.message || 'Please check your email to verify your account.')
+        setSubmitted(true)
       }
     } catch {
       setError('Could not connect to server')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleResendVerification() {
+    const targetEmail = registeredEmail || email
+    if (!targetEmail) return
+
+    setError('')
+    setNotice('')
+    setResending(true)
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Could not send verification email')
+      } else {
+        setVerificationEmailSent(true)
+        setNotice(data.message || 'Verification email sent.')
+      }
+    } catch {
+      setError('Could not connect to server')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -72,6 +115,51 @@ function RegisterPage({ onBack, onSignup }) {
       {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
     </button>
   )
+
+  if (submitted) {
+    return (
+      <div className={wrapperCls}>
+        {ambientBg}
+        {themeToggle}
+        <div className={cardCls}>
+          <h1 className="mb-7 text-center text-3xl font-medium text-[var(--text-h)]">
+            Check your email
+          </h1>
+          <p className="mb-4 text-[var(--text)]">
+            {verificationEmailSent ? 'We sent a verification link to ' : 'Your account uses '}
+            <strong>{registeredEmail}</strong>.
+          </p>
+          {notice && (
+            <p className="mb-4 rounded-lg border border-purple-400/30 bg-purple-400/10 p-3 text-sm text-[var(--text-h)]">
+              {notice}
+            </p>
+          )}
+          {error && (
+            <p className="mb-4 text-sm text-red-400" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-col gap-3">
+            <Button
+              type="button"
+              onClick={onBack}
+              className="w-full bg-purple-400 text-white hover:bg-purple-300"
+            >
+              Back to sign in
+            </Button>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={resending}
+              className="cursor-pointer border-0 bg-transparent p-0 text-sm text-purple-400 underline underline-offset-2 hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {resending ? 'Sending…' : 'Send verification email again'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={wrapperCls}>

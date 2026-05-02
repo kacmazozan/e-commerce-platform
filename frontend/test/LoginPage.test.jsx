@@ -78,4 +78,43 @@ describe('LoginPage', () => {
 
     expect(onLogin).toHaveBeenCalledWith('fake-jwt-token')
   })
+
+  it('shows resend verification action when email is not verified', async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({
+          code: 'EMAIL_NOT_VERIFIED',
+          error: 'Please verify your email before signing in.',
+          email: 'test@example.com',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: 'If that account needs verification, a new link has been sent.',
+        }),
+      })
+
+    renderLogin()
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await userEvent.type(screen.getByLabelText(/password/i), 'password123')
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Please verify your email before signing in.'
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /send verification email again/i }))
+
+    expect(globalThis.fetch).toHaveBeenLastCalledWith(
+      expect.stringContaining('/api/auth/resend-verification'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ email: 'test@example.com' }),
+      })
+    )
+  })
 })
