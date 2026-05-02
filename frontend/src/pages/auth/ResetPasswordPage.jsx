@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useTheme } from '../../context/ThemeContext'
 import { SunIcon, MoonIcon } from '../../components/icons'
+import API_BASE from '../../api'
 
 const wrapperCls = 'flex min-h-svh items-center justify-center p-6 bg-[var(--bg)]'
 const cardCls =
@@ -38,7 +39,7 @@ function ResetPasswordPage({ onBack }) {
 
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:3000/api/auth/reset-password', {
+      const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, newPassword }),

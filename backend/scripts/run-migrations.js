@@ -5,6 +5,7 @@ const { runner } = require('node-pg-migrate')
 require('dotenv').config({ path: path.join(__dirname, '../.env') })
 
 const direction = process.argv[2] || 'up'
+const checkOrder = process.env.MIGRATION_CHECK_ORDER === 'true'
 
 if (!['up', 'down'].includes(direction)) {
   console.error('Usage: node scripts/run-migrations.js <up|down>')
@@ -34,7 +35,7 @@ runner({
   direction,
   migrationsTable: 'pgmigrations',
   schema: 'public',
-  checkOrder: true,
+  checkOrder,
   singleTransaction: true,
   logger,
 })
