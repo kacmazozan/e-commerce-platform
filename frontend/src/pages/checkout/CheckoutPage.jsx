@@ -117,10 +117,18 @@ function Field({ label, required, children }) {
   )
 }
 
-export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
+export default function CheckoutPage({ cartItems: cartItemsProp, token, onOrderConfirmed }) {
   const navigate = useNavigate()
   const { state } = useLocation()
   const expiresAt = state?.expiresAt
+
+  // ── Cart snapshot (fresh fetch, not the stale prop) ─
+  // The backend determines the actual charged price at confirm time, so the
+  // checkout summary needs fresh prices too — otherwise users see one number
+  // here and a different one on the order success / orders page when a
+  // discount lands mid-checkout.
+  const [cartItems, setCartItems] = useState(cartItemsProp || [])
+  const [priceChange, setPriceChange] = useState(null)
 
   // ── Timer ──────────────────────────────────────────
   const [timeLeft, setTimeLeft] = useState(() =>
@@ -147,6 +155,21 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
     }, 1000)
     return () => clearInterval(interval)
   }, [expiresAt, token, navigate])
+
+  // Fetch fresh cart on mount so the summary reflects any discount applied
+  // between the cart page and now. Falls back silently to the prop on error.
+  useEffect(() => {
+    let cancelled = false
+    fetch(`${API_BASE}/api/cart`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.items) setCartItems(data.items)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   // ── Shipping form ──────────────────────────────────
   const [shipping, setShipping] = useState({
@@ -214,12 +237,8 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
     return Object.keys(se).length === 0 && Object.keys(pe).length === 0
   }
 
-  async function handleConfirm() {
-    if (!validateAll()) return
-    setConfirming(true)
-    setSubmitError(null)
-
-    const addressStr = [
+  function buildAddressString() {
+    return [
       shipping.fullName,
       shipping.address1,
       shipping.address2,
@@ -228,7 +247,34 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
     ]
       .filter(Boolean)
       .join('\n')
+  }
 
+  // Detect prices that moved between when the user opened checkout and now.
+  // Keyed by product_id+size to match cart row identity.
+  function diffCarts(oldItems, freshItems) {
+    const keyOf = (it) => `${it.product_id ?? it.id}::${it.size || ''}`
+    const oldByKey = new Map(oldItems.map((it) => [keyOf(it), it]))
+    const changes = []
+    for (const fresh of freshItems) {
+      const prev = oldByKey.get(keyOf(fresh))
+      if (!prev) continue
+      const prevEff = effectivePrice(prev)
+      const nextEff = effectivePrice(fresh)
+      if (Math.abs(prevEff - nextEff) > 0.001) {
+        changes.push({
+          name: fresh.name,
+          quantity: fresh.quantity,
+          oldPrice: prevEff,
+          newPrice: nextEff,
+        })
+      }
+    }
+    return changes
+  }
+
+  async function placeOrder(addressStr) {
+    setConfirming(true)
+    setSubmitError(null)
     try {
       const res = await fetch(`${API_BASE}/api/checkout/confirm`, {
         method: 'POST',
@@ -241,17 +287,63 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
         setConfirming(false)
         return
       }
+      // Use the canonical items + total the backend just wrote to the order,
+      // not the local cart snapshot — the latter can be stale if a discount
+      // landed during checkout.
+      const canonicalItems = data.items || cartItems
+      const canonicalSubtotal = typeof data.total === 'number' ? data.total : total
+      const finalShipping = canonicalSubtotal >= 50 ? 0 : 4.99
       onOrderConfirmed({
         orderId: data.order_id,
-        items: cartItems,
-        subtotal: total,
-        shippingCost,
+        items: canonicalItems,
+        subtotal: canonicalSubtotal,
+        shippingCost: finalShipping,
         address: addressStr,
       })
     } catch {
       setSubmitError('Network error. Please try again.')
       setConfirming(false)
     }
+  }
+
+  async function handleConfirm() {
+    if (!validateAll()) return
+    const addressStr = buildAddressString()
+
+    // Refetch the cart right before confirm and surface any price change to
+    // the user before charging them. The reservation is already locked, so
+    // this only catches genuine sales-manager discount changes.
+    setConfirming(true)
+    setSubmitError(null)
+    let freshItems = null
+    try {
+      const res = await fetch(`${API_BASE}/api/cart`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        freshItems = data.items
+      }
+    } catch {
+      // Network error — fall through and let the actual confirm handle it.
+    }
+
+    if (freshItems) {
+      const changes = diffCarts(cartItems, freshItems)
+      if (changes.length > 0) {
+        const oldSubtotal = total
+        const newSubtotal = freshItems.reduce(
+          (sum, it) => sum + effectivePrice(it) * it.quantity,
+          0
+        )
+        setCartItems(freshItems)
+        setConfirming(false)
+        setPriceChange({ changes, oldSubtotal, newSubtotal, addressStr })
+        return
+      }
+    }
+
+    await placeOrder(addressStr)
   }
 
   async function handleCancel() {
@@ -618,6 +710,74 @@ export default function CheckoutPage({ cartItems, token, onOrderConfirmed }) {
           </div>
         </div>
       </main>
+
+      {priceChange && (
+        <div
+          className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/55 px-6"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] p-6 shadow-[var(--shadow)] backdrop-blur-xl">
+            <h3 className="m-0 mb-2 text-[18px] font-bold text-[var(--text-h)]">
+              Prices have changed
+            </h3>
+            <p className="m-0 mb-4 text-[13px] leading-relaxed text-[var(--text)]">
+              The price of one or more items in your cart was updated while you were on this page.
+              Please review the new total before placing your order.
+            </p>
+            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
+              {priceChange.changes.map((c, i) => (
+                <div
+                  key={`${c.name}-${i}`}
+                  className="flex items-center justify-between text-[12px] text-[var(--text-h)]"
+                >
+                  <span className="min-w-0 flex-1 truncate pr-3">
+                    {c.name} × {c.quantity}
+                  </span>
+                  <span className="shrink-0 tabular-nums">
+                    <span className="text-red-400 line-through opacity-70">
+                      ${c.oldPrice.toFixed(2)}
+                    </span>
+                    <span className="mx-1.5 text-[var(--text)]">→</span>
+                    <span className="font-semibold">${c.newPrice.toFixed(2)}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="mb-4 flex items-center justify-between text-[14px] font-semibold text-[var(--text-h)]">
+              <span>New subtotal</span>
+              <span>
+                <span className="mr-2 text-[12px] text-red-400 line-through opacity-70">
+                  ${priceChange.oldSubtotal.toFixed(2)}
+                </span>
+                ${priceChange.newSubtotal.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                className="w-full cursor-pointer rounded-[10px] border-none bg-purple-400 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={async () => {
+                  const addr = priceChange.addressStr
+                  setPriceChange(null)
+                  await placeOrder(addr)
+                }}
+                disabled={confirming}
+              >
+                Place Order with New Prices
+              </button>
+              <button
+                type="button"
+                className="w-full cursor-pointer rounded-[10px] border border-[var(--border)] bg-transparent py-2.5 text-[13px] font-semibold text-[var(--text)] transition-colors hover:border-red-400/40 hover:text-red-400"
+                onClick={() => setPriceChange(null)}
+                disabled={confirming}
+              >
+                Review Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

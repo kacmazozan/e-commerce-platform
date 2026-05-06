@@ -261,7 +261,7 @@ describe('POST /api/checkout/confirm', () => {
     expect(res.body.error).toContain('Reservation expired')
   })
 
-  it('returns { order_id } on success and clears cart and reservations', async () => {
+  it('returns { order_id, total, items } on success and clears cart and reservations', async () => {
     pool.query.mockResolvedValueOnce({
       // reservations joined with products (single source of truth)
       rows: [
@@ -271,6 +271,7 @@ describe('POST /api/checkout/confirm', () => {
           size: 'M',
           name: 'Widget',
           price: '9.99',
+          discount_percent: null,
           effective_price: '9.99',
         },
       ],
@@ -296,6 +297,17 @@ describe('POST /api/checkout/confirm', () => {
     expect(res.status).toBe(200)
     expect(res.body).toHaveProperty('order_id')
     expect(res.body.order_id).toBe(55)
+    expect(res.body.total).toBeCloseTo(19.98, 2)
+    expect(res.body.items).toEqual([
+      {
+        product_id: 1,
+        name: 'Widget',
+        quantity: 2,
+        size: 'M',
+        price: 9.99,
+        discounted_price: null,
+      },
+    ])
     expect(queueInvoiceRequest).toHaveBeenCalledWith({
       invoice_number: expect.stringMatching(/^INV-\d{4}-\d{6}$/),
       order_id: '55',
@@ -315,6 +327,7 @@ describe('POST /api/checkout/confirm', () => {
           size: '',
           name: 'Widget',
           price: '5.00',
+          discount_percent: null,
           effective_price: '5.00',
         },
       ],
@@ -351,6 +364,7 @@ describe('POST /api/checkout/confirm', () => {
           size: 'S',
           name: 'Widget',
           price: '20.00',
+          discount_percent: 20,
           effective_price: '16.00',
         },
       ],
@@ -388,6 +402,21 @@ describe('POST /api/checkout/confirm', () => {
     )
     expect(orderInsert).toBeDefined()
     expect(orderInsert[1][1]).toBe('32.00') // total param
+
+    // Response echoes the canonical (post-discount) order so the success
+    // page can render the same numbers that orders.total / order_items.price
+    // reflect — fixes the divergence where success showed pre-discount prices.
+    expect(res.body.total).toBeCloseTo(32.0, 2)
+    expect(res.body.items).toEqual([
+      {
+        product_id: 1,
+        name: 'Widget',
+        quantity: 2,
+        size: 'S',
+        price: 20,
+        discounted_price: 16,
+      },
+    ])
   })
 
   it('returns 409 when product stock dropped below reserved quantity between reserve and confirm', async () => {
@@ -399,6 +428,7 @@ describe('POST /api/checkout/confirm', () => {
           size: 'M',
           name: 'Widget',
           price: '9.99',
+          discount_percent: null,
           effective_price: '9.99',
         },
       ],
