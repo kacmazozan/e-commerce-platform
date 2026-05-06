@@ -278,7 +278,8 @@ describe('POST /api/checkout/confirm', () => {
 
     const client = makeClient([
       { rows: [] }, // BEGIN
-      { rows: [] }, // UPDATE products stock
+      { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE (lock)
+      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock (conditional)
       { rows: [{ id: 55 }] }, // INSERT order RETURNING id
       { rows: [] }, // INSERT order_items
       { rows: [] }, // DELETE cart_items
@@ -320,13 +321,14 @@ describe('POST /api/checkout/confirm', () => {
     })
 
     const client = makeClient([
-      { rows: [] },
-      { rows: [] },
-      { rows: [{ id: 99 }] },
-      { rows: [] },
-      { rows: [] },
-      { rows: [] },
-      { rows: [] },
+      { rows: [] }, // BEGIN
+      { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE
+      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock
+      { rows: [{ id: 99 }] }, // INSERT order
+      { rows: [] }, // INSERT order_items
+      { rows: [] }, // DELETE cart_items
+      { rows: [] }, // DELETE stock_reservations
+      { rows: [] }, // COMMIT
     ])
     pool.connect.mockResolvedValueOnce(client)
 
@@ -356,7 +358,8 @@ describe('POST /api/checkout/confirm', () => {
 
     const client = makeClient([
       { rows: [] }, // BEGIN
-      { rows: [] }, // UPDATE products stock
+      { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE
+      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock
       { rows: [{ id: 77 }] }, // INSERT order RETURNING id
       { rows: [] }, // INSERT order_items
       { rows: [] }, // DELETE cart_items
@@ -385,6 +388,44 @@ describe('POST /api/checkout/confirm', () => {
     )
     expect(orderInsert).toBeDefined()
     expect(orderInsert[1][1]).toBe('32.00') // total param
+  })
+
+  it('returns 409 when product stock dropped below reserved quantity between reserve and confirm', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        {
+          product_id: 1,
+          quantity: 2,
+          size: 'M',
+          name: 'Widget',
+          price: '9.99',
+          effective_price: '9.99',
+        },
+      ],
+    })
+
+    const client = makeClient([
+      { rows: [] }, // BEGIN
+      { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE
+      { rows: [], rowCount: 0 }, // UPDATE products stock — no row matched (stock < quantity)
+      { rows: [] }, // ROLLBACK
+    ])
+    pool.connect.mockResolvedValueOnce(client)
+
+    const res = await request(app)
+      .post('/api/checkout/confirm')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ address: '123 Main St' })
+
+    expect(res.status).toBe(409)
+    expect(res.body.error).toContain('Insufficient stock')
+    expect(res.body.productId).toBe(1)
+
+    // Order must not have been created
+    const orderInsert = client.query.mock.calls.find(
+      (call) => typeof call[0] === 'string' && call[0].includes('INSERT INTO orders')
+    )
+    expect(orderInsert).toBeUndefined()
   })
 
   it('returns 500 on database error', async () => {
