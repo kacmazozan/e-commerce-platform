@@ -101,6 +101,48 @@ function renderPasswordResetEmail({ email, resetUrl }) {
   }
 }
 
+function renderEmailChangeApprovalEmail({ oldEmail, newEmail, approvalUrl }) {
+  const safeOldEmail = escapeHtml(oldEmail)
+  const safeNewEmail = escapeHtml(newEmail)
+  const safeApprovalUrl = escapeHtml(approvalUrl)
+  return {
+    subject: 'Approve your Fier email change',
+    text: `We received a request to change your Fier account email from ${oldEmail} to ${newEmail}.\n\nIf this was you, approve the change here:\n${approvalUrl}\n\nThis link expires in 1 hour. If you did not request this, you can ignore this email and your account will stay as is.`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
+        <p>We received a request to change your Fier account email from <strong>${safeOldEmail}</strong> to <strong>${safeNewEmail}</strong>.</p>
+        <p>If this was you, approve the change:</p>
+        <p>
+          <a href="${safeApprovalUrl}" style="display:inline-block;background:#a855f7;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px">
+            Approve email change
+          </a>
+        </p>
+        <p>This link expires in 1 hour. If you did not request this, you can ignore this email — your account will stay as is.</p>
+      </div>
+    `,
+  }
+}
+
+function renderEmailChangeVerifyEmail({ newEmail, verifyUrl }) {
+  const safeNewEmail = escapeHtml(newEmail)
+  const safeVerifyUrl = escapeHtml(verifyUrl)
+  return {
+    subject: 'Verify your new Fier email',
+    text: `Confirm that ${newEmail} belongs to you to finish moving your Fier account:\n${verifyUrl}\n\nThis link expires in 1 hour. If you did not request this, you can ignore this email.`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
+        <p>Confirm that <strong>${safeNewEmail}</strong> belongs to you to finish moving your Fier account.</p>
+        <p>
+          <a href="${safeVerifyUrl}" style="display:inline-block;background:#a855f7;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px">
+            Verify new email
+          </a>
+        </p>
+        <p>This link expires in 1 hour. If you did not request this, you can ignore this email.</p>
+      </div>
+    `,
+  }
+}
+
 async function storeEmailVerificationToken(userId) {
   const token = createToken()
   const tokenHash = hashToken(token)
@@ -338,6 +380,238 @@ router.post('/resend-verification', async (req, res) => {
   }
 
   res.json({ message: 'If that account needs verification, a new link has been sent.' })
+})
+
+// Get the signed-in user's profile
+router.get('/me', authenticate, async (req, res) => {
+  const result = await pool.query(
+    `SELECT u.id, u.email, u.role, u.pending_email, c.name, c.home_address
+     FROM auth.users u
+     LEFT JOIN auth.customers c ON c.customer_id = u.id
+     WHERE u.id = $1`,
+    [req.user.userId]
+  )
+  const profile = result.rows[0]
+
+  if (!profile) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+
+  res.json(profile)
+})
+
+// Update the signed-in customer's profile (display name)
+router.put('/me', authenticate, async (req, res) => {
+  if (req.user.role !== 'customer') {
+    return res.status(403).json({ error: 'Only customers can update their profile here' })
+  }
+
+  const name = typeof req.body.name === 'string' ? req.body.name.trim() : ''
+  if (!name) {
+    return res.status(400).json({ error: 'Name is required' })
+  }
+  if (name.length > 100) {
+    return res.status(400).json({ error: 'Name must be 100 characters or fewer' })
+  }
+
+  const result = await pool.query(
+    `UPDATE auth.customers SET name = $1
+     WHERE customer_id = $2
+     RETURNING customer_id, name, home_address`,
+    [name, req.user.userId]
+  )
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ error: 'Customer profile not found' })
+  }
+
+  res.json({
+    id: req.user.userId,
+    email: req.user.email,
+    role: req.user.role,
+    name: result.rows[0].name,
+    home_address: result.rows[0].home_address,
+  })
+})
+
+const EMAIL_CHANGE_TTL_MS = 60 * 60 * 1000
+
+// Request an email change — sends approval link to old email and verification to new email.
+router.post('/email-change/request', authenticate, async (req, res) => {
+  if (req.user.role !== 'customer') {
+    return res.status(403).json({ error: 'Only customers can change their email here' })
+  }
+
+  const newEmail = normalizeEmail(req.body.newEmail)
+  const { currentPassword } = req.body
+
+  if (!newEmail || !currentPassword) {
+    return res.status(400).json({ error: 'New email and current password are required' })
+  }
+  if (!isValidEmail(newEmail)) {
+    return res.status(400).json({ error: 'A valid email address is required' })
+  }
+
+  const userResult = await pool.query(
+    'SELECT id, email, password_hash FROM auth.users WHERE id = $1',
+    [req.user.userId]
+  )
+  const user = userResult.rows[0]
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+  if (newEmail === user.email) {
+    return res.status(400).json({ error: 'New email matches your current email' })
+  }
+
+  const passwordMatch = await bcrypt.compare(currentPassword, user.password_hash)
+  if (!passwordMatch) {
+    return res.status(401).json({ error: 'Current password is incorrect' })
+  }
+
+  const taken = await pool.query('SELECT 1 FROM auth.users WHERE email = $1 AND id <> $2', [
+    newEmail,
+    user.id,
+  ])
+  if (taken.rows.length > 0) {
+    return res.status(409).json({ error: 'That email is already in use' })
+  }
+
+  const oldToken = createToken()
+  const newToken = createToken()
+  const oldTokenHash = hashToken(oldToken)
+  const newTokenHash = hashToken(newToken)
+  const expiresAt = new Date(Date.now() + EMAIL_CHANGE_TTL_MS)
+
+  await pool.query(
+    `UPDATE auth.users
+     SET pending_email = $1,
+         email_change_old_token_hash = $2,
+         email_change_new_token_hash = $3,
+         email_change_old_confirmed_at = NULL,
+         email_change_new_confirmed_at = NULL,
+         email_change_expires_at = $4
+     WHERE id = $5`,
+    [newEmail, oldTokenHash, newTokenHash, expiresAt, user.id]
+  )
+
+  const approvalUrl = appUrl('/account/email-change?step=old', oldToken)
+  const verifyUrl = appUrl('/account/email-change?step=new', newToken)
+
+  try {
+    await sendMail({
+      to: user.email,
+      ...renderEmailChangeApprovalEmail({ oldEmail: user.email, newEmail, approvalUrl }),
+    })
+    await sendMail({
+      to: newEmail,
+      ...renderEmailChangeVerifyEmail({ newEmail, verifyUrl }),
+    })
+  } catch (err) {
+    console.error('Failed to send email-change verification messages:', err)
+    return res.status(503).json({
+      error: 'Could not send verification emails. Please try again in a few minutes.',
+    })
+  }
+
+  res.json({
+    message: 'Verification emails sent. Both links must be clicked within 1 hour.',
+    pending_email: newEmail,
+  })
+})
+
+// Confirm one half of an email change (step=old or step=new). When both are confirmed, swap.
+router.post('/email-change/confirm', async (req, res) => {
+  const { step, token } = req.body
+
+  if (!token || (step !== 'old' && step !== 'new')) {
+    return res.status(400).json({ error: 'Invalid request' })
+  }
+
+  const column = step === 'old' ? 'email_change_old_token_hash' : 'email_change_new_token_hash'
+  const stampColumn =
+    step === 'old' ? 'email_change_old_confirmed_at' : 'email_change_new_confirmed_at'
+
+  const tokenHash = hashToken(token)
+  const lookup = await pool.query(
+    `SELECT id, pending_email,
+            email_change_old_confirmed_at,
+            email_change_new_confirmed_at
+     FROM auth.users
+     WHERE ${column} = $1
+       AND email_change_expires_at > NOW()`,
+    [tokenHash]
+  )
+  const row = lookup.rows[0]
+  if (!row) {
+    return res.status(400).json({ error: 'Invalid or expired token' })
+  }
+
+  await pool.query(`UPDATE auth.users SET ${stampColumn} = NOW() WHERE id = $1`, [row.id])
+
+  const otherConfirmedAt =
+    step === 'old' ? row.email_change_new_confirmed_at : row.email_change_old_confirmed_at
+
+  if (!otherConfirmedAt) {
+    return res.json({ confirmed: step, complete: false })
+  }
+
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const stillFree = await client.query('SELECT 1 FROM auth.users WHERE email = $1 AND id <> $2', [
+      row.pending_email,
+      row.id,
+    ])
+    if (stillFree.rows.length > 0) {
+      await client.query('ROLLBACK')
+      return res.status(409).json({ error: 'That email was claimed by another account' })
+    }
+
+    await client.query(
+      `UPDATE auth.users
+       SET email = pending_email,
+           email_verified_at = NOW(),
+           pending_email = NULL,
+           email_change_old_token_hash = NULL,
+           email_change_new_token_hash = NULL,
+           email_change_old_confirmed_at = NULL,
+           email_change_new_confirmed_at = NULL,
+           email_change_expires_at = NULL
+       WHERE id = $1`,
+      [row.id]
+    )
+    await client.query('UPDATE auth.customers SET tax_id = $1 WHERE customer_id = $2', [
+      row.pending_email,
+      row.id,
+    ])
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
+
+  // Note: existing JWTs still encode the old email until they expire (7 days).
+  // The frontend logs the user out on `complete: true` so they re-login with the new email.
+  res.json({ confirmed: step, complete: true })
+})
+
+// Cancel a pending email change for the signed-in user.
+router.post('/email-change/cancel', authenticate, async (req, res) => {
+  await pool.query(
+    `UPDATE auth.users
+     SET pending_email = NULL,
+         email_change_old_token_hash = NULL,
+         email_change_new_token_hash = NULL,
+         email_change_old_confirmed_at = NULL,
+         email_change_new_confirmed_at = NULL,
+         email_change_expires_at = NULL
+     WHERE id = $1`,
+    [req.user.userId]
+  )
+  res.json({ message: 'Pending email change cancelled' })
 })
 
 // Change password (authenticated)
