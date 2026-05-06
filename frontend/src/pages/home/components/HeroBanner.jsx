@@ -27,10 +27,10 @@ export default function HeroBanner() {
   }, [])
 
   return (
-    <section className="light:before:opacity-100 relative isolate z-[1] flex h-svh items-center justify-center overflow-hidden bg-[#100d1e] px-6 pt-[72px] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-[2] before:h-40 before:bg-gradient-to-b before:from-white/30 before:to-transparent before:opacity-0 after:pointer-events-none after:absolute after:inset-0 after:[background:radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.4)_100%),linear-gradient(to_bottom,transparent_55%,rgba(16,13,30,0.6)_78%,#100d1e_100%)]">
+    <section className="light:before:opacity-100 relative isolate z-[1] flex h-svh items-center justify-center overflow-hidden bg-[#100d1e] light:bg-white px-6 pt-[72px] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-[2] before:h-40 before:bg-gradient-to-b before:from-white/30 before:to-transparent before:opacity-0 after:pointer-events-none after:absolute after:inset-0 after:[background:radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.4)_100%),linear-gradient(to_bottom,transparent_55%,rgba(16,13,30,0.6)_78%,#100d1e_100%)] light:after:[background:none]">
       {/* Spline 3D background */}
       <div
-        className="pointer-events-none absolute -top-[20%] right-0 bottom-0 left-0 z-[-1] overflow-hidden"
+        className="pointer-events-none absolute -top-[20%] right-0 bottom-0 left-0 z-[-1] overflow-hidden light:[filter:invert(1)_hue-rotate(180deg)]"
         aria-hidden="true"
       >
         {shouldLoad3D ? (
@@ -50,10 +50,10 @@ export default function HeroBanner() {
         <p className="mb-4 text-[11px] font-bold tracking-[5px] text-purple-400 uppercase opacity-90">
           New Season
         </p>
-        <h1 className="m-0 mb-4 text-[clamp(40px,10vw,72px)] leading-[1.05] font-extrabold tracking-[-2px] text-white [text-shadow:0_4px_40px_rgba(0,0,0,0.4)]">
+        <h1 className="m-0 mb-4 text-[clamp(40px,10vw,72px)] leading-[1.05] font-extrabold tracking-[-2px] text-white light:text-gray-900 [text-shadow:0_4px_40px_rgba(0,0,0,0.4)] light:[text-shadow:none]">
           Discover Your Style
         </h1>
-        <p className="mb-9 max-w-[500px] tracking-[0.5px] text-white/55">
+        <p className="mb-9 max-w-[500px] tracking-[0.5px] text-white/55 light:text-gray-500">
           Curated fashion for every occasion
         </p>
         <button
