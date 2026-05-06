@@ -1,7 +1,10 @@
 node_modules/
+
+# Local environment files can contain secrets.
 .env
 .env.*
 !.env.example
+!*/.env.example
 .DS_Store
 dist/
 coverage/
