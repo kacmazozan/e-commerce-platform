@@ -130,6 +130,7 @@ router.post('/confirm', async (req, res) => {
   // effective_price applies any active discount; falls back to base price when none.
   const reservations = await pool.query(
     `SELECT sr.product_id, sr.quantity, sr.size, p.name, p.price,
+            pd.discount_percent,
             COALESCE(
               ROUND(p.price * (1 - pd.discount_percent / 100.0), 2),
               p.price
@@ -212,7 +213,21 @@ router.post('/confirm', async (req, res) => {
       })),
     })
 
-    res.json({ order_id: orderId })
+    // Echo the canonical order data so the success page renders the actual
+    // charged prices (matches order_items.price written above) instead of a
+    // stale cart snapshot the client built before any mid-checkout discount.
+    res.json({
+      order_id: orderId,
+      total: Number(total.toFixed(2)),
+      items: reservations.rows.map((item) => ({
+        product_id: item.product_id,
+        name: item.name,
+        quantity: item.quantity,
+        size: item.size || '',
+        price: Number(item.price),
+        discounted_price: item.discount_percent != null ? Number(item.effective_price) : null,
+      })),
+    })
   } catch (err) {
     await client.query('ROLLBACK')
     throw err
