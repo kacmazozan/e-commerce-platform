@@ -9,6 +9,7 @@ import {
   useSearchParams,
   useParams,
 } from 'react-router-dom'
+import Navbar from './pages/home/components/Navbar'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import SalesManagerLoginPage from './pages/sales-manager/SalesManagerLoginPage'
 import SalesManagerDashboard from './pages/sales-manager/SalesManagerDashboard'
@@ -41,6 +42,38 @@ function ScrollToTop() {
     if (navType !== 'POP') window.scrollTo(0, 0)
   }, [pathname, navType])
   return null
+}
+
+function CustomerLayout({
+  isLoggedIn,
+  userEmail,
+  token,
+  onNavigate,
+  onRequireAuth,
+  onLogout,
+  cartCount,
+  wishlistCount,
+  children,
+}) {
+  const [searchParams] = useSearchParams()
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
+  return (
+    <>
+      <Navbar
+        isLoggedIn={isLoggedIn}
+        userEmail={userEmail}
+        token={token}
+        onNavigate={onNavigate}
+        onRequireAuth={onRequireAuth}
+        onLogout={onLogout}
+        cartCount={cartCount}
+        wishlistCount={wishlistCount}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+      />
+      {children}
+    </>
+  )
 }
 
 function RequireAuth({ token, children }) {
@@ -140,13 +173,11 @@ function ProductRoute({
 
 function SearchRoute({ onAddToWishlist, onRemoveFromWishlist, wishlistItems }) {
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
   const q = searchParams.get('q') || ''
 
   return (
     <SearchPage
       searchQuery={q}
-      onBack={() => navigate(-1)}
       onAddToWishlist={onAddToWishlist}
       onRemoveFromWishlist={onRemoveFromWishlist}
       wishlistItems={wishlistItems}
@@ -479,16 +510,27 @@ function App() {
         <Route
           path="/cart"
           element={
-            <CartPage
-              onBack={() => navigate(-1)}
-              cartItems={cart}
-              onRemove={removeFromCart}
-              onUpdateQuantity={updateCartQuantity}
-              onAddToWishlist={addToWishlist}
-              wishlistItems={wishlist}
+            <CustomerLayout
               isLoggedIn={!!token}
+              userEmail={user?.email}
               token={token}
-            />
+              onNavigate={handleNavigate}
+              onRequireAuth={requireAuth}
+              onLogout={handleLogout}
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              wishlistCount={wishlist.length}
+            >
+              <CartPage
+                onBack={() => navigate(-1)}
+                cartItems={cart}
+                onRemove={removeFromCart}
+                onUpdateQuantity={updateCartQuantity}
+                onAddToWishlist={addToWishlist}
+                wishlistItems={wishlist}
+                isLoggedIn={!!token}
+                token={token}
+              />
+            </CustomerLayout>
           }
         />
         <Route
@@ -517,11 +559,22 @@ function App() {
         <Route
           path="/wishlist"
           element={
-            <WishlistPage
-              onBack={() => navigate(-1)}
-              wishlistItems={wishlist}
-              onRemove={removeFromWishlist}
-            />
+            <CustomerLayout
+              isLoggedIn={!!token}
+              userEmail={user?.email}
+              token={token}
+              onNavigate={handleNavigate}
+              onRequireAuth={requireAuth}
+              onLogout={handleLogout}
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              wishlistCount={wishlist.length}
+            >
+              <WishlistPage
+                onBack={() => navigate(-1)}
+                wishlistItems={wishlist}
+                onRemove={removeFromWishlist}
+              />
+            </CustomerLayout>
           }
         />
         <Route
@@ -560,30 +613,79 @@ function App() {
         <Route
           path="/search"
           element={
-            <SearchRoute
-              onAddToWishlist={addToWishlist}
-              onRemoveFromWishlist={removeFromWishlist}
-              wishlistItems={wishlist}
-            />
+            <CustomerLayout
+              isLoggedIn={!!token}
+              userEmail={user?.email}
+              token={token}
+              onNavigate={handleNavigate}
+              onRequireAuth={requireAuth}
+              onLogout={handleLogout}
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              wishlistCount={wishlist.length}
+            >
+              <SearchRoute
+                onAddToWishlist={addToWishlist}
+                onRemoveFromWishlist={removeFromWishlist}
+                wishlistItems={wishlist}
+              />
+            </CustomerLayout>
           }
         />
         <Route
           path="/account-settings"
           element={
-            <RequireAuth token={token}>
-              <AccountSettingsPage onBack={() => navigate(-1)} token={token} />
-            </RequireAuth>
+            <CustomerLayout
+              isLoggedIn={!!token}
+              userEmail={user?.email}
+              token={token}
+              onNavigate={handleNavigate}
+              onRequireAuth={requireAuth}
+              onLogout={handleLogout}
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              wishlistCount={wishlist.length}
+            >
+              <RequireAuth token={token}>
+                <AccountSettingsPage token={token} />
+              </RequireAuth>
+            </CustomerLayout>
           }
         />
         <Route
           path="/orders"
           element={
-            <RequireAuth token={token}>
-              <OrdersPage onBack={() => navigate(-1)} token={token} />
-            </RequireAuth>
+            <CustomerLayout
+              isLoggedIn={!!token}
+              userEmail={user?.email}
+              token={token}
+              onNavigate={handleNavigate}
+              onRequireAuth={requireAuth}
+              onLogout={handleLogout}
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              wishlistCount={wishlist.length}
+            >
+              <RequireAuth token={token}>
+                <OrdersPage token={token} />
+              </RequireAuth>
+            </CustomerLayout>
           }
         />
-        <Route path="/help" element={<HelpPage onBack={() => navigate(-1)} />} />
+        <Route
+          path="/help"
+          element={
+            <CustomerLayout
+              isLoggedIn={!!token}
+              userEmail={user?.email}
+              token={token}
+              onNavigate={handleNavigate}
+              onRequireAuth={requireAuth}
+              onLogout={handleLogout}
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              wishlistCount={wishlist.length}
+            >
+              <HelpPage />
+            </CustomerLayout>
+          }
+        />
 
         {/* Sales manager routes */}
         <Route

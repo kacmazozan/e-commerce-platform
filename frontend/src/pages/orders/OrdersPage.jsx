@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Link } from 'react-router-dom'
 import API_BASE from '../../api'
 
 /* ── Status mapping ──────────────────────────────────────── */
@@ -42,24 +41,6 @@ function nameHue(name) {
 }
 
 /* ── Icons ───────────────────────────────────────────────── */
-
-function BackIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  )
-}
 
 function CheckIcon() {
   return (
@@ -565,7 +546,7 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
 
 /* ── Page ────────────────────────────────────────────────── */
 
-export default function OrdersPage({ onBack, token }) {
+export default function OrdersPage({ token }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -631,24 +612,6 @@ export default function OrdersPage({ onBack, token }) {
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
-      <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
-          <button
-            type="button"
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
-            onClick={onBack}
-          >
-            <BackIcon /> Back
-          </button>
-          <Link
-            to="/"
-            className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
-          >
-            FIER
-          </Link>
-        </div>
-      </header>
-
       <main className="mx-auto box-border w-full max-w-[860px] px-6 pt-12 pb-20">
         <h1 className="mb-10 text-[32px] font-extrabold tracking-[-0.5px] text-[var(--text-h)]">
           My Orders
