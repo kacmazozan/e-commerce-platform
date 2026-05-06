@@ -13,11 +13,13 @@ import {
   MoonIcon,
 } from '../../../components/icons'
 import { useTheme } from '../../../context/ThemeContext'
+import { getInitial } from '../../../utils/avatar'
 import NotificationBell from './NotificationBell'
 
 export default function Navbar({
   isLoggedIn,
   userEmail,
+  userName,
   token,
   onNavigate,
   onRequireAuth,
@@ -141,8 +143,10 @@ export default function Navbar({
               aria-label="Account menu"
               aria-expanded={avatarOpen}
             >
-              {isLoggedIn && userEmail ? (
-                <span className="text-[13px] font-bold uppercase">{userEmail[0]}</span>
+              {isLoggedIn && (userName || userEmail) ? (
+                <span className="text-[13px] font-bold uppercase">
+                  {getInitial(userName, userEmail)}
+                </span>
               ) : (
                 <UserIcon />
               )}
@@ -153,14 +157,19 @@ export default function Navbar({
                 {isLoggedIn ? (
                   <>
                     <div className="flex items-center gap-2.5 px-2 pt-2 pb-2.5">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-400/12 text-purple-400">
-                        <UserIcon />
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-400/12 text-[14px] font-bold text-purple-400 uppercase">
+                        {getInitial(userName, userEmail)}
                       </div>
-                      <div>
-                        <p className="m-0 text-[13px] font-semibold text-[var(--text-h)]">
-                          My Account
+                      <div className="min-w-0 flex-1">
+                        <p className="m-0 truncate text-[13px] font-semibold text-[var(--text-h)]">
+                          {userName || 'My Account'}
                         </p>
-                        <p className="m-0 text-[11px] text-[var(--text)]">{userEmail}</p>
+                        <p
+                          className="m-0 truncate text-[11px] text-[var(--text)]"
+                          title={userEmail}
+                        >
+                          {userEmail}
+                        </p>
                       </div>
                     </div>
 

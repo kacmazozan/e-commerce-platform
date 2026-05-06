@@ -27,6 +27,7 @@ import WishlistPage from './pages/wishlist/WishlistPage'
 import CategoryPage from './pages/category/CategoryPage'
 import SearchPage from './pages/search/SearchPage'
 import AccountSettingsPage from './pages/account/AccountSettingsPage'
+import EmailChangeConfirmPage from './pages/account/EmailChangeConfirmPage'
 import OrdersPage from './pages/orders/OrdersPage'
 import HelpPage from './pages/help/HelpPage'
 
@@ -47,6 +48,7 @@ function ScrollToTop() {
 function CustomerLayout({
   isLoggedIn,
   userEmail,
+  userName,
   token,
   onNavigate,
   onRequireAuth,
@@ -62,6 +64,7 @@ function CustomerLayout({
       <Navbar
         isLoggedIn={isLoggedIn}
         userEmail={userEmail}
+        userName={userName}
         token={token}
         onNavigate={onNavigate}
         onRequireAuth={onRequireAuth}
@@ -195,7 +198,7 @@ function App() {
       localStorage.removeItem('token')
       return null
     }
-    return { email: payload.email }
+    return { email: payload.email, name: null }
   })
 
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem('adminToken'))
@@ -266,6 +269,25 @@ function App() {
   useEffect(() => {
     if (!token) localStorage.setItem('guest_wishlist', JSON.stringify(wishlist))
   }, [wishlist, token])
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    fetch(`${API_BASE}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return
+        setUser((prev) =>
+          prev
+            ? { ...prev, email: data.email || prev.email, name: data.name || null }
+            : { email: data.email, name: data.name || null }
+        )
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   async function addToCart(product, size = '') {
     if (token) {
@@ -400,7 +422,7 @@ function App() {
     const wishlistData = await wishlistRes?.json().catch(() => null)
 
     setToken(t)
-    setUser({ email: payload.email })
+    setUser({ email: payload.email, name: null })
 
     if (cartData?.items) {
       localStorage.removeItem('guest_cart')
@@ -474,6 +496,7 @@ function App() {
             <HomePage
               isLoggedIn={!!token}
               userEmail={user?.email}
+              userName={user?.name}
               token={token}
               onNavigate={handleNavigate}
               onRequireAuth={requireAuth}
@@ -513,6 +536,7 @@ function App() {
             <CustomerLayout
               isLoggedIn={!!token}
               userEmail={user?.email}
+              userName={user?.name}
               token={token}
               onNavigate={handleNavigate}
               onRequireAuth={requireAuth}
@@ -562,6 +586,7 @@ function App() {
             <CustomerLayout
               isLoggedIn={!!token}
               userEmail={user?.email}
+              userName={user?.name}
               token={token}
               onNavigate={handleNavigate}
               onRequireAuth={requireAuth}
@@ -616,6 +641,7 @@ function App() {
             <CustomerLayout
               isLoggedIn={!!token}
               userEmail={user?.email}
+              userName={user?.name}
               token={token}
               onNavigate={handleNavigate}
               onRequireAuth={requireAuth}
@@ -637,6 +663,7 @@ function App() {
             <CustomerLayout
               isLoggedIn={!!token}
               userEmail={user?.email}
+              userName={user?.name}
               token={token}
               onNavigate={handleNavigate}
               onRequireAuth={requireAuth}
@@ -645,10 +672,19 @@ function App() {
               wishlistCount={wishlist.length}
             >
               <RequireAuth token={token}>
-                <AccountSettingsPage token={token} />
+                <AccountSettingsPage
+                  token={token}
+                  onProfileUpdate={(partial) =>
+                    setUser((prev) => (prev ? { ...prev, ...partial } : prev))
+                  }
+                />
               </RequireAuth>
             </CustomerLayout>
           }
+        />
+        <Route
+          path="/account/email-change"
+          element={<EmailChangeConfirmPage onLogout={handleLogout} />}
         />
         <Route
           path="/orders"
@@ -656,6 +692,7 @@ function App() {
             <CustomerLayout
               isLoggedIn={!!token}
               userEmail={user?.email}
+              userName={user?.name}
               token={token}
               onNavigate={handleNavigate}
               onRequireAuth={requireAuth}
@@ -675,6 +712,7 @@ function App() {
             <CustomerLayout
               isLoggedIn={!!token}
               userEmail={user?.email}
+              userName={user?.name}
               token={token}
               onNavigate={handleNavigate}
               onRequireAuth={requireAuth}

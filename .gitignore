@@ -6,6 +6,9 @@ node_modules/
 dist/
 coverage/
 
+# Claude Code worktrees (each is its own git checkout)
+.claude/worktrees/
+
 # remove screenshot folder
 .screenshots/
 

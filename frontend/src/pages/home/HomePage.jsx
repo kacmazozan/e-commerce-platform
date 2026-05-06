@@ -101,6 +101,7 @@ const sectionDividerCls =
 export default function HomePage({
   isLoggedIn,
   userEmail,
+  userName,
   token,
   onNavigate,
   onRequireAuth,
@@ -149,6 +150,7 @@ export default function HomePage({
       <Navbar
         isLoggedIn={isLoggedIn}
         userEmail={userEmail}
+        userName={userName}
         token={token}
         onNavigate={onNavigate}
         onRequireAuth={onRequireAuth}
