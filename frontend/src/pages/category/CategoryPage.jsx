@@ -68,10 +68,11 @@ export default function CategoryPage({
     let cancelled = false
     const requestKey = `${category.title}::${sort}`
 
-    fetchJsonWithRetry(
-      `${API_BASE}/api/products?category=${encodeURIComponent(category.title)}&sort=${sort}`,
-      { attempts: 1 }
-    )
+    const apiUrl = category.on_sale
+      ? `${API_BASE}/api/products?on_sale=true&sort=${sort}&limit=100`
+      : `${API_BASE}/api/products?category=${encodeURIComponent(category.title)}&sort=${sort}`
+
+    fetchJsonWithRetry(apiUrl, { attempts: 1 })
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
@@ -89,7 +90,7 @@ export default function CategoryPage({
     return () => {
       cancelled = true
     }
-  }, [category.title, sort])
+  }, [category.title, category.on_sale, sort])
 
   const wishlistIds = new Set(wishlistItems.map((i) => i.id))
 

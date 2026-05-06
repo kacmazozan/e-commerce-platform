@@ -1,4 +1,16 @@
+import { useNavigate } from 'react-router-dom'
+
+const SHOP_CATEGORIES = [
+  { label: "Women's Clothing", title: "Women's Clothing", subtitle: 'New arrivals every week', hue: 280 },
+  { label: "Men's Clothing", title: "Men's Clothing", subtitle: 'Timeless essentials', hue: 210 },
+  { label: 'Outerwear', title: 'Outerwear', subtitle: 'Coats, jackets & more', hue: 200 },
+  { label: 'Footwear', title: 'Footwear', subtitle: 'Step into style', hue: 160 },
+  { label: 'Accessories', title: 'Accessories', subtitle: 'Finish the look', hue: 40 },
+  { label: 'Sale', title: 'Sale', subtitle: 'Exclusive discounts on selected items', hue: 0, on_sale: true },
+]
+
 export default function Footer() {
+  const navigate = useNavigate()
   const linkCls =
     'cursor-pointer text-[13px] text-[var(--text)] transition-colors hover:text-purple-400'
 
@@ -31,33 +43,25 @@ export default function Footer() {
         </div>
 
         {/* Links */}
-        <div className="grid flex-1 grid-cols-3 gap-8 max-[420px]:grid-cols-1 max-sm:grid-cols-2">
+        <div className="grid flex-1 grid-cols-2 gap-8 max-[420px]:grid-cols-1">
           {[
             {
               heading: 'Shop',
-              links: [
-                "Women's Clothing",
-                "Men's Clothing",
-                'Outerwear',
-                'Footwear',
-                'Accessories',
-                'Sale',
-              ],
+              links: SHOP_CATEGORIES.map(({ label, ...category }) => ({
+                label,
+                onClick: () => navigate('/category', { state: { category } }),
+              })),
             },
             {
               heading: 'Customer Service',
               links: [
-                'Contact Us',
-                'Track My Order',
-                'Returns & Exchanges',
-                'Shipping Info',
-                'Size Guide',
-                'FAQ',
+                { label: 'Contact Us', onClick: () => navigate('/help') },
+                { label: 'Track My Order', onClick: () => navigate('/orders') },
+                { label: 'Returns & Exchanges', onClick: () => navigate('/help') },
+                { label: 'Shipping Info', onClick: () => navigate('/help') },
+                { label: 'Size Guide', onClick: () => navigate('/help') },
+                { label: 'FAQ', onClick: () => navigate('/help') },
               ],
-            },
-            {
-              heading: 'Company',
-              links: ['About Us', 'Careers', 'Press', 'Sustainability', 'Affiliate Program'],
             },
           ].map(({ heading, links }) => (
             <div key={heading}>
@@ -65,9 +69,9 @@ export default function Footer() {
                 {heading}
               </h4>
               <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-                {links.map((l) => (
-                  <li key={l} className={linkCls}>
-                    {l}
+                {links.map(({ label, onClick }) => (
+                  <li key={label} className={linkCls} onClick={onClick}>
+                    {label}
                   </li>
                 ))}
               </ul>
