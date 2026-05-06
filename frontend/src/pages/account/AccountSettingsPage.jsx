@@ -41,6 +41,7 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
   // Profile
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [taxId, setTaxId] = useState('')
   const [pendingEmail, setPendingEmail] = useState(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [profileError, setProfileError] = useState('')
@@ -89,6 +90,7 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
       if (!res.ok) throw new Error(data.error || 'Failed to load profile')
       setName(data.name || '')
       setEmail(data.email || '')
+      setTaxId(data.tax_id || '')
       setPendingEmail(data.pending_email || null)
       if (data.home_address) setLine1(data.home_address)
     } catch (err) {
@@ -119,6 +121,12 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
       return
     }
 
+    const trimmedTaxId = taxId.trim()
+    if (trimmedTaxId.length > 50) {
+      setProfileError('Tax ID must be 50 characters or fewer.')
+      return
+    }
+
     setProfileSaving(true)
     try {
       const res = await fetch(`${API_BASE}/api/auth/me`, {
@@ -127,7 +135,7 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name: trimmed }),
+        body: JSON.stringify({ name: trimmed, tax_id: trimmedTaxId || null }),
       })
       const data = await res.json().catch(() => ({}))
 
@@ -136,6 +144,7 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
       } else {
         const savedName = data.name || trimmed
         setName(savedName)
+        setTaxId(data.tax_id || '')
         if (onProfileUpdate) onProfileUpdate({ name: savedName })
         setProfileSaved(true)
         setTimeout(() => setProfileSaved(false), 2500)
@@ -264,7 +273,7 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
         </h1>
 
         {/* Profile */}
-        <Section title="Profile" description="Update your display name.">
+        <Section title="Profile" description="Update your display name and tax ID.">
           <form onSubmit={handleProfileSave}>
             <div className="mb-5 flex items-center gap-4 border-b border-[var(--border)] pb-5">
               <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-purple-400/12 text-[22px] font-bold text-purple-400">
@@ -289,6 +298,21 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
+                disabled={profileLoading}
+                className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+              />
+            </div>
+            <div className="mb-4 flex flex-col gap-1.5">
+              <Label htmlFor="acc-tax-id" className="text-[13px] text-[var(--text-h)]">
+                Tax ID <span className="font-normal text-[var(--text)]">(optional)</span>
+              </Label>
+              <Input
+                id="acc-tax-id"
+                type="text"
+                value={taxId}
+                onChange={(e) => setTaxId(e.target.value)}
+                placeholder="e.g. 1234567890"
+                maxLength={50}
                 disabled={profileLoading}
                 className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
               />

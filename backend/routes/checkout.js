@@ -151,11 +151,29 @@ router.post('/confirm', async (req, res) => {
   try {
     await client.query('BEGIN')
 
-    for (const r of reservations.rows) {
-      await client.query(
-        'UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2',
+    // Lock product rows in a deterministic order to avoid deadlocks between
+    // concurrent confirms, then re-check stock atomically. If a product
+    // manager dropped stock between reserve and confirm (e.g. set to 0),
+    // the conditional UPDATE returns rowCount=0 and we abort.
+    const orderedRows = [...reservations.rows].sort((a, b) => a.product_id - b.product_id)
+    const productIds = orderedRows.map((r) => r.product_id)
+    await client.query('SELECT id FROM products WHERE id = ANY($1) ORDER BY id FOR UPDATE', [
+      productIds,
+    ])
+
+    for (const r of orderedRows) {
+      const upd = await client.query(
+        'UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2 AND stock >= $1 RETURNING id',
         [r.quantity, r.product_id]
       )
+      if (upd.rowCount === 0) {
+        await client.query('ROLLBACK')
+        return res.status(409).json({
+          error: `Insufficient stock for ${r.name}. Please return to your cart and try again.`,
+          productId: r.product_id,
+          productName: r.name,
+        })
+      }
     }
 
     const total = reservations.rows.reduce(

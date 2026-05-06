@@ -230,7 +230,7 @@ router.post('/register', async (req, res) => {
     displayName = (name && name.trim()) || email.split('@')[0]
     await client.query(
       'INSERT INTO auth.customers (customer_id, name, tax_id, home_address) VALUES ($1, $2, $3, $4)',
-      [user.id, displayName, email, '']
+      [user.id, displayName, null, '']
     )
     await client.query('COMMIT')
   } catch (err) {
@@ -385,7 +385,7 @@ router.post('/resend-verification', async (req, res) => {
 // Get the signed-in user's profile
 router.get('/me', authenticate, async (req, res) => {
   const result = await pool.query(
-    `SELECT u.id, u.email, u.role, u.pending_email, c.name, c.home_address
+    `SELECT u.id, u.email, u.role, u.pending_email, c.name, c.home_address, c.tax_id
      FROM auth.users u
      LEFT JOIN auth.customers c ON c.customer_id = u.id
      WHERE u.id = $1`,
@@ -400,7 +400,7 @@ router.get('/me', authenticate, async (req, res) => {
   res.json(profile)
 })
 
-// Update the signed-in customer's profile (display name)
+// Update the signed-in customer's profile (display name + tax id)
 router.put('/me', authenticate, async (req, res) => {
   if (req.user.role !== 'customer') {
     return res.status(403).json({ error: 'Only customers can update their profile here' })
@@ -414,11 +414,33 @@ router.put('/me', authenticate, async (req, res) => {
     return res.status(400).json({ error: 'Name must be 100 characters or fewer' })
   }
 
+  let taxId
+  if (Object.prototype.hasOwnProperty.call(req.body, 'tax_id')) {
+    const raw = req.body.tax_id
+    if (raw === null || raw === '') {
+      taxId = null
+    } else if (typeof raw === 'string') {
+      const trimmed = raw.trim()
+      if (trimmed.length > 50) {
+        return res.status(400).json({ error: 'Tax ID must be 50 characters or fewer' })
+      }
+      taxId = trimmed === '' ? null : trimmed
+    } else {
+      return res.status(400).json({ error: 'Tax ID must be a string' })
+    }
+  } else {
+    // Preserve existing value when caller omits the field.
+    const current = await pool.query('SELECT tax_id FROM auth.customers WHERE customer_id = $1', [
+      req.user.userId,
+    ])
+    taxId = current.rows[0]?.tax_id ?? null
+  }
+
   const result = await pool.query(
-    `UPDATE auth.customers SET name = $1
-     WHERE customer_id = $2
-     RETURNING customer_id, name, home_address`,
-    [name, req.user.userId]
+    `UPDATE auth.customers SET name = $1, tax_id = $2
+     WHERE customer_id = $3
+     RETURNING customer_id, name, home_address, tax_id`,
+    [name, taxId, req.user.userId]
   )
 
   if (result.rows.length === 0) {
@@ -431,6 +453,7 @@ router.put('/me', authenticate, async (req, res) => {
     role: req.user.role,
     name: result.rows[0].name,
     home_address: result.rows[0].home_address,
+    tax_id: result.rows[0].tax_id,
   })
 })
 
@@ -581,10 +604,6 @@ router.post('/email-change/confirm', async (req, res) => {
        WHERE id = $1`,
       [row.id]
     )
-    await client.query('UPDATE auth.customers SET tax_id = $1 WHERE customer_id = $2', [
-      row.pending_email,
-      row.id,
-    ])
     await client.query('COMMIT')
   } catch (err) {
     await client.query('ROLLBACK')

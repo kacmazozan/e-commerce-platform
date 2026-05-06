@@ -100,7 +100,8 @@ describe('POST /api/sales-manager/products/discount', () => {
       { rows: [{ id: 1, name: 'Shirt', price: '100.00' }] }, // SELECT products
       {}, // INSERT product_discounts (upsert)
       {}, // DELETE existing unread notifications
-      { rows: [{ user_id: 5, product_id: 1 }] }, // INSERT notifications RETURNING
+      { rows: [{ user_id: 5, product_id: 1 }] }, // INSERT wishlist notifications RETURNING
+      { rows: [] }, // INSERT cart notifications RETURNING — nobody had it in cart
       {}, // COMMIT
     ])
     pool.connect.mockResolvedValue(client)
@@ -116,13 +117,14 @@ describe('POST /api/sales-manager/products/discount', () => {
     expect(client.release).toHaveBeenCalled()
   })
 
-  it('reports 0 notified when no wishlist users exist', async () => {
+  it('reports 0 notified when no wishlist or cart users exist', async () => {
     const client = makeMockClient([
       {}, // BEGIN
       { rows: [{ id: 2, name: 'Jacket', price: '200.00' }] }, // SELECT products
       {}, // INSERT product_discounts
       {}, // DELETE existing unread notifications
-      { rows: [] }, // INSERT notifications RETURNING — nobody wishlisted it
+      { rows: [] }, // INSERT wishlist notifications RETURNING — nobody wishlisted it
+      { rows: [] }, // INSERT cart notifications RETURNING — nobody has it in cart
       {}, // COMMIT
     ])
     pool.connect.mockResolvedValue(client)
@@ -135,6 +137,28 @@ describe('POST /api/sales-manager/products/discount', () => {
     expect(res.status).toBe(200)
     expect(res.body.updated).toBe(1)
     expect(res.body.notified).toBe(0)
+  })
+
+  it('counts cart users alongside wishlist users, deduping when a user has both', async () => {
+    const client = makeMockClient([
+      {}, // BEGIN
+      { rows: [{ id: 3, name: 'Hat', price: '50.00' }] }, // SELECT products
+      {}, // INSERT product_discounts
+      {}, // DELETE existing unread notifications
+      { rows: [{ user_id: 5, product_id: 3 }] }, // wishlist notifications: user 5
+      { rows: [{ user_id: 7, product_id: 3 }] }, // cart notifications: user 7 (user 5 dedupes via NOT EXISTS)
+      {}, // COMMIT
+    ])
+    pool.connect.mockResolvedValue(client)
+
+    const res = await request(app)
+      .post('/api/sales-manager/products/discount')
+      .set('Authorization', `Bearer ${smToken}`)
+      .send({ productIds: [3], discountPercent: 15 })
+
+    expect(res.status).toBe(200)
+    expect(res.body.updated).toBe(1)
+    expect(res.body.notified).toBe(2)
   })
 })
 
