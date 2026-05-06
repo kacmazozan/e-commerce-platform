@@ -1,12 +1,23 @@
 import { useNavigate } from 'react-router-dom'
 
 const SHOP_CATEGORIES = [
-  { label: "Women's Clothing", title: "Women's Clothing", subtitle: 'New arrivals every week', hue: 280 },
+  {
+    label: "Women's Clothing",
+    title: "Women's Clothing",
+    subtitle: 'New arrivals every week',
+    hue: 280,
+  },
   { label: "Men's Clothing", title: "Men's Clothing", subtitle: 'Timeless essentials', hue: 210 },
   { label: 'Outerwear', title: 'Outerwear', subtitle: 'Coats, jackets & more', hue: 200 },
   { label: 'Footwear', title: 'Footwear', subtitle: 'Step into style', hue: 160 },
   { label: 'Accessories', title: 'Accessories', subtitle: 'Finish the look', hue: 40 },
-  { label: 'Sale', title: 'Sale', subtitle: 'Exclusive discounts on selected items', hue: 0, on_sale: true },
+  {
+    label: 'Sale',
+    title: 'Sale',
+    subtitle: 'Exclusive discounts on selected items',
+    hue: 0,
+    on_sale: true,
+  },
 ]
 
 export default function Footer() {
