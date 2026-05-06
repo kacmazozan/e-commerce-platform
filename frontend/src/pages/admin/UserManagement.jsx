@@ -187,6 +187,9 @@ function UserManagement({ token }) {
                 Role
               </TableHead>
               <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
+                Tax ID
+              </TableHead>
+              <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
                 Created
               </TableHead>
               <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
@@ -197,13 +200,13 @@ function UserManagement({ token }) {
           <TableBody>
             {loading ? (
               <TableRow className="border-[var(--border)]">
-                <TableCell colSpan={5} className="py-8 text-center text-[var(--text)]">
+                <TableCell colSpan={6} className="py-8 text-center text-[var(--text)]">
                   Loading…
                 </TableCell>
               </TableRow>
             ) : users.length === 0 ? (
               <TableRow className="border-[var(--border)]">
-                <TableCell colSpan={5} className="py-8 text-center text-[var(--text)]">
+                <TableCell colSpan={6} className="py-8 text-center text-[var(--text)]">
                   No users found
                 </TableCell>
               </TableRow>
@@ -223,6 +226,9 @@ function UserManagement({ token }) {
                     >
                       {ROLE_LABELS[u.role]}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-[var(--text-h)]">
+                    {u.role === 'customer' ? u.tax_id || '—' : '—'}
                   </TableCell>
                   <TableCell className="text-[var(--text-h)]">
                     {new Date(u.created_at).toLocaleDateString()}
@@ -321,6 +327,7 @@ function UserModal({ mode, user, onClose, onCreate, onUpdate }) {
   const [email, setEmail] = useState(user?.email || '')
   const [role, setRole] = useState(user?.role || 'customer')
   const [password, setPassword] = useState('')
+  const [taxId, setTaxId] = useState(user?.tax_id || '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -335,6 +342,7 @@ function UserModal({ mode, user, onClose, onCreate, onUpdate }) {
       } else {
         const body = { email, role }
         if (password) body.password = password
+        if (role === 'customer') body.tax_id = taxId.trim() || null
         await onUpdate(user.id, body)
       }
     } catch (err) {
@@ -391,6 +399,21 @@ function UserModal({ mode, user, onClose, onCreate, onUpdate }) {
               {...(mode === 'create' ? { required: true, minLength: 8 } : {})}
             />
           </div>
+          {mode === 'edit' && role === 'customer' && (
+            <div className="mb-4 flex flex-col gap-1.5">
+              <label className="text-[13px] font-medium text-[var(--text-h)]">
+                Tax ID <span className="font-normal text-[var(--text)]">(optional)</span>
+              </label>
+              <input
+                type="text"
+                className={fieldInputClass}
+                value={taxId}
+                onChange={(e) => setTaxId(e.target.value)}
+                placeholder="e.g. 1234567890"
+                maxLength={50}
+              />
+            </div>
+          )}
           {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
           <div className="mt-6 flex justify-end gap-2">
             <button type="button" className={btnBase} onClick={onClose}>
