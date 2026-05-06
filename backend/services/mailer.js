@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer')
 
 function createTransport() {
-  const host = process.env.SMTP_HOST || 'localhost'
+  const host = process.env.SMTP_HOST || 'mailserver'
   const port = Number(process.env.SMTP_PORT || 1025)
   const secure =
     process.env.SMTP_SECURE === undefined ? port === 465 : process.env.SMTP_SECURE === 'true'
