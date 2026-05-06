@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import ProductPage from '../src/pages/product/ProductPage'
+import { ThemeProvider } from '../src/context/ThemeContext'
 
 const mockProduct = {
   id: 1,
@@ -30,7 +31,16 @@ const defaultProps = {
   onAddToWishlist: vi.fn(),
   onRemoveFromWishlist: vi.fn(),
   wishlistItems: [],
+  cartItems: [],
+  onUpdateQuantity: vi.fn(),
+  isLoggedIn: false,
+  userEmail: null,
   token: null,
+  onNavigate: vi.fn(),
+  onRequireAuth: vi.fn(),
+  onLogout: vi.fn(),
+  cartCount: 0,
+  wishlistCount: 0,
 }
 
 function stubFetch({ product = mockProduct, images = [], reviews = [] } = {}) {
@@ -47,9 +57,11 @@ function stubFetch({ product = mockProduct, images = [], reviews = [] } = {}) {
 
 function renderPage(props = {}) {
   return render(
-    <MemoryRouter>
-      <ProductPage {...defaultProps} {...props} />
-    </MemoryRouter>
+    <ThemeProvider>
+      <MemoryRouter>
+        <ProductPage {...defaultProps} {...props} />
+      </MemoryRouter>
+    </ThemeProvider>
   )
 }
 
@@ -244,6 +256,7 @@ describe('ProductPage', () => {
 
     renderPage({ onBack })
 
+    await screen.findByText('Merino Sweater')
     await userEvent.click(screen.getByRole('button', { name: /back/i }))
 
     expect(onBack).toHaveBeenCalledOnce()

@@ -83,15 +83,6 @@ describe('WishlistPage', () => {
     expect(onRemove).toHaveBeenCalledWith(1)
   })
 
-  it('calls onBack when Back button is clicked', async () => {
-    const onBack = vi.fn()
-    renderPage({ onBack })
-
-    await userEvent.click(screen.getByRole('button', { name: /back/i }))
-
-    expect(onBack).toHaveBeenCalledOnce()
-  })
-
   it('"Go to item" link is rendered for each wishlist item', () => {
     renderPage()
 

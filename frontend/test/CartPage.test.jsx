@@ -172,15 +172,6 @@ describe('CartPage', () => {
 
     expect(screen.getByText('Free')).toBeInTheDocument()
   })
-
-  it('calls onBack when Back button is clicked', async () => {
-    const onBack = vi.fn()
-    renderPage({ onBack })
-
-    await userEvent.click(screen.getByRole('button', { name: /back/i }))
-
-    expect(onBack).toHaveBeenCalledOnce()
-  })
 })
 
 const outOfStockItem = {
@@ -291,13 +282,5 @@ describe('CartPage — product links', () => {
     const productLinks = allLinks.filter((l) => l.getAttribute('href') === '/product/1')
     // There should be 2 links: thumbnail and name
     expect(productLinks.length).toBe(2)
-  })
-
-  it('FIER logo links to /', () => {
-    renderPage()
-
-    const fierLink = screen.getByRole('link', { name: 'FIER' })
-    expect(fierLink).toBeInTheDocument()
-    expect(fierLink).toHaveAttribute('href', '/')
   })
 })

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
 import { StarRating } from '../../components/icons'
 import CatalogImage from '../../components/catalog/CatalogImage'
 import Footer from '../home/components/Footer'
+import Navbar from '../home/components/Navbar'
 import API_BASE from '../../api'
 import { getResolvedProductImages } from '../../lib/catalogAssets'
 
@@ -15,24 +15,6 @@ const CATEGORY_HUE = {
   Activewear: 340,
   Formal: 260,
   'Kids & Baby': 20,
-}
-
-function BackIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  )
 }
 
 function HeartIcon({ filled }) {
@@ -107,6 +89,16 @@ export default function ProductPage({
   onAddToWishlist,
   onRemoveFromWishlist,
   wishlistItems = [],
+  cartItems = [],
+  onUpdateQuantity,
+  isLoggedIn,
+  userEmail,
+  token,
+  onNavigate,
+  onRequireAuth,
+  onLogout,
+  cartCount,
+  wishlistCount,
 }) {
   const [product, setProduct] = useState(null)
   const [images, setImages] = useState([])
@@ -115,6 +107,7 @@ export default function ProductPage({
   const [error, setError] = useState('')
   const [selectedSize, setSelectedSize] = useState(null)
   const [sizeError, setSizeError] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [reviews, setReviews] = useState([])
   const [avgRating, setAvgRating] = useState(null)
@@ -177,11 +170,26 @@ export default function ProductPage({
     />
   )
 
+  const navbar = (
+    <Navbar
+      isLoggedIn={isLoggedIn}
+      userEmail={userEmail}
+      token={token}
+      onNavigate={onNavigate}
+      onRequireAuth={onRequireAuth}
+      onLogout={onLogout}
+      cartCount={cartCount}
+      wishlistCount={wishlistCount}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+    />
+  )
+
   if (loading) {
     return (
       <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
         {ambientBg}
-        <Header onBack={onBack} />
+        {navbar}
         <main className="relative z-[1] mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
           <p className="text-[var(--text)] opacity-60">Loading…</p>
         </main>
@@ -193,7 +201,7 @@ export default function ProductPage({
     return (
       <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
         {ambientBg}
-        <Header onBack={onBack} />
+        {navbar}
         <main className="relative z-[1] mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
           <p className="text-red-400">{error || 'Product not found'}</p>
         </main>
@@ -205,6 +213,10 @@ export default function ProductPage({
   const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
   const outOfStock = availableStock === 0
   const inWishlist = wishlistItems.some((i) => i.id === product.id)
+  const cartItem = cartItems.find(
+    (i) => i.id === product.id && (i.size || '') === (selectedSize || '')
+  )
+  const currentQty = cartItem?.quantity ?? 0
   const galleryImages = getResolvedProductImages(product, images)
   const avgRatingRounded = avgRating ? Math.round(parseFloat(avgRating)) : null
 
@@ -218,9 +230,29 @@ export default function ProductPage({
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
       {ambientBg}
-      <Header onBack={onBack} />
+      {navbar}
 
-      <main className="relative z-[1] mx-auto box-border w-full max-w-[1280px] px-6 pt-10 pb-20">
+      <main className="relative z-[1] mx-auto box-border w-full max-w-[1280px] px-6 pt-6 pb-20">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-6 flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Back
+        </button>
         {/* ── Top section: image gallery + info ── */}
         <div className="grid gap-10 max-[720px]:grid-cols-1 lg:grid-cols-[5fr_7fr]">
           {/* Image gallery */}
@@ -493,19 +525,43 @@ export default function ProductPage({
 
             {/* Add to cart + wishlist */}
             <div className="flex gap-3">
-              <button
-                type="button"
-                disabled={outOfStock}
-                onClick={outOfStock ? undefined : handleAddToCart}
-                className={
-                  outOfStock
-                    ? 'flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-transparent px-5 py-3 text-[14px] font-semibold text-[var(--text)] opacity-40'
-                    : 'flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border-none bg-purple-400 px-5 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-88'
-                }
-              >
-                <CartIcon />
-                {outOfStock ? 'Out of Stock' : 'Add to Cart'}
-              </button>
+              {currentQty > 0 ? (
+                <div className="flex flex-1 items-center justify-between rounded-xl border border-purple-400 bg-purple-400/10 px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => onUpdateQuantity(product.id, selectedSize || '', currentQty - 1)}
+                    className="flex cursor-pointer items-center justify-center border-none bg-transparent text-xl leading-none text-[var(--text-h)] transition-colors hover:text-purple-400"
+                    aria-label="Decrease quantity"
+                  >
+                    −
+                  </button>
+                  <span className="text-[14px] font-semibold text-[var(--text-h)]">
+                    {currentQty} in cart
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateQuantity(product.id, selectedSize || '', currentQty + 1)}
+                    className="flex cursor-pointer items-center justify-center border-none bg-transparent text-xl leading-none text-[var(--text-h)] transition-colors hover:text-purple-400"
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={outOfStock}
+                  onClick={outOfStock ? undefined : handleAddToCart}
+                  className={
+                    outOfStock
+                      ? 'flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-transparent px-5 py-3 text-[14px] font-semibold text-[var(--text)] opacity-40'
+                      : 'flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border-none bg-purple-400 px-5 py-3 text-[14px] font-semibold text-white transition-colors hover:opacity-88'
+                  }
+                >
+                  <CartIcon />
+                  {outOfStock ? 'Out of Stock' : 'Add to Cart'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() =>
@@ -633,27 +689,5 @@ export default function ProductPage({
       </main>
       <Footer />
     </div>
-  )
-}
-
-function Header({ onBack }) {
-  return (
-    <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
-        <button
-          type="button"
-          className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
-          onClick={onBack}
-        >
-          <BackIcon /> Back
-        </button>
-        <Link
-          to="/"
-          className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
-        >
-          FIER
-        </Link>
-      </div>
-    </header>
   )
 }

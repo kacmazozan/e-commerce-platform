@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   CartIcon,
   WishlistIcon,
@@ -55,9 +55,12 @@ export default function Navbar({
     <header className="light:bg-white/95 light:shadow-[0_2px_15px_rgba(0,0,0,0.08)] fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb,16,13,30),0.75)] px-6 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-6">
         {/* Brand */}
-        <div className="shrink-0 text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
+        <Link
+          to="/"
+          className="shrink-0 text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
+        >
           FIER
-        </div>
+        </Link>
 
         {/* Search bar */}
         <form
