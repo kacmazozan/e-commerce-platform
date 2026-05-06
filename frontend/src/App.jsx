@@ -98,7 +98,22 @@ function CategoryRoute({
   )
 }
 
-function ProductRoute({ onAddToCart, onAddToWishlist, onRemoveFromWishlist, wishlistItems }) {
+function ProductRoute({
+  onAddToCart,
+  onAddToWishlist,
+  onRemoveFromWishlist,
+  wishlistItems,
+  cartItems,
+  onUpdateQuantity,
+  isLoggedIn,
+  userEmail,
+  token,
+  onNavigate,
+  onRequireAuth,
+  onLogout,
+  cartCount,
+  wishlistCount,
+}) {
   const { id } = useParams()
   const navigate = useNavigate()
   return (
@@ -109,6 +124,16 @@ function ProductRoute({ onAddToCart, onAddToWishlist, onRemoveFromWishlist, wish
       onAddToWishlist={onAddToWishlist}
       onRemoveFromWishlist={onRemoveFromWishlist}
       wishlistItems={wishlistItems}
+      cartItems={cartItems}
+      onUpdateQuantity={onUpdateQuantity}
+      isLoggedIn={isLoggedIn}
+      userEmail={userEmail}
+      token={token}
+      onNavigate={onNavigate}
+      onRequireAuth={onRequireAuth}
+      onLogout={onLogout}
+      cartCount={cartCount}
+      wishlistCount={wishlistCount}
     />
   )
 }
@@ -507,6 +532,16 @@ function App() {
               onAddToWishlist={addToWishlist}
               onRemoveFromWishlist={removeFromWishlist}
               wishlistItems={wishlist}
+              cartItems={cart}
+              onUpdateQuantity={updateCartQuantity}
+              isLoggedIn={!!token}
+              userEmail={user?.email}
+              token={token}
+              onNavigate={handleNavigate}
+              onRequireAuth={requireAuth}
+              onLogout={handleLogout}
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              wishlistCount={wishlist.length}
             />
           }
         />
