@@ -7,7 +7,7 @@ const ORDERS_API = `${API_BASE}/api/product-manager/orders`
 const STATUS_BADGE_CLASS = {
   pending: 'bg-blue-500/10 text-blue-400',
   processing: 'bg-amber-500/10 text-amber-400',
-  shipped: 'bg-purple-400/12 text-purple-400',
+  shipped: 'bg-sky-500/10 text-sky-400',
   delivered: 'bg-emerald-500/10 text-emerald-400',
   cancelled: 'bg-red-500/10 text-red-400',
 }
@@ -24,7 +24,7 @@ const tableWrap =
   'overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl'
 const tableClass = 'min-w-full divide-y divide-[var(--border)] text-left text-sm'
 const thClass =
-  'bg-purple-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
+  'bg-emerald-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
 const tdClass = 'px-4 py-3 text-[var(--text-h)]'
 const emptyClass = 'px-4 py-8 text-center text-[var(--text)]'
 
@@ -33,8 +33,7 @@ function PMDeliveries({ token }) {
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 })
   const [search, setSearch] = useState('')
   const [appliedSearch, setAppliedSearch] = useState('')
-  // Default to pending deliveries
-  const [statusFilter, setStatusFilter] = useState('pending')
+  const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [detail, setDetail] = useState(null)
@@ -204,7 +203,7 @@ function PMDeliveries({ token }) {
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-h)] transition-colors hover:border-purple-400 hover:text-purple-400"
+                          className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-h)] transition-colors hover:border-emerald-400 hover:text-emerald-400"
                           onClick={() => viewDetail(o.id)}
                         >
                           View
@@ -225,7 +224,7 @@ function PMDeliveries({ token }) {
                             <button
                               type="button"
                               key={s}
-                              className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-h)] transition-colors hover:border-purple-400 hover:text-purple-400"
+                              className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-h)] transition-colors hover:border-emerald-400 hover:text-emerald-400"
                               disabled={isUpdating}
                               onClick={() => updateStatus(o.id, s)}
                             >

@@ -44,19 +44,19 @@ function PMLoginPage({ onLogin }) {
   }
 
   const inputCls =
-    'border-white/10 bg-white/5 text-[#f3eeff] placeholder:text-white/30 focus-visible:ring-purple-400/40 focus-visible:border-purple-400'
+    'border-white/10 bg-white/5 text-[#eaffef] placeholder:text-white/30 focus-visible:ring-emerald-400/40 focus-visible:border-emerald-400'
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-[linear-gradient(170deg,#120b1c_0%,#1a0f2a_40%,#13101a_70%,#0e0d1e_100%)] p-6">
+    <div className="flex min-h-svh items-center justify-center bg-[linear-gradient(170deg,#0b1c0f_0%,#0f2a16_40%,#101a13_70%,#0d1e10_100%)] p-6">
       <div className="w-full max-w-sm rounded-[20px] border border-white/15 bg-white/8 p-10 shadow-[0_4px_12px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-xl">
-        <h1 className="mb-2 text-center text-3xl font-medium text-[#f3eeff]">Product Manager</h1>
-        <p className="mb-7 text-center text-sm text-[rgba(200,178,255,0.82)]">
+        <h1 className="mb-2 text-center text-3xl font-medium text-[#eaffef]">Product Manager</h1>
+        <p className="mb-7 text-center text-sm text-[rgba(178,215,190,0.82)]">
           Sign in with your product manager account
         </p>
 
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pm-email" className="text-[#f3eeff]">
+            <Label htmlFor="pm-email" className="text-[#eaffef]">
               Email
             </Label>
             <Input
@@ -72,7 +72,7 @@ function PMLoginPage({ onLogin }) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pm-password" className="text-[#f3eeff]">
+            <Label htmlFor="pm-password" className="text-[#eaffef]">
               Password
             </Label>
             <Input
@@ -96,7 +96,7 @@ function PMLoginPage({ onLogin }) {
           <Button
             type="submit"
             disabled={loading}
-            className="mt-1 w-full bg-purple-400 text-[#0e0d1e] hover:bg-purple-300 disabled:opacity-55"
+            className="mt-1 w-full bg-emerald-400 text-[#0d1e10] hover:bg-emerald-300 disabled:opacity-55"
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </Button>
@@ -105,7 +105,7 @@ function PMLoginPage({ onLogin }) {
         <button
           type="button"
           onClick={() => (window.location.href = '/')}
-          className="mx-auto mt-5 block cursor-pointer border-0 bg-transparent p-0 text-sm text-purple-400 underline underline-offset-2 hover:opacity-75"
+          className="mx-auto mt-5 block cursor-pointer border-0 bg-transparent p-0 text-sm text-emerald-400 underline underline-offset-2 hover:opacity-75"
         >
           Back to store
         </button>

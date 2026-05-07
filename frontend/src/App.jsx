@@ -245,7 +245,11 @@ function App() {
 
   const { pathname } = useLocation()
   useEffect(() => {
-    if (pmToken && !pathname.startsWith('/product-manager')) {
+    const isManagerRoute =
+      pathname.startsWith('/product-manager') ||
+      pathname.startsWith('/sales-manager') ||
+      pathname.startsWith('/admin')
+    if (pmToken && !isManagerRoute) {
       navigate('/product-manager', { replace: true })
     }
   }, [pmToken, pathname, navigate])

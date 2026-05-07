@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import API_BASE from '../../api'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { btnBase, btnEdit, fieldInputClass } from '../../styles/dashboardStyles'
 
 const API = `${API_BASE}/api/sales-manager/products`
+
+const tableWrap =
+  'overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl'
+const tableClass = 'min-w-full divide-y divide-[var(--border)] text-left text-sm'
+const thClass =
+  'bg-emerald-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
+const tdClass = 'px-4 py-3 text-[var(--text-h)]'
+const emptyClass = 'px-4 py-8 text-center text-[var(--text)]'
 
 export default function PriceManagement({ token }) {
   const [products, setProducts] = useState([])
@@ -59,13 +59,11 @@ export default function PriceManagement({ token }) {
       .catch(() => {})
   }, [token])
 
-  // Debounce search input — wait 300 ms after the user stops typing
   useEffect(() => {
     const timer = setTimeout(() => setSearchQuery(searchInput), 300)
     return () => clearTimeout(timer)
   }, [searchInput])
 
-  // Fetch whenever the committed search query or category changes
   useEffect(() => {
     fetchProducts(1, filterCategory, searchQuery)
   }, [fetchProducts, filterCategory, searchQuery])
@@ -140,7 +138,6 @@ export default function PriceManagement({ token }) {
         </div>
       )}
 
-      {/* Filters */}
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5 shadow-[var(--shadow)] backdrop-blur-xl">
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-semibold tracking-[1px] text-[var(--text)] uppercase">
@@ -174,46 +171,35 @@ export default function PriceManagement({ token }) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-[var(--border)] hover:bg-transparent">
-              <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
-                Name
-              </TableHead>
-              <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
-                Category
-              </TableHead>
-              <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
-                Price
-              </TableHead>
-              <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
-                Actions
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className={tableWrap}>
+        <table className={tableClass}>
+          <thead>
+            <tr>
+              <th className={thClass}>Name</th>
+              <th className={thClass}>Category</th>
+              <th className={thClass}>Price</th>
+              <th className={thClass}>Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
             {loading ? (
-              <TableRow className="border-[var(--border)]">
-                <TableCell colSpan={4} className="py-8 text-center text-[var(--text)]">
+              <tr>
+                <td colSpan={4} className={emptyClass}>
                   Loading…
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : products.length === 0 ? (
-              <TableRow className="border-[var(--border)]">
-                <TableCell colSpan={4} className="py-8 text-center text-[var(--text)]">
+              <tr>
+                <td colSpan={4} className={emptyClass}>
                   No products found
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
               products.map((p) => (
-                <TableRow
-                  key={p.id}
-                  className="border-[var(--border)] transition-colors hover:bg-purple-400/5"
-                >
-                  <TableCell className="text-[var(--text-h)]">{p.name}</TableCell>
-                  <TableCell className="text-[var(--text-h)]">{p.category || '—'}</TableCell>
-                  <TableCell className="text-[var(--text-h)]">
+                <tr key={p.id} className="transition-colors hover:bg-emerald-400/5">
+                  <td className={tdClass}>{p.name}</td>
+                  <td className={tdClass}>{p.category || '—'}</td>
+                  <td className={tdClass}>
                     {editingId === p.id ? (
                       <div className="flex flex-col gap-1">
                         <input
@@ -238,8 +224,8 @@ export default function PriceManagement({ token }) {
                         Needs pricing
                       </span>
                     )}
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td className={tdClass}>
                     {editingId === p.id ? (
                       <div className="flex gap-1.5">
                         <button
@@ -264,12 +250,12 @@ export default function PriceManagement({ token }) {
                         {p.price != null ? 'Edit Price' : 'Set Price'}
                       </button>
                     )}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       {pagination.totalPages > 1 && (

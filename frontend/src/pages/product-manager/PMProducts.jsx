@@ -18,7 +18,7 @@ const tableWrap =
   'overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl'
 const tableClass = 'min-w-full divide-y divide-[var(--border)] text-left text-sm'
 const thClass =
-  'bg-purple-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
+  'bg-emerald-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
 const tdClass = 'px-4 py-3 text-[var(--text-h)]'
 const emptyClass = 'px-4 py-8 text-center text-[var(--text)]'
 
@@ -134,7 +134,7 @@ function PMProducts({ token }) {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <form className="flex items-center gap-2" onSubmit={handleSearch}>
           <select
-            className="rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-h)] focus:ring-2 focus:ring-purple-500/40 focus:outline-none"
+            className="rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-h)] focus:ring-2 focus:ring-emerald-500/40 focus:outline-none"
             value={sort}
             onChange={(e) => {
               setSort(e.target.value)
@@ -360,7 +360,7 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
   }
 
   const sectionLabel =
-    'mb-3 mt-6 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase border-b border-[var(--border)] pb-2'
+    'mb-3 mt-6 text-[11px] font-bold tracking-[3px] text-emerald-400 uppercase border-b border-[var(--border)] pb-2'
 
   return (
     <div

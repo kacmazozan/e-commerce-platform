@@ -8,7 +8,7 @@ const tableWrap =
   'overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl'
 const tableClass = 'min-w-full divide-y divide-[var(--border)] text-left text-sm'
 const thClass =
-  'bg-purple-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
+  'bg-emerald-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
 const tdClass = 'px-4 py-3 text-[var(--text-h)]'
 const emptyClass = 'px-4 py-8 text-center text-[var(--text)]'
 
@@ -107,7 +107,7 @@ function PMCategories({ token }) {
 
       <div className="mb-6 flex items-center justify-between gap-3">
         <select
-          className="rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-h)] focus:ring-2 focus:ring-purple-500/40 focus:outline-none"
+          className="rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-h)] focus:ring-2 focus:ring-emerald-500/40 focus:outline-none"
           value={sort}
           onChange={(e) => setSort(e.target.value)}
         >
@@ -153,7 +153,7 @@ function PMCategories({ token }) {
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                         cat.product_count === 0
                           ? 'bg-[var(--border)]/40 text-[var(--text)]'
-                          : 'bg-purple-500/10 text-purple-400'
+                          : 'bg-emerald-500/10 text-emerald-400'
                       }`}
                     >
                       {cat.product_count}

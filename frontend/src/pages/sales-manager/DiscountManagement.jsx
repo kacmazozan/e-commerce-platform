@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import API_BASE from '../../api'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { btnBase, btnEdit, fieldInputClass } from '../../styles/dashboardStyles'
 
 const API = `${API_BASE}/api/sales-manager/products`
+
+const tableWrap =
+  'overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl'
+const tableClass = 'min-w-full divide-y divide-[var(--border)] text-left text-sm'
+const thClass =
+  'bg-emerald-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
+const tdClass = 'px-4 py-3 text-[var(--text-h)]'
+const emptyClass = 'px-4 py-8 text-center text-[var(--text)]'
 
 export default function DiscountManagement({ token }) {
   const [products, setProducts] = useState([])
@@ -236,70 +236,60 @@ export default function DiscountManagement({ token }) {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-[var(--border)] hover:bg-transparent">
-              <TableHead className="w-10 bg-purple-400/12">
+      <div className={tableWrap}>
+        <table className={tableClass}>
+          <thead>
+            <tr>
+              <th className={`${thClass} w-10`}>
                 <input
                   type="checkbox"
                   checked={allSelected}
                   onChange={toggleAll}
-                  className="accent-purple-400"
+                  className="accent-emerald-400"
                   aria-label="Select all on this page"
                 />
-              </TableHead>
-              <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
-                Name
-              </TableHead>
-              <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
-                Category
-              </TableHead>
-              <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
-                Price
-              </TableHead>
-              <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
-                Discount
-              </TableHead>
-              <TableHead className="bg-purple-400/12 text-xs tracking-wide text-[var(--text)] uppercase">
-                Actions
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </th>
+              <th className={thClass}>Name</th>
+              <th className={thClass}>Category</th>
+              <th className={thClass}>Price</th>
+              <th className={thClass}>Discount</th>
+              <th className={thClass}>Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
             {loading ? (
-              <TableRow className="border-[var(--border)]">
-                <TableCell colSpan={6} className="py-8 text-center text-[var(--text)]">
+              <tr>
+                <td colSpan={6} className={emptyClass}>
                   Loading…
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : products.length === 0 ? (
-              <TableRow className="border-[var(--border)]">
-                <TableCell colSpan={6} className="py-8 text-center text-[var(--text)]">
+              <tr>
+                <td colSpan={6} className={emptyClass}>
                   No products found
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
               products.map((p) => {
                 const preview = previewPrice(p.price)
                 const isSelected = selectedIds.has(p.id)
                 return (
-                  <TableRow
+                  <tr
                     key={p.id}
-                    className={`border-[var(--border)] transition-colors hover:bg-purple-400/5 ${isSelected ? 'bg-purple-400/8' : ''}`}
+                    className={`transition-colors hover:bg-emerald-400/5 ${isSelected ? 'bg-emerald-400/8' : ''}`}
                   >
-                    <TableCell>
+                    <td className={tdClass}>
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleSelect(p.id)}
-                        className="accent-purple-400"
+                        className="accent-emerald-400"
                         aria-label={`Select ${p.name}`}
                       />
-                    </TableCell>
-                    <TableCell className="font-medium text-[var(--text-h)]">{p.name}</TableCell>
-                    <TableCell className="text-[var(--text-h)]">{p.category || '—'}</TableCell>
-                    <TableCell className="text-[var(--text-h)]">
+                    </td>
+                    <td className={`${tdClass} font-medium`}>{p.name}</td>
+                    <td className={tdClass}>{p.category || '—'}</td>
+                    <td className={tdClass}>
                       <div className="flex flex-col gap-0.5">
                         <span
                           className={
@@ -316,13 +306,13 @@ export default function DiscountManagement({ token }) {
                           </span>
                         )}
                         {preview != null && !p.discount_percent && isSelected && (
-                          <span className="text-[11px] text-purple-400 opacity-70">
+                          <span className="text-[11px] text-emerald-400 opacity-70">
                             → ${preview}
                           </span>
                         )}
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td className={tdClass}>
                       {p.discount_percent != null ? (
                         <span className="rounded-full bg-green-400/15 px-2 py-0.5 text-[11px] font-semibold text-green-400">
                           -{p.discount_percent}%
@@ -330,8 +320,8 @@ export default function DiscountManagement({ token }) {
                       ) : (
                         <span className="text-[12px] text-[var(--text)] opacity-40">None</span>
                       )}
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td className={tdClass}>
                       {p.discount_percent != null && (
                         <button
                           type="button"
@@ -341,13 +331,13 @@ export default function DiscountManagement({ token }) {
                           Remove
                         </button>
                       )}
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 )
               })
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       {pagination.totalPages > 1 && (
