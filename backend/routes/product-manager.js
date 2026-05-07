@@ -330,7 +330,7 @@ router.get('/orders', async (req, res) => {
   const total = parseInt(countResult.rows[0].count)
 
   const dataResult = await pool.query(
-    `SELECT o.id, o.status, o.total, o.address, o.created_at, o.updated_at,
+    `SELECT o.id, o.status, o.total, o.shipping_cost, o.address, o.created_at, o.updated_at,
             u.id AS user_id, u.email AS user_email
      FROM orders o
      JOIN auth.users u ON u.id = o.user_id
@@ -370,7 +370,7 @@ router.patch('/orders/:id/status', async (req, res) => {
 // GET /api/product-manager/orders/:id
 router.get('/orders/:id', async (req, res) => {
   const orderResult = await pool.query(
-    `SELECT o.id, o.status, o.total, o.address, o.created_at, o.updated_at,
+    `SELECT o.id, o.status, o.total, o.shipping_cost, o.address, o.created_at, o.updated_at,
             u.id AS user_id, u.email AS user_email
      FROM orders o
      JOIN auth.users u ON u.id = o.user_id

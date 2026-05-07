@@ -166,8 +166,8 @@ describe('CartPage', () => {
     expect(screen.getByText('$44.97')).toBeInTheDocument()
   })
 
-  it('shows free shipping when total is $50 or more', () => {
-    const expensiveItem = { id: 2, name: 'Expensive', price: '30.00', quantity: 2 }
+  it('shows free shipping when total is $100 or more', () => {
+    const expensiveItem = { id: 2, name: 'Expensive', price: '55.00', quantity: 2 }
     renderPage({ cartItems: [expensiveItem] })
 
     expect(screen.getByText('Free')).toBeInTheDocument()

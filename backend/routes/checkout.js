@@ -182,9 +182,15 @@ router.post('/confirm', async (req, res) => {
       0
     )
 
+    const thresholdResult = await pool.query(
+      `SELECT value FROM system_settings WHERE key = 'free_shipping_threshold'`
+    )
+    const threshold = parseFloat(thresholdResult.rows[0]?.value ?? '100')
+    const shippingCost = total >= threshold ? 0 : 4.99
+
     const orderResult = await client.query(
-      `INSERT INTO orders (user_id, status, total, address) VALUES ($1, 'pending', $2, $3) RETURNING id`,
-      [userId, total.toFixed(2), address]
+      `INSERT INTO orders (user_id, status, total, address, shipping_cost) VALUES ($1, 'pending', $2, $3, $4) RETURNING id`,
+      [userId, total.toFixed(2), address, shippingCost.toFixed(2)]
     )
     const orderId = orderResult.rows[0].id
 
@@ -200,12 +206,15 @@ router.post('/confirm', async (req, res) => {
 
     await client.query('COMMIT')
 
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(orderId).padStart(6, '0')}`
+
     queueInvoiceRequest({
-      invoice_number: `INV-${new Date().getFullYear()}-${String(orderId).padStart(6, '0')}`,
+      invoice_number: invoiceNumber,
       order_id: String(orderId),
       customer_name: inferCustomerName(req.user.email),
       customer_email: req.user.email,
       customer_address: address || 'Address not provided',
+      shipping_cost: shippingCost,
       items: reservations.rows.map((item) => ({
         description: item.name,
         quantity: item.quantity,
@@ -218,7 +227,10 @@ router.post('/confirm', async (req, res) => {
     // stale cart snapshot the client built before any mid-checkout discount.
     res.json({
       order_id: orderId,
+      invoice_number: invoiceNumber,
+      customer_email: req.user.email,
       total: Number(total.toFixed(2)),
+      shipping_cost: shippingCost,
       items: reservations.rows.map((item) => ({
         product_id: item.product_id,
         name: item.name,

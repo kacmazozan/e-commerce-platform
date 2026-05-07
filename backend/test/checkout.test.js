@@ -276,6 +276,7 @@ describe('POST /api/checkout/confirm', () => {
         },
       ],
     })
+    pool.query.mockResolvedValueOnce({ rows: [{ value: '100' }] }) // free_shipping_threshold
 
     const client = makeClient([
       { rows: [] }, // BEGIN
@@ -314,6 +315,7 @@ describe('POST /api/checkout/confirm', () => {
       customer_name: 'User',
       customer_email: 'user@example.com',
       customer_address: '123 Main St',
+      shipping_cost: 4.99,
       items: [{ description: 'Widget', quantity: 2, unit_price: 9.99 }],
     })
   })
@@ -332,6 +334,7 @@ describe('POST /api/checkout/confirm', () => {
         },
       ],
     })
+    pool.query.mockResolvedValueOnce({ rows: [{ value: '100' }] }) // free_shipping_threshold
 
     const client = makeClient([
       { rows: [] }, // BEGIN
@@ -369,6 +372,7 @@ describe('POST /api/checkout/confirm', () => {
         },
       ],
     })
+    pool.query.mockResolvedValueOnce({ rows: [{ value: '100' }] }) // free_shipping_threshold
 
     const client = makeClient([
       { rows: [] }, // BEGIN

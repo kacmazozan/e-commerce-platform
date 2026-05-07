@@ -154,8 +154,9 @@ function buildInvoiceData(request, options = {}) {
     }
   })
   const subtotal = roundMoney(items.reduce((sum, item) => sum + item.total, 0))
+  const shipping_cost = roundMoney(request.shipping_cost ?? 0)
   const tax_amount = roundMoney(subtotal * taxRate)
-  const total = roundMoney(subtotal + tax_amount)
+  const total = roundMoney(subtotal + shipping_cost + tax_amount)
 
   return {
     number: request.invoice_number,
@@ -171,6 +172,7 @@ function buildInvoiceData(request, options = {}) {
       year: 'numeric',
     }),
     subtotal,
+    shipping_cost,
     tax_rate: taxRate,
     tax_amount,
     total,
@@ -366,18 +368,28 @@ function generateInvoicePdf(invoice) {
         align: 'right',
       })
 
+    const shippingLabel = invoice.shipping_cost === 0 ? 'Shipping (Free)' : 'Shipping'
     doc
       .fillColor(colors.muted)
-      .text(`Tax (${Math.round(invoice.tax_rate * 100)}%)`, totalsX, y + 40, { width: 80 })
+      .text(shippingLabel, totalsX, y + 40, { width: 80 })
       .fillColor(colors.text)
-      .text(formatMoney(invoice.tax_amount), totalsX + 100, y + 40, {
+      .text(formatMoney(invoice.shipping_cost), totalsX + 100, y + 40, {
         width: 80,
         align: 'right',
       })
 
     doc
-      .moveTo(totalsX, y + 66)
-      .lineTo(totalsX + totalsWidth, y + 66)
+      .fillColor(colors.muted)
+      .text(`Tax (${Math.round(invoice.tax_rate * 100)}%)`, totalsX, y + 60, { width: 80 })
+      .fillColor(colors.text)
+      .text(formatMoney(invoice.tax_amount), totalsX + 100, y + 60, {
+        width: 80,
+        align: 'right',
+      })
+
+    doc
+      .moveTo(totalsX, y + 86)
+      .lineTo(totalsX + totalsWidth, y + 86)
       .strokeColor(colors.primary)
       .lineWidth(2)
       .stroke()
@@ -386,8 +398,8 @@ function generateInvoicePdf(invoice) {
       .font('Helvetica-Bold')
       .fontSize(15)
       .fillColor(colors.primary)
-      .text('Total', totalsX, y + 76, { width: 80 })
-      .text(formatMoney(invoice.total), totalsX + 100, y + 76, { width: 80, align: 'right' })
+      .text('Total', totalsX, y + 96, { width: 80 })
+      .text(formatMoney(invoice.total), totalsX + 100, y + 96, { width: 80, align: 'right' })
 
     doc.moveTo(60, 730).lineTo(535, 730).strokeColor(colors.border).lineWidth(1).stroke()
     doc
