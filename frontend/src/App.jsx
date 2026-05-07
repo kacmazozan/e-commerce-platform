@@ -416,6 +416,7 @@ function App() {
     localStorage.setItem('token', t)
 
     const guestCart = JSON.parse(localStorage.getItem('guest_cart') || '[]')
+    const guestWishlist = JSON.parse(localStorage.getItem('guest_wishlist') || '[]')
 
     const [cartRes, wishlistRes] = await Promise.all([
       fetch(`${API_BASE}/api/cart`, { headers: { Authorization: `Bearer ${t}` } }).catch(
@@ -458,8 +459,26 @@ function App() {
       }
     }
     if (wishlistData?.items) {
-      localStorage.removeItem('guest_wishlist')
-      setWishlist(wishlistData.items)
+      if (guestWishlist.length > 0) {
+        await Promise.all(
+          guestWishlist.map((item) =>
+            fetch(`${API_BASE}/api/wishlist`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+              body: JSON.stringify({ productId: item.id }),
+            }).catch(() => null)
+          )
+        )
+        const mergedRes = await fetch(`${API_BASE}/api/wishlist`, {
+          headers: { Authorization: `Bearer ${t}` },
+        }).catch(() => null)
+        const mergedData = await mergedRes?.json().catch(() => null)
+        localStorage.removeItem('guest_wishlist')
+        setWishlist(mergedData?.items ?? wishlistData.items)
+      } else {
+        localStorage.removeItem('guest_wishlist')
+        setWishlist(wishlistData.items)
+      }
     }
     if (payload.role === 'product_manager') {
       navigate('/product-manager')
