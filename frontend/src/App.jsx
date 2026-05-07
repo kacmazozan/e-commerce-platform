@@ -388,7 +388,7 @@ function App() {
     }
     setWishlist((prev) => {
       if (prev.find((item) => item.id === product.id)) return prev
-      return [...prev, { id: product.id, name: product.name, price: product.price }]
+      return [...prev, product]
     })
   }
 
