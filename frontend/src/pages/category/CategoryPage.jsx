@@ -194,16 +194,18 @@ export default function CategoryPage({
                   )}
                   <span
                     className={
-                      availableStock < 10
+                      availableStock === 0
                         ? 'text-[11px] font-semibold text-red-400'
-                        : 'text-[11px] text-[var(--text)] opacity-50'
+                        : availableStock <= 10
+                          ? 'text-[11px] font-semibold text-amber-400'
+                          : 'text-[11px] font-semibold text-green-400'
                     }
                   >
                     {availableStock === 0
                       ? 'Out of stock'
-                      : availableStock < 10
+                      : availableStock <= 10
                         ? `Only ${availableStock} left`
-                        : `${availableStock} in stock`}
+                        : 'In stock'}
                   </span>
                 </div>
                 <div className="flex justify-end px-3 pb-3.5">

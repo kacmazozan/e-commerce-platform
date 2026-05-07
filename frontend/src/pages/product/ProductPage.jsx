@@ -420,14 +420,14 @@ export default function ProductPage({
                 className={
                   availableStock === 0
                     ? 'mt-1 text-[13px] font-semibold text-red-400'
-                    : availableStock < 10
+                    : availableStock <= 10
                       ? 'mt-1 text-[13px] font-semibold text-amber-400'
-                      : 'mt-1 text-[13px] text-[var(--text)] opacity-50'
+                      : 'mt-1 text-[13px] font-semibold text-green-400'
                 }
               >
                 {availableStock === 0
                   ? 'Out of stock'
-                  : availableStock < 10
+                  : availableStock <= 10
                     ? `Only ${availableStock} left`
                     : `${availableStock} in stock`}
               </p>
