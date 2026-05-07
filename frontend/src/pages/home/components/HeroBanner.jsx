@@ -14,7 +14,7 @@ function HeroFallback() {
   )
 }
 
-export default function HeroBanner() {
+export default function HeroBanner({ onShopNow }) {
   const [shouldLoad3D, setShouldLoad3D] = useState(
     () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches
   )
@@ -59,6 +59,7 @@ export default function HeroBanner() {
         <button
           type="button"
           className="cursor-pointer rounded-[6px] border-none bg-purple-400 px-8 py-[13px] text-[13px] font-bold tracking-[1.5px] text-white uppercase shadow-[0_0_32px_rgba(170,59,255,0.4)] transition-[opacity,box-shadow] hover:opacity-90 hover:shadow-[0_0_48px_rgba(170,59,255,0.6)]"
+          onClick={onShopNow}
         >
           Shop Now
         </button>

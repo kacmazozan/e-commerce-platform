@@ -113,6 +113,7 @@ export default function HomePage({
   const [newReleases, setNewReleases] = useState([])
   const navigate = useNavigate()
   const releasesRef = useRef(null)
+  const categoriesRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -161,10 +162,10 @@ export default function HomePage({
         setSearchQuery={setSearchQuery}
       />
 
-      <HeroBanner />
+      <HeroBanner onShopNow={() => categoriesRef.current?.scrollIntoView({ behavior: 'smooth' })} />
 
       {/* ── Category grid ── */}
-      <main className={`${sectionCls} ${sectionDividerCls}`}>
+      <main ref={categoriesRef} className={`${sectionCls} ${sectionDividerCls}`}>
         <div className="mb-8">
           <h2 className="m-0 text-[28px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
             Browse Categories
