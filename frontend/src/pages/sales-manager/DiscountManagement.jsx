@@ -285,30 +285,39 @@ export default function DiscountManagement({ token }) {
                         onChange={() => toggleSelect(p.id)}
                         className="accent-emerald-400"
                         aria-label={`Select ${p.name}`}
+                        disabled={p.price == null}
                       />
                     </td>
                     <td className={`${tdClass} font-medium`}>{p.name}</td>
                     <td className={tdClass}>{p.category || '—'}</td>
                     <td className={tdClass}>
                       <div className="flex flex-col gap-0.5">
-                        <span
-                          className={
-                            p.discount_percent != null
-                              ? 'text-[var(--text)] line-through opacity-60'
-                              : ''
-                          }
-                        >
-                          ${parseFloat(p.price).toFixed(2)}
-                        </span>
-                        {p.discount_percent != null && (
-                          <span className="text-[13px] font-semibold text-green-400">
-                            ${parseFloat(p.discounted_price).toFixed(2)}
+                        {p.price == null ? (
+                          <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                            Needs pricing
                           </span>
-                        )}
-                        {preview != null && !p.discount_percent && isSelected && (
-                          <span className="text-[11px] text-emerald-400 opacity-70">
-                            → ${preview}
-                          </span>
+                        ) : (
+                          <>
+                            <span
+                              className={
+                                p.discount_percent != null
+                                  ? 'text-[var(--text)] line-through opacity-60'
+                                  : ''
+                              }
+                            >
+                              ${parseFloat(p.price).toFixed(2)}
+                            </span>
+                            {p.discount_percent != null && (
+                              <span className="text-[13px] font-semibold text-green-400">
+                                ${parseFloat(p.discounted_price).toFixed(2)}
+                              </span>
+                            )}
+                            {preview != null && !p.discount_percent && isSelected && (
+                              <span className="text-[11px] text-emerald-400 opacity-70">
+                                → ${preview}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>

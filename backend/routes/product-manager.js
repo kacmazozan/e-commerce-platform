@@ -139,7 +139,8 @@ router.post('/products', async (req, res) => {
     model_size,
     sizes,
   } = req.body
-  if (!name) return res.status(400).json({ error: 'Name is required' })
+  const trimmedName = (name || '').trim()
+  if (!trimmedName) return res.status(400).json({ error: 'Name is required' })
   const parsedStock = parseInt(stock, 10)
   if (
     stock !== undefined &&
@@ -157,7 +158,7 @@ router.post('/products', async (req, res) => {
        country_of_origin, material, model_height, model_chest, model_waist, model_hips, model_size, sizes)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [
-      name,
+      trimmedName,
       description || null,
       null,
       Number.isFinite(parsedStock) ? parsedStock : 0,
@@ -201,8 +202,10 @@ router.put('/products/:id', async (req, res) => {
   let idx = 1
 
   if (name !== undefined) {
+    const trimmedName = (name || '').trim()
+    if (!trimmedName) return res.status(400).json({ error: 'Name is required' })
     sets.push(`name = $${idx}`)
-    params.push(name)
+    params.push(trimmedName)
     idx++
   }
   if (description !== undefined) {

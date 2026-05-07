@@ -243,8 +243,6 @@ function App() {
   })
   const navigate = useNavigate()
 
-  const { pathname } = useLocation()
-
   useEffect(() => {
     if (!token) localStorage.setItem('guest_cart', JSON.stringify(cart))
   }, [cart, token])
@@ -427,6 +425,11 @@ function App() {
       localStorage.removeItem('token')
       return
     }
+    // Short-circuit for PM — must not be stored in customer auth state
+    if (payload.role === 'product_manager') {
+      handlePMLogin(t)
+      return
+    }
     localStorage.setItem('token', t)
 
     // Login: discard guest cart/wishlist and load from server
@@ -451,10 +454,6 @@ function App() {
     if (wishlistData?.items) {
       localStorage.removeItem('guest_wishlist')
       setWishlist(wishlistData.items)
-    }
-    if (payload.role === 'product_manager') {
-      handlePMLogin(t)
-      return
     }
     navigate('/')
   }

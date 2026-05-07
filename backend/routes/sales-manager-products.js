@@ -118,6 +118,12 @@ router.post('/discount', async (req, res) => {
       return res.status(404).json({ error: 'One or more products not found' })
     }
 
+    const nullPriced = productsResult.rows.filter((r) => r.price == null)
+    if (nullPriced.length > 0) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Cannot apply discount to products without a price' })
+    }
+
     await client.query(
       `INSERT INTO product_discounts (product_id, discount_percent, created_by)
        SELECT id, $2, $3 FROM UNNEST($1::int[]) AS id
