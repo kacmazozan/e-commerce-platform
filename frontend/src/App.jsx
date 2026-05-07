@@ -290,6 +290,12 @@ function App() {
   }, [token])
 
   async function addToCart(product, size = '') {
+    const availStock = parseInt(product.available_stock ?? product.stock ?? Infinity)
+    const currentQty = cart
+      .filter((item) => item.id === product.id && (item.size || '') === (size || ''))
+      .reduce((sum, item) => sum + item.quantity, 0)
+    if (isFinite(availStock) && currentQty >= availStock) return
+
     if (token) {
       const res = await fetch(`${API_BASE}/api/cart`, {
         method: 'POST',

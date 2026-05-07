@@ -540,8 +540,15 @@ export default function ProductPage({
                   </span>
                   <button
                     type="button"
-                    onClick={() => onUpdateQuantity(product.id, selectedSize || '', currentQty + 1)}
-                    className="flex cursor-pointer items-center justify-center border-none bg-transparent text-xl leading-none text-[var(--text-h)] transition-colors hover:text-purple-400"
+                    onClick={() =>
+                      onUpdateQuantity(
+                        product.id,
+                        selectedSize || '',
+                        Math.min(currentQty + 1, availableStock)
+                      )
+                    }
+                    disabled={currentQty >= availableStock}
+                    className="flex cursor-pointer items-center justify-center border-none bg-transparent text-xl leading-none text-[var(--text-h)] transition-colors hover:text-purple-400 disabled:cursor-not-allowed disabled:opacity-30"
                     aria-label="Increase quantity"
                   >
                     +

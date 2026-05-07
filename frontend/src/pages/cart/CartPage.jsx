@@ -40,11 +40,14 @@ export default function CartPage({
   // Mount-fetch + 15s polling + tab-visibility revalidation. The hook also
   // pushes fresh items back to App's global cart state via onCartRefresh so
   // the navbar count and other consumers stay in sync.
-  const { items: liveItems } = useLiveCart(token, {
+  // Hook polls every 15 s and calls onCartRefresh so App's cart state (cartItemsProp)
+  // stays fresh with server prices/stock. We render cartItemsProp directly so local
+  // mutations (add/remove/update) that write to App state are reflected immediately.
+  useLiveCart(token, {
     initial: cartItemsProp,
     onUpdate: onCartRefresh,
   })
-  const cartItems = isLoggedIn ? liveItems : cartItemsProp
+  const cartItems = cartItemsProp
   const effectivePrice = (item) =>
     parseFloat(item.discounted_price != null ? item.discounted_price : item.price)
   const total = cartItems.reduce((sum, item) => sum + effectivePrice(item) * item.quantity, 0)
@@ -216,8 +219,15 @@ export default function CartPage({
                       </span>
                       <button
                         type="button"
-                        className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400"
-                        onClick={() => onUpdateQuantity(item.id, itemSize, item.quantity + 1)}
+                        className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400 disabled:cursor-not-allowed disabled:opacity-30"
+                        onClick={() =>
+                          onUpdateQuantity(
+                            item.id,
+                            itemSize,
+                            Math.min(item.quantity + 1, parseInt(item.available_stock))
+                          )
+                        }
+                        disabled={item.quantity >= parseInt(item.available_stock)}
                         aria-label="Increase quantity"
                       >
                         +
