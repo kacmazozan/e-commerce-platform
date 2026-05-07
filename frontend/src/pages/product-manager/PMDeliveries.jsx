@@ -13,7 +13,7 @@ const STATUS_BADGE_CLASS = {
 }
 
 const NEXT_STATUSES = {
-  pending: ['processing', 'cancelled'],
+  pending: ['cancelled'],
   processing: ['shipped', 'cancelled'],
   shipped: ['delivered', 'cancelled'],
   delivered: [],

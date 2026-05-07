@@ -189,7 +189,7 @@ router.post('/confirm', async (req, res) => {
     const shippingCost = total >= threshold ? 0 : 4.99
 
     const orderResult = await client.query(
-      `INSERT INTO orders (user_id, status, total, address, shipping_cost) VALUES ($1, 'pending', $2, $3, $4) RETURNING id`,
+      `INSERT INTO orders (user_id, status, total, address, shipping_cost) VALUES ($1, 'processing', $2, $3, $4) RETURNING id`,
       [userId, total.toFixed(2), address, shippingCost.toFixed(2)]
     )
     const orderId = orderResult.rows[0].id
