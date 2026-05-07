@@ -8,7 +8,6 @@ const category = { title: 'Electronics', subtitle: 'Gadgets and gear' }
 
 const defaultProps = {
   category,
-  onBack: vi.fn(),
   onAddToWishlist: vi.fn(),
   onRemoveFromWishlist: vi.fn(),
   wishlistItems: [],
@@ -168,23 +167,6 @@ describe('CategoryPage', () => {
     await waitForElementToBeRemoved(() => screen.queryByText(/loading products/i))
 
     expect(screen.queryByRole('button', { name: /add to cart/i })).not.toBeInTheDocument()
-  })
-
-  it('calls onBack when Back button is clicked', async () => {
-    const onBack = vi.fn()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ products: [] }),
-      })
-    )
-
-    renderPage({ onBack })
-
-    await userEvent.click(screen.getByRole('button', { name: /back/i }))
-
-    expect(onBack).toHaveBeenCalledOnce()
   })
 
   it('fetches products using the category title in the URL', async () => {

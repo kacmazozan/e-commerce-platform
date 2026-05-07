@@ -628,13 +628,25 @@ function App() {
         <Route
           path="/category"
           element={
-            <CategoryRoute
-              onAddToCart={addToCart}
-              onAddToWishlist={addToWishlist}
-              onRemoveFromWishlist={removeFromWishlist}
-              wishlistItems={wishlist}
+            <CustomerLayout
+              isLoggedIn={!!token}
+              userEmail={user?.email}
+              userName={user?.name}
               token={token}
-            />
+              onNavigate={handleNavigate}
+              onRequireAuth={requireAuth}
+              onLogout={handleLogout}
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              wishlistCount={wishlist.length}
+            >
+              <CategoryRoute
+                onAddToCart={addToCart}
+                onAddToWishlist={addToWishlist}
+                onRemoveFromWishlist={removeFromWishlist}
+                wishlistItems={wishlist}
+                token={token}
+              />
+            </CustomerLayout>
           }
         />
         <Route

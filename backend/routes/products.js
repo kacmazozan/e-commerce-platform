@@ -77,9 +77,10 @@ router.get('/search', async (req, res) => {
   res.json({ products: result.rows })
 })
 
-// GET /api/products — list products, optional ?category= ?limit= ?sort=
+// GET /api/products — list products, optional ?category= ?limit= ?sort= ?on_sale=
 router.get('/', async (req, res) => {
   const category = (req.query.category || '').trim()
+  const onSale = req.query.on_sale === 'true'
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50))
 
   let where = []
@@ -90,6 +91,10 @@ router.get('/', async (req, res) => {
     where.push(`p.category = $${idx}`)
     params.push(category)
     idx++
+  }
+
+  if (onSale) {
+    where.push(`pd.discount_percent IS NOT NULL`)
   }
 
   const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : ''
