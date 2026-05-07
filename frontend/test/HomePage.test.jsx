@@ -100,7 +100,9 @@ describe('HomePage', () => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/products/categories')
       )
-      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/products?limit=8'))
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/products?limit=8')
+      )
     })
   })
 })

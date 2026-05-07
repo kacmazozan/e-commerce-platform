@@ -74,7 +74,9 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
         <div className="grid [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] gap-5">
           {wishlistItems.map((item) => {
             const availableStock = parseInt(item.available_stock ?? 0)
+            const outOfStock = availableStock === 0
             const lowStock = availableStock > 0 && availableStock <= 10
+            const inStock = availableStock > 10
             return (
               <div
                 key={item.id}
@@ -125,10 +127,16 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
                       ${parseFloat(item.price).toFixed(2)}
                     </span>
                   )}
+                  {outOfStock && (
+                    <span className="text-[11px] font-semibold text-red-400">Out of stock</span>
+                  )}
                   {lowStock && (
-                    <span className="text-[11px] font-semibold text-red-400">
+                    <span className="text-[11px] font-semibold text-amber-400">
                       Only {availableStock} left
                     </span>
+                  )}
+                  {inStock && (
+                    <span className="text-[11px] font-semibold text-green-400">In stock</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 px-4 pt-3 pb-4">
