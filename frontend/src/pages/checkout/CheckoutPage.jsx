@@ -196,7 +196,7 @@ export default function CheckoutPage({
   const effectivePrice = (item) =>
     parseFloat(item.discounted_price != null ? item.discounted_price : item.price)
   const total = cartItems.reduce((sum, item) => sum + effectivePrice(item) * item.quantity, 0)
-  const shippingCost = total >= 50 ? 0 : 4.99
+  const shippingCost = total >= 100 ? 0 : 4.99
   const cardType = getCardType(payment.cardNumber)
   const maskedCard = payment.cardNumber
     ? '•••• •••• •••• ' + payment.cardNumber.replace(/\s/g, '').slice(-4).padStart(4, '•')
@@ -287,12 +287,18 @@ export default function CheckoutPage({
       // landed during checkout.
       const canonicalItems = data.items || cartItems
       const canonicalSubtotal = typeof data.total === 'number' ? data.total : total
-      const finalShipping = canonicalSubtotal >= 50 ? 0 : 4.99
       onOrderConfirmed({
         orderId: data.order_id,
+        invoiceNumber: data.invoice_number,
+        customerEmail: data.customer_email,
         items: canonicalItems,
         subtotal: canonicalSubtotal,
-        shippingCost: finalShipping,
+        shippingCost:
+          typeof data.shipping_cost === 'number'
+            ? data.shipping_cost
+            : canonicalSubtotal >= 100
+              ? 0
+              : 4.99,
         address: addressStr,
       })
     } catch {

@@ -41,8 +41,22 @@ export default function OrderSuccessPage() {
 
   if (!state?.orderId) return <Navigate to="/" replace />
 
-  const { orderId, items = [], subtotal = 0, shippingCost = 0, address = '' } = state
-  const invoiceNumber = `INV-${new Date().getFullYear()}-${String(orderId).padStart(6, '0')}`
+  const {
+    orderId,
+    invoiceNumber: stateInvoiceNumber,
+    customerEmail,
+    items = [],
+    subtotal = 0,
+    shippingCost = 0,
+    address = '',
+  } = state
+  const invoiceNumber =
+    stateInvoiceNumber ?? `INV-${new Date().getFullYear()}-${String(orderId).padStart(6, '0')}`
+  const invoiceDate = new Date().toLocaleDateString('en-US', {
+    month: 'long',
+    day: '2-digit',
+    year: 'numeric',
+  })
   const grandTotal = subtotal + shippingCost
 
   const effectivePrice = (item) =>
@@ -90,11 +104,26 @@ export default function OrderSuccessPage() {
 
         {/* Invoice card */}
         <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl">
+          {/* Invoice header */}
+          <div className="flex items-start justify-between border-b border-[var(--border)] p-6 pb-4">
+            <div>
+              <h2 className="m-0 text-[14px] font-bold tracking-[0.8px] text-[var(--text)] uppercase opacity-60">
+                Invoice
+              </h2>
+              <p className="m-0 mt-1 text-[12px] text-[var(--text)] opacity-50">{invoiceNumber}</p>
+            </div>
+            <div className="text-right">
+              <p className="m-0 text-[12px] text-[var(--text)] opacity-50">{invoiceDate}</p>
+              {customerEmail && (
+                <p className="m-0 mt-0.5 text-[12px] text-[var(--text)] opacity-50">
+                  {customerEmail}
+                </p>
+              )}
+            </div>
+          </div>
+
           {/* Items */}
           <div className="p-6 pb-4">
-            <h2 className="m-0 mb-4 text-[14px] font-bold tracking-[0.8px] text-[var(--text)] uppercase opacity-60">
-              Order Summary
-            </h2>
             <div className="flex flex-col gap-3">
               {items.map((item) => {
                 const lineTotal = effectivePrice(item) * item.quantity
@@ -138,6 +167,10 @@ export default function OrderSuccessPage() {
               <span className={shippingCost === 0 ? 'font-semibold text-[#4caf82]' : ''}>
                 {shippingCost === 0 ? 'Free' : `$${shippingCost.toFixed(2)}`}
               </span>
+            </div>
+            <div className="flex justify-between text-sm text-[var(--text)] opacity-60">
+              <span>Tax (0%)</span>
+              <span>$0.00</span>
             </div>
             <div className="flex justify-between text-[15px] font-bold text-[var(--text-h)]">
               <span>Total Paid</span>

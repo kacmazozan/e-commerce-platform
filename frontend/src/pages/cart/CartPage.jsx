@@ -268,18 +268,18 @@ export default function CartPage({
             </div>
             <div className="flex items-center justify-between text-sm text-[var(--text)]">
               <span>Shipping</span>
-              <span className={total >= 50 ? 'font-semibold text-[#4caf82]' : ''}>
-                {total >= 50 ? 'Free' : '$4.99'}
+              <span className={total >= 100 ? 'font-semibold text-[#4caf82]' : ''}>
+                {total >= 100 ? 'Free' : '$4.99'}
               </span>
             </div>
             <hr className="my-1 border-t border-[var(--border)]" />
             <div className="flex items-center justify-between text-[16px] font-bold text-[var(--text-h)]">
               <span>Total</span>
-              <span>${(total + (total >= 50 ? 0 : 4.99)).toFixed(2)}</span>
+              <span>${(total + (total >= 100 ? 0 : 4.99)).toFixed(2)}</span>
             </div>
-            {total < 50 && (
+            {total < 100 && (
               <p className="-mt-1 text-center text-xs text-purple-400">
-                Add ${(50 - total).toFixed(2)} more for free shipping
+                Add ${(100 - total).toFixed(2)} more for free shipping
               </p>
             )}
             {hasOutOfStock && (
