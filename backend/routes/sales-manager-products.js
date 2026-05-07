@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
        AND (pd.end_at IS NULL OR pd.end_at > NOW())
      WHERE ($3::text IS NULL OR p.category = $3)
        AND ($4::text IS NULL OR p.name ILIKE $4)
-     ORDER BY p.name ASC LIMIT $1 OFFSET $2`,
+     ORDER BY (p.price IS NULL) DESC, p.name ASC LIMIT $1 OFFSET $2`,
     [limit, offset, category, q]
   )
 

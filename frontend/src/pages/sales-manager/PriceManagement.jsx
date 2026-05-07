@@ -76,7 +76,7 @@ export default function PriceManagement({ token }) {
 
   function startEdit(product) {
     setEditingId(product.id)
-    setEditingPrice(String(parseFloat(product.price).toFixed(2)))
+    setEditingPrice(product.price != null ? String(parseFloat(product.price).toFixed(2)) : '')
     setEditError('')
   }
 
@@ -118,9 +118,27 @@ export default function PriceManagement({ token }) {
     }
   }
 
+  const unpricedProducts = products.filter((p) => p.price == null)
+  const unpricedCount = unpricedProducts.length
+  const unpricedLabel = (() => {
+    const names = unpricedProducts.slice(0, 3).map((p) => `"${p.name}"`)
+    const extra = unpricedCount - names.length
+    return extra > 0 ? `${names.join(', ')} and ${extra} more` : names.join(', ')
+  })()
+
   return (
     <div className="flex flex-col gap-6">
       {error && <p className="text-sm text-red-400">{error}</p>}
+
+      {unpricedCount > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-5 py-3.5">
+          <span className="text-lg">⚠️</span>
+          <p className="text-sm font-medium text-amber-300">
+            {unpricedLabel} {unpricedCount > 1 ? 'are awaiting a price' : 'is awaiting a price'} —
+            set a price to make {unpricedCount > 1 ? 'them' : 'it'} visible to customers.
+          </p>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5 shadow-[var(--shadow)] backdrop-blur-xl">
@@ -213,8 +231,12 @@ export default function PriceManagement({ token }) {
                         />
                         {editError && <p className="text-xs text-red-400">{editError}</p>}
                       </div>
-                    ) : (
+                    ) : p.price != null ? (
                       `$${parseFloat(p.price).toFixed(2)}`
+                    ) : (
+                      <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                        Needs pricing
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -239,7 +261,7 @@ export default function PriceManagement({ token }) {
                       </div>
                     ) : (
                       <button type="button" className={btnEdit} onClick={() => startEdit(p)}>
-                        Edit Price
+                        {p.price != null ? 'Edit Price' : 'Set Price'}
                       </button>
                     )}
                   </TableCell>
