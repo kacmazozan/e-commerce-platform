@@ -32,6 +32,7 @@ import OrdersPage from './pages/orders/OrdersPage'
 import HelpPage from './pages/help/HelpPage'
 
 import ProductManagerDashboard from './pages/product-manager/ProductManagerDashboard'
+import PMLoginPage from './pages/product-manager/PMLoginPage'
 import ProductPage from './pages/product/ProductPage'
 import API_BASE from './api'
 import { decodeJwtPayload } from './utils/jwt'
@@ -84,10 +85,11 @@ function RequireAuth({ token, children }) {
   return children
 }
 
-function RequireProductManager({ token, children }) {
-  if (!token) return <Navigate to="/login" replace />
-  const payload = decodeJwtPayload(token)
-  if (!payload || payload.role !== 'product_manager') return <Navigate to="/" replace />
+function RequireProductManager({ pmToken, children }) {
+  if (!pmToken) return <Navigate to="/product-manager/login" replace />
+  const payload = decodeJwtPayload(pmToken)
+  if (!payload || payload.role !== 'product_manager')
+    return <Navigate to="/product-manager/login" replace />
   return children
 }
 function RequireSalesManager({ salesManagerToken, children }) {
@@ -239,6 +241,16 @@ function App() {
     const payload = decodeJwtPayload(t)
     if (!payload || payload.role !== 'sales_manager') {
       localStorage.removeItem('salesManagerToken')
+      return null
+    }
+    return t
+  })
+  const [pmToken, setPmToken] = useState(() => {
+    const t = localStorage.getItem('pmToken')
+    if (!t) return null
+    const payload = decodeJwtPayload(t)
+    if (!payload || payload.role !== 'product_manager') {
+      localStorage.removeItem('pmToken')
       return null
     }
     return t
@@ -444,6 +456,11 @@ function App() {
       localStorage.removeItem('token')
       return
     }
+    // Short-circuit for PM — must not be stored in customer auth state
+    if (payload.role === 'product_manager') {
+      handlePMLogin(t)
+      return
+    }
     localStorage.setItem('token', t)
 
     const guestCart = JSON.parse(localStorage.getItem('guest_cart') || '[]')
@@ -487,11 +504,7 @@ function App() {
         )
       )
     }
-    if (payload.role === 'product_manager') {
-      navigate('/product-manager')
-    } else {
-      navigate('/')
-    }
+    navigate('/')
   }
 
   function handleAdminLogin(t) {
@@ -504,6 +517,18 @@ function App() {
     localStorage.removeItem('adminToken')
     setAdminToken(null)
     navigate('/admin/login')
+  }
+
+  function handlePMLogin(t) {
+    localStorage.setItem('pmToken', t)
+    setPmToken(t)
+    navigate('/product-manager')
+  }
+
+  function handlePMLogout() {
+    localStorage.removeItem('pmToken')
+    setPmToken(null)
+    navigate('/product-manager/login')
   }
 
   function handleSalesManagerLogin(t) {
@@ -817,18 +842,20 @@ function App() {
           }
         />
         <Route
+          path="/product-manager/login"
+          element={
+            pmToken ? (
+              <Navigate to="/product-manager" replace />
+            ) : (
+              <PMLoginPage onLogin={handlePMLogin} />
+            )
+          }
+        />
+        <Route
           path="/product-manager"
           element={
-            <RequireProductManager token={token}>
-              <ProductManagerDashboard
-                token={token}
-                onLogout={() => {
-                  localStorage.removeItem('token')
-                  setToken(null)
-                  setUser(null)
-                  navigate('/login')
-                }}
-              />
+            <RequireProductManager pmToken={pmToken}>
+              <ProductManagerDashboard token={pmToken} onLogout={handlePMLogout} />
             </RequireProductManager>
           }
         />

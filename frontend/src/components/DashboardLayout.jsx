@@ -10,7 +10,7 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-svh bg-[var(--bg)]">
       <aside className="box-border flex w-60 min-w-[240px] flex-col border-r border-[var(--border)] bg-[rgba(var(--background-rgb),0.4)] py-6 backdrop-blur-xl">
-        <h2 className="m-0 border-b border-[var(--border)] px-6 pb-6 text-xl font-semibold text-purple-400">
+        <h2 className="m-0 border-b border-[var(--border)] px-6 pb-6 text-xl font-semibold text-emerald-400">
           {title}
         </h2>
         <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
@@ -20,8 +20,8 @@ export default function DashboardLayout({
               type="button"
               className={`flex cursor-pointer items-center gap-2.5 rounded-md border-none px-3 py-2.5 text-left font-[inherit] text-[15px] transition-all duration-150 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 ${
                 activeSection === s.key
-                  ? 'border-l-2 border-purple-400 bg-purple-400/15 font-medium text-purple-400'
-                  : 'bg-transparent text-[var(--text)] hover:bg-purple-400/10 hover:text-[var(--text-h)]'
+                  ? 'border-l-2 border-emerald-400 bg-emerald-400/15 font-medium text-emerald-400'
+                  : 'bg-transparent text-[var(--text)] hover:bg-emerald-400/10 hover:text-[var(--text-h)]'
               }`}
               onClick={() => onSectionChange(s.key)}
             >

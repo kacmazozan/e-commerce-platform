@@ -15,7 +15,7 @@ function statusBadge(status) {
   const colours = {
     pending: 'bg-yellow-500/15 text-yellow-400',
     processing: 'bg-blue-500/15 text-blue-400',
-    shipped: 'bg-purple-500/15 text-purple-400',
+    shipped: 'bg-sky-500/15 text-sky-400',
     delivered: 'bg-green-500/15 text-green-400',
     cancelled: 'bg-red-500/15 text-red-400',
   }

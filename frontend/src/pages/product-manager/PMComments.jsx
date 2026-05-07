@@ -19,7 +19,7 @@ const tableWrap =
   'overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl'
 const tableClass = 'min-w-full divide-y divide-[var(--border)] text-left text-sm'
 const thClass =
-  'bg-purple-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
+  'bg-emerald-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
 const tdClass = 'px-4 py-3 text-[var(--text-h)]'
 const emptyClass = 'px-4 py-8 text-center text-[var(--text)]'
 

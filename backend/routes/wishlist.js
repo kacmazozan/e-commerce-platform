@@ -40,7 +40,9 @@ router.post('/', async (req, res) => {
   const { productId } = req.body
   if (!productId) return res.status(400).json({ error: 'productId is required' })
 
-  const product = await pool.query('SELECT id FROM products WHERE id = $1', [productId])
+  const product = await pool.query('SELECT id FROM products WHERE id = $1 AND price IS NOT NULL', [
+    productId,
+  ])
   if (product.rows.length === 0) return res.status(404).json({ error: 'Product not found' })
 
   await pool.query(
