@@ -146,7 +146,10 @@ function PMOrders({ token }) {
                     </span>
                   </td>
                   <td className={tdClass}>
-                    ${parseFloat(o.total || o.total_price || 0).toFixed(2)}
+                    $
+                    {(
+                      parseFloat(o.total || o.total_price || 0) + parseFloat(o.shipping_cost || 0)
+                    ).toFixed(2)}
                   </td>
                   <td className={tdClass}>{new Date(o.created_at).toLocaleDateString()}</td>
                   <td className={tdClass}>
@@ -226,8 +229,9 @@ function PMOrders({ token }) {
                 </span>
                 <span className="text-sm text-[var(--text-h)]">
                   $
-                  {parseFloat(
-                    detail.order?.total ?? detail.total ?? detail.total_price ?? 0
+                  {(
+                    parseFloat(detail.order?.total ?? detail.total ?? detail.total_price ?? 0) +
+                    parseFloat(detail.order?.shipping_cost ?? detail.shipping_cost ?? 0)
                   ).toFixed(2)}
                 </span>
               </div>

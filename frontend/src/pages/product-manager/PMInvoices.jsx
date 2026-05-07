@@ -322,7 +322,18 @@ function PMInvoices({ token }) {
                 <span>Subtotal</span>
                 <span>{formatMoney(detail.invoice?.subtotal)}</span>
               </div>
-
+              <div className="flex justify-between text-[var(--text)]">
+                <span>Shipping</span>
+                <span
+                  className={
+                    (detail.invoice?.shipping_cost ?? 0) === 0 ? 'font-medium text-[#4caf82]' : ''
+                  }
+                >
+                  {(detail.invoice?.shipping_cost ?? 0) === 0
+                    ? 'Free'
+                    : formatMoney(detail.invoice?.shipping_cost)}
+                </span>
+              </div>
               <div className="flex justify-between border-t border-[var(--border)] pt-1 font-semibold text-[var(--text-h)]">
                 <span>Total</span>
                 <span>{formatMoney(detail.invoice?.total)}</span>

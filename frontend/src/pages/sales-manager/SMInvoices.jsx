@@ -354,7 +354,20 @@ export default function SMInvoices({ token }) {
                       ${detail.invoice.subtotal.toFixed(2)}
                     </span>
                   </p>
-
+                  <p className="text-[var(--text)]">
+                    Shipping:{' '}
+                    <span
+                      className={
+                        (detail.invoice.shipping_cost ?? 0) === 0
+                          ? 'font-medium text-[#4caf82]'
+                          : 'font-medium text-[var(--text-h)]'
+                      }
+                    >
+                      {(detail.invoice.shipping_cost ?? 0) === 0
+                        ? 'Free'
+                        : `$${detail.invoice.shipping_cost.toFixed(2)}`}
+                    </span>
+                  </p>
                   <p className="text-base font-bold text-[var(--text-h)]">
                     Total: ${detail.invoice.total.toFixed(2)}
                   </p>
