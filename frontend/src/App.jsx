@@ -190,6 +190,37 @@ function SearchRoute({ onAddToWishlist, onRemoveFromWishlist, wishlistItems }) {
   )
 }
 
+// POST each guest item to `endpoint`, then confirm with a GET.
+// Only removes `storageKey` from localStorage after a confirmed successful merge.
+// Returns the final item list to set in state (merged on success, serverItems on failure).
+async function mergeGuestItems(endpoint, guestItems, buildBody, storageKey, serverItems, token) {
+  if (guestItems.length === 0) {
+    localStorage.removeItem(storageKey)
+    return serverItems
+  }
+  const postResults = await Promise.all(
+    guestItems.map((item) =>
+      fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(buildBody(item)),
+      }).catch(() => null)
+    )
+  )
+  const allPostsOk = postResults.every((r) => r?.ok)
+  const mergedRes = allPostsOk
+    ? await fetch(`${API_BASE}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => null)
+    : null
+  const mergedData = await mergedRes?.json().catch(() => null)
+  if (mergedRes?.ok && mergedData?.items) {
+    localStorage.removeItem(storageKey)
+    return mergedData.items
+  }
+  return serverItems
+}
+
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('token'))
   const [user, setUser] = useState(() => {
@@ -400,7 +431,7 @@ function App() {
     }
     setWishlist((prev) => {
       if (prev.find((item) => item.id === product.id)) return prev
-      return [...prev, { id: product.id, name: product.name, price: product.price }]
+      return [...prev, product]
     })
   }
 
@@ -432,7 +463,9 @@ function App() {
     }
     localStorage.setItem('token', t)
 
-    // Login: discard guest cart/wishlist and load from server
+    const guestCart = JSON.parse(localStorage.getItem('guest_cart') || '[]')
+    const guestWishlist = JSON.parse(localStorage.getItem('guest_wishlist') || '[]')
+
     const [cartRes, wishlistRes] = await Promise.all([
       fetch(`${API_BASE}/api/cart`, { headers: { Authorization: `Bearer ${t}` } }).catch(
         () => null
@@ -448,12 +481,28 @@ function App() {
     setUser({ email: payload.email, name: null })
 
     if (cartData?.items) {
-      localStorage.removeItem('guest_cart')
-      setCart(cartData.items)
+      setCart(
+        await mergeGuestItems(
+          '/api/cart',
+          guestCart,
+          (item) => ({ productId: item.id, quantity: item.quantity, size: item.size || '' }),
+          'guest_cart',
+          cartData.items,
+          t
+        )
+      )
     }
     if (wishlistData?.items) {
-      localStorage.removeItem('guest_wishlist')
-      setWishlist(wishlistData.items)
+      setWishlist(
+        await mergeGuestItems(
+          '/api/wishlist',
+          guestWishlist,
+          (item) => ({ productId: item.id }),
+          'guest_wishlist',
+          wishlistData.items,
+          t
+        )
+      )
     }
     navigate('/')
   }

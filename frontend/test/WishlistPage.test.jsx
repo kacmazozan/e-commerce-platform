@@ -4,6 +4,12 @@ import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import WishlistPage from '../src/pages/wishlist/WishlistPage'
 
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
 const regularItem = { id: 1, name: 'Widget', price: '19.99', available_stock: '5' }
 const discountedItem = {
   id: 2,
@@ -15,7 +21,6 @@ const discountedItem = {
 }
 
 const defaultProps = {
-  onBack: vi.fn(),
   wishlistItems: [regularItem],
   onRemove: vi.fn(),
 }
@@ -45,13 +50,12 @@ describe('WishlistPage', () => {
     expect(screen.getByRole('button', { name: /start shopping/i })).toBeInTheDocument()
   })
 
-  it('navigates to home when "Start Shopping" button is clicked in empty state', async () => {
+  it('navigates to home with scrollToCategories state when "Start Shopping" button is clicked', async () => {
     renderPage({ wishlistItems: [] })
 
     await userEvent.click(screen.getByRole('button', { name: /start shopping/i }))
 
-    // Button now uses navigate('/') — click should not throw and button should still be present
-    expect(screen.getByRole('button', { name: /start shopping/i })).toBeInTheDocument()
+    expect(mockNavigate).toHaveBeenCalledWith('/', { state: { scrollToCategories: true } })
   })
 
   it('renders item name and price', () => {
