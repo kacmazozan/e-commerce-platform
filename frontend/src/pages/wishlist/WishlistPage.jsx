@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import CatalogImage from '../../components/catalog/CatalogImage'
 import { getProductImageUrl } from '../../lib/catalogAssets'
 
@@ -22,15 +22,16 @@ function TrashIcon() {
   )
 }
 
-export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
+export default function WishlistPage({ wishlistItems, onRemove }) {
+  const navigate = useNavigate()
   if (wishlistItems.length === 0) {
     return (
       <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
-        <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
+        <main className="mx-auto box-border flex w-full max-w-[1280px] flex-1 flex-col px-6 pt-12 pb-16">
           <h1 className="mb-10 text-[32px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
             Wishlist
           </h1>
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 pb-32 text-center">
             <div className="mb-2 text-purple-400 opacity-50">
               <svg
                 width="64"
@@ -54,7 +55,7 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
             <button
               type="button"
               className="cursor-pointer rounded-lg border-none bg-purple-400 px-7 py-3 text-sm font-semibold tracking-[0.5px] text-white transition-opacity hover:opacity-88"
-              onClick={onBack}
+              onClick={() => navigate('/', { state: { scrollToCategories: true } })}
             >
               Start Shopping
             </button>

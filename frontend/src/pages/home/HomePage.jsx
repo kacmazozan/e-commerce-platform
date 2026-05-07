@@ -154,6 +154,7 @@ export default function HomePage({
   useEffect(() => {
     if (location.state?.scrollToCategories) {
       categoriesRef.current?.scrollIntoView({ behavior: 'smooth' })
+      window.history.replaceState({}, '', '/')
     }
   }, [location.state])
 
