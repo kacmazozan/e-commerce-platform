@@ -29,6 +29,7 @@ import SearchPage from './pages/search/SearchPage'
 import AccountSettingsPage from './pages/account/AccountSettingsPage'
 import EmailChangeConfirmPage from './pages/account/EmailChangeConfirmPage'
 import OrdersPage from './pages/orders/OrdersPage'
+import MyReviewsPage from './pages/reviews/MyReviewsPage'
 import HelpPage from './pages/help/HelpPage'
 
 import ProductManagerDashboard from './pages/product-manager/ProductManagerDashboard'
@@ -771,6 +772,26 @@ function App() {
             >
               <RequireAuth token={token}>
                 <OrdersPage token={token} />
+              </RequireAuth>
+            </CustomerLayout>
+          }
+        />
+        <Route
+          path="/my-reviews"
+          element={
+            <CustomerLayout
+              isLoggedIn={!!token}
+              userEmail={user?.email}
+              userName={user?.name}
+              token={token}
+              onNavigate={handleNavigate}
+              onRequireAuth={requireAuth}
+              onLogout={handleLogout}
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              wishlistCount={wishlist.length}
+            >
+              <RequireAuth token={token}>
+                <MyReviewsPage token={token} />
               </RequireAuth>
             </CustomerLayout>
           }

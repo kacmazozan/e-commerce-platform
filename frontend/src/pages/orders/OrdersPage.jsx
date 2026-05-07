@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import API_BASE from '../../api'
 
 /* ── Status mapping ──────────────────────────────────────── */
@@ -280,7 +281,7 @@ function StarSelector({ value, onChange }) {
   )
 }
 
-function ReviewModal({ item, token, onClose }) {
+function ReviewModal({ item, token, onClose, onSuccess }) {
   const [rating, setRating] = useState(0)
   const [content, setContent] = useState('')
   const [anonymous, setAnonymous] = useState(true)
@@ -315,6 +316,7 @@ function ReviewModal({ item, token, onClose }) {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Failed to submit review')
       setSuccess(true)
+      onSuccess && onSuccess(item.product_id)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -378,14 +380,20 @@ function ReviewModal({ item, token, onClose }) {
 
             <div>
               <p className="mb-2 text-[13px] font-semibold text-[var(--text)]">
-                Comment <span className="font-normal opacity-50">(optional)</span>
+                Comment{' '}
+                {rating ? (
+                  <span className="font-normal opacity-50">(optional)</span>
+                ) : (
+                  <span className="font-normal italic opacity-40">— select a rating first</span>
+                )}
               </p>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
+                disabled={!rating}
                 placeholder="Share what you liked, how it fits, or anything helpful for others…"
                 rows={3}
-                className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-[14px] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus:border-purple-400/50 focus:outline-none"
+                className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-[14px] text-[var(--text-h)] transition-opacity placeholder:text-[var(--text)]/40 focus:border-purple-400/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-30"
               />
             </div>
 
@@ -416,21 +424,63 @@ function ReviewModal({ item, token, onClose }) {
   )
 }
 
-function WriteReviewButton({ item, orderStatus, token }) {
+function WriteReviewButton({
+  item,
+  orderStatus,
+  token,
+  isReviewed,
+  onReviewed,
+  onNavigateReviews,
+}) {
   const [open, setOpen] = useState(false)
 
   if (orderStatus !== 'delivered') return null
 
-  return (
-    <>
+  // Show "View Review" only when the modal is closed — keep modal mounted until user dismisses
+  // so the success message is visible before switching states.
+  if (isReviewed && !open) {
+    return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="cursor-pointer rounded-[7px] border border-purple-400/40 bg-purple-400/10 px-3 py-1.5 text-xs leading-none font-semibold text-purple-400 transition-colors hover:border-purple-400/70 hover:bg-purple-400/20"
+        onClick={onNavigateReviews}
+        className="flex cursor-pointer items-center gap-1.5 rounded-[7px] border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs leading-none font-semibold text-emerald-400 transition-colors hover:border-emerald-500/70 hover:bg-emerald-500/20"
       >
-        Write a Review
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+        View Review
       </button>
-      {open && <ReviewModal item={item} token={token} onClose={() => setOpen(false)} />}
+    )
+  }
+
+  return (
+    <>
+      {!isReviewed && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="cursor-pointer rounded-[7px] border border-purple-400/40 bg-purple-400/10 px-3 py-1.5 text-xs leading-none font-semibold text-purple-400 transition-colors hover:border-purple-400/70 hover:bg-purple-400/20"
+        >
+          Write a Review
+        </button>
+      )}
+      {open && (
+        <ReviewModal
+          item={item}
+          token={token}
+          onClose={() => setOpen(false)}
+          onSuccess={onReviewed}
+        />
+      )}
     </>
   )
 }
@@ -479,7 +529,16 @@ function DeliveryTimeline({ dbStatus }) {
   )
 }
 
-function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange }) {
+function OrderItems({
+  items,
+  orderCreatedAt,
+  orderStatus,
+  token,
+  onRefundChange,
+  reviewedIds,
+  onReviewed,
+  onNavigateReviews,
+}) {
   return (
     <ul className="m-0 mb-4 flex list-none flex-col gap-3 p-0">
       {items.map((item) => {
@@ -532,7 +591,14 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
                       token={token}
                       onRefundChange={onRefundChange}
                     />
-                    <WriteReviewButton item={item} orderStatus={orderStatus} token={token} />
+                    <WriteReviewButton
+                      item={item}
+                      orderStatus={orderStatus}
+                      token={token}
+                      isReviewed={reviewedIds?.has(item.product_id)}
+                      onReviewed={onReviewed}
+                      onNavigateReviews={onNavigateReviews}
+                    />
                   </div>
                 )}
               </div>
@@ -547,6 +613,7 @@ function OrderItems({ items, orderCreatedAt, orderStatus, token, onRefundChange 
 /* ── Page ────────────────────────────────────────────────── */
 
 export default function OrdersPage({ token }) {
+  const navigate = useNavigate()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -554,6 +621,7 @@ export default function OrdersPage({ token }) {
   const [cancellingId, setCancellingId] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
   const [cancelError, setCancelError] = useState(null)
+  const [reviewedIds, setReviewedIds] = useState(new Set())
 
   async function fetchOrders() {
     setLoading(true)
@@ -578,6 +646,16 @@ export default function OrdersPage({ token }) {
 
   useEffect(() => {
     fetchOrders()
+    fetch(`${API_BASE}/api/products/reviews/mine`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.reviews) {
+          setReviewedIds(new Set(data.reviews.map((r) => r.product_id)))
+        }
+      })
+      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -657,6 +735,9 @@ export default function OrdersPage({ token }) {
                       orderStatus={order.status}
                       token={token}
                       onRefundChange={fetchOrders}
+                      reviewedIds={reviewedIds}
+                      onReviewed={(pid) => setReviewedIds((prev) => new Set([...prev, pid]))}
+                      onNavigateReviews={() => navigate('/my-reviews')}
                     />
 
                     <div className="flex items-center justify-between border-t border-[var(--border)] pt-3.5 text-sm text-[var(--text)]">
@@ -766,6 +847,11 @@ export default function OrdersPage({ token }) {
                               orderStatus={order.status}
                               token={token}
                               onRefundChange={fetchOrders}
+                              reviewedIds={reviewedIds}
+                              onReviewed={(pid) =>
+                                setReviewedIds((prev) => new Set([...prev, pid]))
+                              }
+                              onNavigateReviews={() => navigate('/my-reviews')}
                             />
                           </div>
                           <div className="flex items-center justify-between border-t border-[var(--border)] pt-3.5 text-sm text-[var(--text)]">

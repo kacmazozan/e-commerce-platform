@@ -6,6 +6,7 @@ import {
   SearchIcon,
   UserIcon,
   OrdersIcon,
+  ReviewsIcon,
   SettingsIcon,
   HelpIcon,
   LogoutIcon,
@@ -182,6 +183,14 @@ export default function Navbar({
                         action: () => {
                           setAvatarOpen(false)
                           onNavigate('orders')
+                        },
+                      },
+                      {
+                        icon: <ReviewsIcon />,
+                        label: 'My Reviews',
+                        action: () => {
+                          setAvatarOpen(false)
+                          onNavigate('my-reviews')
                         },
                       },
                     ].map(({ icon, label, action }) => (

@@ -164,6 +164,25 @@ router.get('/', async (req, res) => {
   res.json({ products: result.rows })
 })
 
+// GET /api/products/reviews/mine — all reviews submitted by the authenticated customer
+router.get('/reviews/mine', authenticate, async (req, res) => {
+  if (req.user.role !== 'customer') {
+    return res.status(403).json({ error: 'Only customers can access their reviews' })
+  }
+
+  const result = await pool.query(
+    `SELECT r.id, r.product_id, p.name AS product_name, r.rating, r.content,
+            r.status, r.anonymous, r.created_at
+     FROM product_reviews r
+     JOIN products p ON p.id = r.product_id
+     WHERE r.user_id = $1
+     ORDER BY r.created_at DESC`,
+    [req.user.userId]
+  )
+
+  res.json({ reviews: result.rows })
+})
+
 // GET /api/products/:id/reviews — ratings aggregate + approved comment cards (public)
 router.get('/:id/reviews', async (req, res) => {
   const productId = parseInt(req.params.id, 10)
@@ -244,6 +263,46 @@ router.post('/:id/reviews', authenticate, async (req, res) => {
   )
 
   res.status(201).json({ review: result.rows[0] })
+})
+
+// PATCH /api/products/:id/reviews — update the caller's existing review
+router.patch('/:id/reviews', authenticate, async (req, res) => {
+  const productId = parseInt(req.params.id, 10)
+  if (!Number.isInteger(productId) || productId <= 0) {
+    return res.status(400).json({ error: 'Invalid product ID' })
+  }
+
+  if (req.user.role !== 'customer') {
+    return res.status(403).json({ error: 'Only customers can update reviews' })
+  }
+
+  const existing = await pool.query(
+    'SELECT id FROM product_reviews WHERE product_id = $1 AND user_id = $2',
+    [productId, req.user.userId]
+  )
+  if (existing.rows.length === 0) {
+    return res.status(404).json({ error: 'No review found to update' })
+  }
+
+  const rating = parseInt(req.body.rating, 10)
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'Rating must be an integer between 1 and 5' })
+  }
+
+  const content = req.body.content?.trim() || null
+  const anonymous = req.body.anonymous === true
+  // Adding/changing a comment sends it back to pending for PM approval
+  const newStatus = content ? 'pending' : 'approved'
+
+  const result = await pool.query(
+    `UPDATE product_reviews
+     SET rating = $1, content = $2, status = $3::review_status, anonymous = $4
+     WHERE id = $5
+     RETURNING id, product_id, rating, content, status, anonymous, created_at`,
+    [rating, content, newStatus, anonymous, existing.rows[0].id]
+  )
+
+  res.json({ review: result.rows[0] })
 })
 
 // GET /api/products/:id — single product with discount info (public)
