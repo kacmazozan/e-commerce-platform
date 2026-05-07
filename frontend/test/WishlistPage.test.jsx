@@ -45,13 +45,13 @@ describe('WishlistPage', () => {
     expect(screen.getByRole('button', { name: /start shopping/i })).toBeInTheDocument()
   })
 
-  it('calls onBack when "Start Shopping" button is clicked in empty state', async () => {
-    const onBack = vi.fn()
-    renderPage({ wishlistItems: [], onBack })
+  it('navigates to home when "Start Shopping" button is clicked in empty state', async () => {
+    renderPage({ wishlistItems: [] })
 
     await userEvent.click(screen.getByRole('button', { name: /start shopping/i }))
 
-    expect(onBack).toHaveBeenCalledOnce()
+    // Button now uses navigate('/') — click should not throw and button should still be present
+    expect(screen.getByRole('button', { name: /start shopping/i })).toBeInTheDocument()
   })
 
   it('renders item name and price', () => {

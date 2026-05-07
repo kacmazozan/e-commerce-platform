@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import CartPage from '../src/pages/cart/CartPage'
 
-const cartItem = { id: 1, name: 'Widget', price: '19.99', quantity: 2 }
+const cartItem = { id: 1, name: 'Widget', price: '19.99', quantity: 2, available_stock: '10' }
 
 const defaultProps = {
   onBack: vi.fn(),
