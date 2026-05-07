@@ -219,14 +219,15 @@ export default function CartPage({
                       <button
                         type="button"
                         className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400 disabled:cursor-not-allowed disabled:opacity-30"
-                        onClick={() =>
-                          onUpdateQuantity(
-                            item.id,
-                            itemSize,
-                            Math.min(item.quantity + 1, parseInt(item.available_stock))
-                          )
+                        onClick={() => {
+                          const maxStock =
+                            item.available_stock != null ? parseInt(item.available_stock) : Infinity
+                          onUpdateQuantity(item.id, itemSize, Math.min(item.quantity + 1, maxStock))
+                        }}
+                        disabled={
+                          item.available_stock != null &&
+                          item.quantity >= parseInt(item.available_stock)
                         }
-                        disabled={item.quantity >= parseInt(item.available_stock)}
                         aria-label="Increase quantity"
                       >
                         +

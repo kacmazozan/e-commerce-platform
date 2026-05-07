@@ -102,7 +102,7 @@ describe('CategoryPage', () => {
     expect(screen.getByText('Model-X')).toBeInTheDocument()
   })
 
-  it('shows "n in stock" badge when available_stock >= 10', async () => {
+  it('shows "In stock" badge when available_stock > 10', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -115,7 +115,7 @@ describe('CategoryPage', () => {
 
     renderPage()
 
-    expect(await screen.findByText('15 in stock')).toBeInTheDocument()
+    expect(await screen.findByText('In stock')).toBeInTheDocument()
   })
 
   it('shows "Only n left" badge when available_stock is between 1 and 9', async () => {

@@ -109,7 +109,7 @@ export default function Navbar({
             type="button"
             className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-h)] transition-colors hover:border-purple-400/40 hover:bg-purple-400/12 hover:text-purple-400"
             aria-label="Wishlist"
-            onClick={() => (isLoggedIn ? onNavigate('wishlist') : onRequireAuth())}
+            onClick={() => onNavigate('wishlist')}
           >
             <WishlistIcon />
             {wishlistCount > 0 && (

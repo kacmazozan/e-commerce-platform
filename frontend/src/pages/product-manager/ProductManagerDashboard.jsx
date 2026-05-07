@@ -138,7 +138,7 @@ function ProductManagerDashboard({ token, onLogout }) {
 
   return (
     <DashboardLayout
-      title="MODÉ Manager"
+      title="FIER Manager"
       sections={sections}
       activeSection={activeSection}
       onSectionChange={setActiveSection}
