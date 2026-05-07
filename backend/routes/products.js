@@ -6,6 +6,10 @@ const router = express.Router()
 
 const VALID_SORTS = ['newest', 'price_asc', 'price_desc', 'popularity']
 
+const PUBLIC_PRODUCT_COLUMNS = `
+  p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
+  p.model, p.serial_number, p.warranty_status, p.distributor_info`
+
 function getSortClause(sort) {
   const key = VALID_SORTS.includes(sort) ? sort : 'newest'
   const stockPin = `CASE WHEN GREATEST(0, p.stock - COALESCE(sr.reserved, 0)) = 0 THEN 1 ELSE 0 END ASC`
@@ -20,6 +24,32 @@ function getSortClause(sort) {
       return `ORDER BY ${stockPin}, p.created_at DESC`
   }
 }
+
+// GET /api/products/categories — public category list with product counts
+router.get('/categories', async (_req, res) => {
+  const result = await pool.query(
+    `SELECT name, SUM(product_count)::int AS product_count
+     FROM (
+       SELECT c.name, COUNT(p.id)::int AS product_count
+       FROM categories c
+       LEFT JOIN products p ON p.category = c.name
+       GROUP BY c.name
+
+       UNION ALL
+
+       SELECT p.category AS name, COUNT(p.id)::int AS product_count
+       FROM products p
+       WHERE p.category IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM categories c WHERE c.name = p.category)
+       GROUP BY p.category
+     ) category_counts
+     WHERE name IS NOT NULL
+     GROUP BY name
+     ORDER BY name`
+  )
+
+  res.json({ categories: result.rows })
+})
 
 // GET /api/products/search — search products by name or description, ?q= ?limit= ?sort=
 // Empty or missing q returns all products. Default sort is newest.
@@ -53,7 +83,7 @@ router.get('/search', async (req, res) => {
        FROM order_items
        GROUP BY product_id
      )
-     SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
+     SELECT ${PUBLIC_PRODUCT_COLUMNS},
             GREATEST(0, p.stock - COALESCE(sr.reserved, 0)) AS available_stock,
             COALESCE(oi.units_sold, 0) AS units_sold,
             pd.discount_percent,
@@ -110,7 +140,7 @@ router.get('/', async (req, res) => {
        FROM order_items
        GROUP BY product_id
      )
-     SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
+     SELECT ${PUBLIC_PRODUCT_COLUMNS},
             GREATEST(0, p.stock - COALESCE(sr.reserved, 0)) AS available_stock,
             COALESCE(oi.units_sold, 0) AS units_sold,
             pd.discount_percent,
@@ -224,7 +254,7 @@ router.get('/:id', async (req, res) => {
   }
 
   const result = await pool.query(
-    `SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
+    `SELECT ${PUBLIC_PRODUCT_COLUMNS},
             p.country_of_origin, p.material, p.model_height, p.model_chest, p.model_waist,
             p.model_hips, p.model_size, p.sizes,
             GREATEST(0, p.stock - COALESCE(SUM(sr.quantity), 0)) AS available_stock,

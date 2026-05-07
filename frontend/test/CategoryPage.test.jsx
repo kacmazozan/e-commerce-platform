@@ -72,6 +72,36 @@ describe('CategoryPage', () => {
     expect(screen.queryByText(/loading products/i)).not.toBeInTheDocument()
   })
 
+  it('renders product ID and model properties after fetch', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [
+            {
+              id: 7,
+              name: 'Widget',
+              model: 'Model-X',
+              serial_number: 'SN-007',
+              price: '19.99',
+              stock: 10,
+              available_stock: 10,
+            },
+          ],
+        }),
+      })
+    )
+
+    renderPage()
+
+    expect(await screen.findByText('Widget')).toBeInTheDocument()
+    expect(screen.getByText('ID')).toBeInTheDocument()
+    expect(screen.getByText('#7')).toBeInTheDocument()
+    expect(screen.getByText('Model')).toBeInTheDocument()
+    expect(screen.getByText('Model-X')).toBeInTheDocument()
+  })
+
   it('shows "n in stock" badge when available_stock >= 10', async () => {
     vi.stubGlobal(
       'fetch',

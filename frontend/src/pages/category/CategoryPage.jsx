@@ -24,6 +24,10 @@ function HeartIcon({ filled }) {
   )
 }
 
+function getProductModel(product) {
+  return product.model || product.serial_number || 'N/A'
+}
+
 export default function CategoryPage({
   category,
   onAddToWishlist,
@@ -127,6 +131,7 @@ export default function CategoryPage({
           {products.map((product) => {
             const inWishlist = wishlistIds.has(product.id)
             const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
+            const productModel = getProductModel(product)
             return (
               <div
                 key={product.id}
@@ -156,6 +161,20 @@ export default function CategoryPage({
                 </button>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2.5">
                   <span className="text-sm font-semibold text-[var(--text-h)]">{product.name}</span>
+                  <div className="my-1.5 grid gap-1 border-t border-[var(--border)] pt-2 text-[11px]">
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="shrink-0 text-[var(--text)] opacity-60">ID</span>
+                      <span className="min-w-0 truncate text-right font-semibold text-[var(--text-h)]">
+                        #{product.id}
+                      </span>
+                    </div>
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="shrink-0 text-[var(--text)] opacity-60">Model</span>
+                      <span className="min-w-0 truncate text-right font-semibold text-[var(--text-h)]">
+                        {productModel}
+                      </span>
+                    </div>
+                  </div>
                   {product.discounted_price != null ? (
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[13px] text-red-400 line-through opacity-70">
