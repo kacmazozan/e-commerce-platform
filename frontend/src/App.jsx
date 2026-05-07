@@ -244,15 +244,6 @@ function App() {
   const navigate = useNavigate()
 
   const { pathname } = useLocation()
-  useEffect(() => {
-    const isManagerRoute =
-      pathname.startsWith('/product-manager') ||
-      pathname.startsWith('/sales-manager') ||
-      pathname.startsWith('/admin')
-    if (pmToken && !isManagerRoute) {
-      navigate('/product-manager', { replace: true })
-    }
-  }, [pmToken, pathname, navigate])
 
   useEffect(() => {
     if (!token) localStorage.setItem('guest_cart', JSON.stringify(cart))
