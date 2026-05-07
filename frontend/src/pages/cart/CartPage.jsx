@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import CatalogImage from '../../components/catalog/CatalogImage'
 import API_BASE from '../../api'
 import { getProductImageUrl } from '../../lib/catalogAssets'
+import useLiveCart from '../../hooks/useLiveCart'
 
 function TrashIcon() {
   return (
@@ -26,15 +27,24 @@ function TrashIcon() {
 
 export default function CartPage({
   onBack,
-  cartItems,
+  cartItems: cartItemsProp,
   onRemove,
   onUpdateQuantity,
   onAddToWishlist,
   wishlistItems = [],
   isLoggedIn,
   token,
+  onCartRefresh,
 }) {
   const navigate = useNavigate()
+  // Mount-fetch + 15s polling + tab-visibility revalidation. The hook also
+  // pushes fresh items back to App's global cart state via onCartRefresh so
+  // the navbar count and other consumers stay in sync.
+  const { items: liveItems } = useLiveCart(token, {
+    initial: cartItemsProp,
+    onUpdate: onCartRefresh,
+  })
+  const cartItems = isLoggedIn ? liveItems : cartItemsProp
   const effectivePrice = (item) =>
     parseFloat(item.discounted_price != null ? item.discounted_price : item.price)
   const total = cartItems.reduce((sum, item) => sum + effectivePrice(item) * item.quantity, 0)

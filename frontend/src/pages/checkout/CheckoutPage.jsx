@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import API_BASE from '../../api'
+import useLiveCart from '../../hooks/useLiveCart'
 
 function BackIcon() {
   return (
@@ -117,17 +118,26 @@ function Field({ label, required, children }) {
   )
 }
 
-export default function CheckoutPage({ cartItems: cartItemsProp, token, onOrderConfirmed }) {
+export default function CheckoutPage({
+  cartItems: cartItemsProp,
+  token,
+  onOrderConfirmed,
+  onCartRefresh,
+}) {
   const navigate = useNavigate()
   const { state } = useLocation()
   const expiresAt = state?.expiresAt
 
-  // ── Cart snapshot (fresh fetch, not the stale prop) ─
+  // ── Live cart sync (mount + 15s poll + visibility) ──
   // The backend determines the actual charged price at confirm time, so the
   // checkout summary needs fresh prices too — otherwise users see one number
   // here and a different one on the order success / orders page when a
-  // discount lands mid-checkout.
-  const [cartItems, setCartItems] = useState(cartItemsProp || [])
+  // discount lands mid-checkout. The hook keeps cartItems live and pushes
+  // updates back to App's global cart state via onCartRefresh.
+  const { items: cartItems, refetch: refetchCart } = useLiveCart(token, {
+    initial: cartItemsProp,
+    onUpdate: onCartRefresh,
+  })
   const [priceChange, setPriceChange] = useState(null)
 
   // ── Timer ──────────────────────────────────────────
@@ -155,21 +165,6 @@ export default function CheckoutPage({ cartItems: cartItemsProp, token, onOrderC
     }, 1000)
     return () => clearInterval(interval)
   }, [expiresAt, token, navigate])
-
-  // Fetch fresh cart on mount so the summary reflects any discount applied
-  // between the cart page and now. Falls back silently to the prop on error.
-  useEffect(() => {
-    let cancelled = false
-    fetch(`${API_BASE}/api/cart`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.items) setCartItems(data.items)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [token])
 
   // ── Shipping form ──────────────────────────────────
   const [shipping, setShipping] = useState({
@@ -310,33 +305,22 @@ export default function CheckoutPage({ cartItems: cartItemsProp, token, onOrderC
     if (!validateAll()) return
     const addressStr = buildAddressString()
 
-    // Refetch the cart right before confirm and surface any price change to
-    // the user before charging them. The reservation is already locked, so
-    // this only catches genuine sales-manager discount changes.
+    // Snapshot what the user is currently looking at, then ask the hook for a
+    // fresh cart. Polling normally keeps cartItems live, so a delta here is a
+    // last-second change between polls — surface it before we charge them.
+    const snapshot = cartItems
     setConfirming(true)
     setSubmitError(null)
-    let freshItems = null
-    try {
-      const res = await fetch(`${API_BASE}/api/cart`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        freshItems = data.items
-      }
-    } catch {
-      // Network error — fall through and let the actual confirm handle it.
-    }
+    const freshItems = await refetchCart()
 
     if (freshItems) {
-      const changes = diffCarts(cartItems, freshItems)
+      const changes = diffCarts(snapshot, freshItems)
       if (changes.length > 0) {
-        const oldSubtotal = total
+        const oldSubtotal = snapshot.reduce((sum, it) => sum + effectivePrice(it) * it.quantity, 0)
         const newSubtotal = freshItems.reduce(
           (sum, it) => sum + effectivePrice(it) * it.quantity,
           0
         )
-        setCartItems(freshItems)
         setConfirming(false)
         setPriceChange({ changes, oldSubtotal, newSubtotal, addressStr })
         return

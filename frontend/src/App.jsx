@@ -553,6 +553,7 @@ function App() {
                 wishlistItems={wishlist}
                 isLoggedIn={!!token}
                 token={token}
+                onCartRefresh={setCart}
               />
             </CustomerLayout>
           }
@@ -564,6 +565,7 @@ function App() {
               <CheckoutPage
                 cartItems={cart}
                 token={token}
+                onCartRefresh={setCart}
                 onOrderConfirmed={(orderData) => {
                   setCart([])
                   navigate('/order-success', { state: orderData })
