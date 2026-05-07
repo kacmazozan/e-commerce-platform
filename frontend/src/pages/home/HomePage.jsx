@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { StarRating } from '../../components/icons'
 import CatalogImage from '../../components/catalog/CatalogImage'
 import Navbar from './components/Navbar'
@@ -147,8 +147,15 @@ export default function HomePage({
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES)
   const [newReleases, setNewReleases] = useState([])
   const navigate = useNavigate()
+  const location = useLocation()
   const releasesRef = useRef(null)
   const categoriesRef = useRef(null)
+
+  useEffect(() => {
+    if (location.state?.scrollToCategories) {
+      categoriesRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [location.state])
 
   useEffect(() => {
     let cancelled = false
