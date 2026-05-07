@@ -434,7 +434,7 @@ function App() {
 
     if (cartData?.items) {
       if (guestCart.length > 0) {
-        await Promise.all(
+        const postResults = await Promise.all(
           guestCart.map((item) =>
             fetch(`${API_BASE}/api/cart`, {
               method: 'POST',
@@ -447,12 +447,20 @@ function App() {
             }).catch(() => null)
           )
         )
-        const mergedRes = await fetch(`${API_BASE}/api/cart`, {
-          headers: { Authorization: `Bearer ${t}` },
-        }).catch(() => null)
+        const allPostsOk = postResults.every((r) => r?.ok)
+        const mergedRes = allPostsOk
+          ? await fetch(`${API_BASE}/api/cart`, {
+              headers: { Authorization: `Bearer ${t}` },
+            }).catch(() => null)
+          : null
         const mergedData = await mergedRes?.json().catch(() => null)
-        localStorage.removeItem('guest_cart')
-        setCart(mergedData?.items ?? cartData.items)
+        if (mergedRes?.ok && mergedData?.items) {
+          localStorage.removeItem('guest_cart')
+          setCart(mergedData.items)
+        } else {
+          // Merge failed — keep guest_cart so it can be retried; show server cart as fallback
+          setCart(cartData.items)
+        }
       } else {
         localStorage.removeItem('guest_cart')
         setCart(cartData.items)
@@ -460,7 +468,7 @@ function App() {
     }
     if (wishlistData?.items) {
       if (guestWishlist.length > 0) {
-        await Promise.all(
+        const postResults = await Promise.all(
           guestWishlist.map((item) =>
             fetch(`${API_BASE}/api/wishlist`, {
               method: 'POST',
@@ -469,12 +477,20 @@ function App() {
             }).catch(() => null)
           )
         )
-        const mergedRes = await fetch(`${API_BASE}/api/wishlist`, {
-          headers: { Authorization: `Bearer ${t}` },
-        }).catch(() => null)
+        const allPostsOk = postResults.every((r) => r?.ok)
+        const mergedRes = allPostsOk
+          ? await fetch(`${API_BASE}/api/wishlist`, {
+              headers: { Authorization: `Bearer ${t}` },
+            }).catch(() => null)
+          : null
         const mergedData = await mergedRes?.json().catch(() => null)
-        localStorage.removeItem('guest_wishlist')
-        setWishlist(mergedData?.items ?? wishlistData.items)
+        if (mergedRes?.ok && mergedData?.items) {
+          localStorage.removeItem('guest_wishlist')
+          setWishlist(mergedData.items)
+        } else {
+          // Merge failed — keep guest_wishlist so it can be retried; show server wishlist as fallback
+          setWishlist(wishlistData.items)
+        }
       } else {
         localStorage.removeItem('guest_wishlist')
         setWishlist(wishlistData.items)
