@@ -379,17 +379,8 @@ function generateInvoicePdf(invoice) {
       })
 
     doc
-      .fillColor(colors.muted)
-      .text(`Tax (${Math.round(invoice.tax_rate * 100)}%)`, totalsX, y + 60, { width: 80 })
-      .fillColor(colors.text)
-      .text(formatMoney(invoice.tax_amount), totalsX + 100, y + 60, {
-        width: 80,
-        align: 'right',
-      })
-
-    doc
-      .moveTo(totalsX, y + 86)
-      .lineTo(totalsX + totalsWidth, y + 86)
+      .moveTo(totalsX, y + 66)
+      .lineTo(totalsX + totalsWidth, y + 66)
       .strokeColor(colors.primary)
       .lineWidth(2)
       .stroke()
@@ -398,8 +389,8 @@ function generateInvoicePdf(invoice) {
       .font('Helvetica-Bold')
       .fontSize(15)
       .fillColor(colors.primary)
-      .text('Total', totalsX, y + 96, { width: 80 })
-      .text(formatMoney(invoice.total), totalsX + 100, y + 96, { width: 80, align: 'right' })
+      .text('Total', totalsX, y + 76, { width: 80 })
+      .text(formatMoney(invoice.total), totalsX + 100, y + 76, { width: 80, align: 'right' })
 
     doc.moveTo(60, 730).lineTo(535, 730).strokeColor(colors.border).lineWidth(1).stroke()
     doc

@@ -145,6 +145,12 @@ export default function SearchPage({
                 </button>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2.5">
                   <span className="text-sm font-semibold text-[var(--text-h)]">{product.name}</span>
+                  <span className="text-[11px] text-[var(--text)] opacity-50">
+                    #{product.id}
+                    {(product.model || product.serial_number) && (
+                      <> · {product.model || product.serial_number}</>
+                    )}
+                  </span>
                   {product.discounted_price != null ? (
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[13px] text-red-400 line-through opacity-70">

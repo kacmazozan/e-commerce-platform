@@ -397,6 +397,16 @@ export default function ProductPage({
               )}
             </div>
 
+            {/* Product ID + model */}
+            {(product.id || product.model || product.serial_number) && (
+              <p className="m-0 text-[11px] text-[var(--text)] opacity-50">
+                #{product.id}
+                {(product.model || product.serial_number) && (
+                  <> · Model: {product.model || product.serial_number}</>
+                )}
+              </p>
+            )}
+
             {/* Price */}
             <div>
               {product.discounted_price != null ? (
@@ -657,7 +667,7 @@ export default function ProductPage({
                     available at checkout.
                   </p>
                   <p className="m-0 text-[14px] leading-relaxed text-[var(--text-h)]">
-                    Free shipping on orders over <strong>$50</strong>. Orders are dispatched within
+                    Free shipping on orders over <strong>$100</strong>. Orders are dispatched within
                     1 business day.
                   </p>
                 </>

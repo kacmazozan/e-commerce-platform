@@ -322,10 +322,7 @@ function PMInvoices({ token }) {
                 <span>Subtotal</span>
                 <span>{formatMoney(detail.invoice?.subtotal)}</span>
               </div>
-              <div className="flex justify-between text-[var(--text)]">
-                <span>Tax ({Math.round((detail.invoice?.tax_rate ?? 0) * 100)}%)</span>
-                <span>{formatMoney(detail.invoice?.tax_amount)}</span>
-              </div>
+
               <div className="flex justify-between border-t border-[var(--border)] pt-1 font-semibold text-[var(--text-h)]">
                 <span>Total</span>
                 <span>{formatMoney(detail.invoice?.total)}</span>

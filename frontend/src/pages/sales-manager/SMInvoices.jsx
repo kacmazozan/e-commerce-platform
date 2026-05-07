@@ -354,12 +354,7 @@ export default function SMInvoices({ token }) {
                       ${detail.invoice.subtotal.toFixed(2)}
                     </span>
                   </p>
-                  <p className="text-[var(--text)]">
-                    Tax (20%):{' '}
-                    <span className="font-medium text-[var(--text-h)]">
-                      ${detail.invoice.tax_amount.toFixed(2)}
-                    </span>
-                  </p>
+
                   <p className="text-base font-bold text-[var(--text-h)]">
                     Total: ${detail.invoice.total.toFixed(2)}
                   </p>

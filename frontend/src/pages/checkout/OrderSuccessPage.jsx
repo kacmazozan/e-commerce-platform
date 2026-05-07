@@ -168,10 +168,7 @@ export default function OrderSuccessPage() {
                 {shippingCost === 0 ? 'Free' : `$${shippingCost.toFixed(2)}`}
               </span>
             </div>
-            <div className="flex justify-between text-sm text-[var(--text)] opacity-60">
-              <span>Tax (0%)</span>
-              <span>$0.00</span>
-            </div>
+
             <div className="flex justify-between text-[15px] font-bold text-[var(--text-h)]">
               <span>Total Paid</span>
               <span>${grandTotal.toFixed(2)}</span>
