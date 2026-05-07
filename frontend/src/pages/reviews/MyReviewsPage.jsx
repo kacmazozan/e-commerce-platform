@@ -75,11 +75,11 @@ function ReviewCard({ review, token, onUpdated }) {
         body: JSON.stringify({ rating, content: content.trim() || undefined, anonymous }),
       })
       if (!res.ok) {
-        const data = await res.json()
+        const data = await res.json().catch(() => ({}))
         setError(data.error || 'Failed to save')
         return
       }
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       onUpdated(data.review)
       setEditing(false)
     } catch {

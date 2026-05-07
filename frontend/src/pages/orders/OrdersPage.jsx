@@ -645,6 +645,7 @@ export default function OrdersPage({ token }) {
   }
 
   useEffect(() => {
+    if (!token) return
     fetchOrders()
     fetch(`${API_BASE}/api/products/reviews/mine`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -657,7 +658,7 @@ export default function OrdersPage({ token }) {
       })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [token])
 
   const currentOrders = orders.filter(isActive)
   const pastOrders = orders.filter((o) => !isActive(o))

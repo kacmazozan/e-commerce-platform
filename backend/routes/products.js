@@ -277,11 +277,14 @@ router.patch('/:id/reviews', authenticate, async (req, res) => {
   }
 
   const existing = await pool.query(
-    'SELECT id FROM product_reviews WHERE product_id = $1 AND user_id = $2',
+    'SELECT id, status FROM product_reviews WHERE product_id = $1 AND user_id = $2',
     [productId, req.user.userId]
   )
   if (existing.rows.length === 0) {
     return res.status(404).json({ error: 'No review found to update' })
+  }
+  if (existing.rows[0].status === 'pending') {
+    return res.status(409).json({ error: 'Review is pending approval and cannot be edited' })
   }
 
   const rating = parseInt(req.body.rating, 10)
