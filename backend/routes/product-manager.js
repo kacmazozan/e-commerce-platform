@@ -128,7 +128,6 @@ router.post('/products', async (req, res) => {
   const {
     name,
     description,
-    price,
     stock,
     category,
     country_of_origin,
@@ -140,9 +139,7 @@ router.post('/products', async (req, res) => {
     model_size,
     sizes,
   } = req.body
-  if (!name || price == null) return res.status(400).json({ error: 'Name and price are required' })
-  if (parseFloat(price) < 0 || Number.isNaN(parseFloat(price)))
-    return res.status(400).json({ error: 'Price must be a non-negative number' })
+  if (!name) return res.status(400).json({ error: 'Name is required' })
   const parsedStock = parseInt(stock, 10)
   if (
     stock !== undefined &&
@@ -162,7 +159,7 @@ router.post('/products', async (req, res) => {
     [
       name,
       description || null,
-      price,
+      null,
       Number.isFinite(parsedStock) ? parsedStock : 0,
       category || null,
       country_of_origin || null,
@@ -183,7 +180,6 @@ router.put('/products/:id', async (req, res) => {
   const {
     name,
     description,
-    price,
     stock,
     category,
     country_of_origin,
@@ -212,13 +208,6 @@ router.put('/products/:id', async (req, res) => {
   if (description !== undefined) {
     sets.push(`description = $${idx}`)
     params.push(description)
-    idx++
-  }
-  if (price !== undefined) {
-    if (parseFloat(price) < 0 || Number.isNaN(parseFloat(price)))
-      return res.status(400).json({ error: 'Price must be a non-negative number' })
-    sets.push(`price = $${idx}`)
-    params.push(price)
     idx++
   }
   if (stock !== undefined) {

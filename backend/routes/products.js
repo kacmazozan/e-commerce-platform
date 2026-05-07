@@ -67,7 +67,9 @@ router.get('/search', async (req, res) => {
       : null
   const limit = explicitLimit ?? (q ? 50 : null)
 
-  const whereClause = q ? 'WHERE (p.name ILIKE $1 OR p.description ILIKE $1)' : ''
+  const whereClause = q
+    ? 'WHERE p.price IS NOT NULL AND (p.name ILIKE $1 OR p.description ILIKE $1)'
+    : 'WHERE p.price IS NOT NULL'
   const params = q ? [`%${q}%`] : []
   if (limit !== null) params.push(limit)
   const limitClause = limit !== null ? `LIMIT $${params.length}` : ''
@@ -113,7 +115,7 @@ router.get('/', async (req, res) => {
   const onSale = req.query.on_sale === 'true'
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50))
 
-  let where = []
+  let where = ['p.price IS NOT NULL']
   let params = []
   let idx = 1
 
@@ -268,7 +270,7 @@ router.get('/:id', async (req, res) => {
      LEFT JOIN product_discounts pd ON pd.product_id = p.id
        AND pd.start_at <= NOW()
        AND (pd.end_at IS NULL OR pd.end_at > NOW())
-     WHERE p.id = $1
+     WHERE p.id = $1 AND p.price IS NOT NULL
      GROUP BY p.id, pd.discount_percent`,
     [productId]
   )

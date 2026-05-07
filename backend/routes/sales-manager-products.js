@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
   const total = parseInt(countResult.rows[0].count)
 
   const dataResult = await pool.query(
-    `SELECT p.id, p.name, p.category, p.price, p.stock,
+    `SELECT p.id, p.name, p.category, p.price,
             pd.discount_percent,
             CASE WHEN pd.discount_percent IS NOT NULL
                  THEN ROUND(p.price * (1 - pd.discount_percent / 100.0), 2)

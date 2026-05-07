@@ -308,7 +308,6 @@ function Field({ label, children, hint }) {
 function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }) {
   const [name, setName] = useState(product?.name || '')
   const [description, setDescription] = useState(product?.description || '')
-  const [price, setPrice] = useState(product?.price || '')
   const [stock, setStock] = useState(product?.stock ?? 0)
   const [category, setCategory] = useState(product?.category || '')
   const [countryOfOrigin, setCountryOfOrigin] = useState(product?.country_of_origin || '')
@@ -337,7 +336,6 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
       const body = {
         name,
         description,
-        price: parseFloat(price),
         stock: Number.isNaN(parsedStock) ? 0 : parsedStock,
         category,
         country_of_origin: countryOfOrigin,
@@ -397,30 +395,16 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
               placeholder="Brief description"
             />
           </Field>
-          <div className="mb-4 grid grid-cols-2 gap-4">
-            <Field label="Price ($)">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className={fieldInputClass}
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required
-                placeholder="0.00"
-              />
-            </Field>
-            <Field label="Stock">
-              <input
-                type="number"
-                min="0"
-                className={fieldInputClass}
-                value={stock}
-                onChange={(e) => setStock(e.target.value)}
-                placeholder="0"
-              />
-            </Field>
-          </div>
+          <Field label="Stock">
+            <input
+              type="number"
+              min="0"
+              className={fieldInputClass}
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              placeholder="0"
+            />
+          </Field>
           <Field label="Category">
             {categories.length > 0 ? (
               <select
