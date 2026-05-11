@@ -130,6 +130,7 @@ router.post('/confirm', async (req, res) => {
   // effective_price applies any active discount; falls back to base price when none.
   const reservations = await pool.query(
     `SELECT sr.product_id, sr.quantity, sr.size, p.name, p.price,
+            pd.discount_percent,
             COALESCE(
               ROUND(p.price * (1 - pd.discount_percent / 100.0), 2),
               p.price
@@ -151,11 +152,29 @@ router.post('/confirm', async (req, res) => {
   try {
     await client.query('BEGIN')
 
-    for (const r of reservations.rows) {
-      await client.query(
-        'UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2',
+    // Lock product rows in a deterministic order to avoid deadlocks between
+    // concurrent confirms, then re-check stock atomically. If a product
+    // manager dropped stock between reserve and confirm (e.g. set to 0),
+    // the conditional UPDATE returns rowCount=0 and we abort.
+    const orderedRows = [...reservations.rows].sort((a, b) => a.product_id - b.product_id)
+    const productIds = orderedRows.map((r) => r.product_id)
+    await client.query('SELECT id FROM products WHERE id = ANY($1) ORDER BY id FOR UPDATE', [
+      productIds,
+    ])
+
+    for (const r of orderedRows) {
+      const upd = await client.query(
+        'UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2 AND stock >= $1 RETURNING id',
         [r.quantity, r.product_id]
       )
+      if (upd.rowCount === 0) {
+        await client.query('ROLLBACK')
+        return res.status(409).json({
+          error: `Insufficient stock for ${r.name}. Please return to your cart and try again.`,
+          productId: r.product_id,
+          productName: r.name,
+        })
+      }
     }
 
     const total = reservations.rows.reduce(
@@ -163,9 +182,15 @@ router.post('/confirm', async (req, res) => {
       0
     )
 
+    const thresholdResult = await pool.query(
+      `SELECT value FROM system_settings WHERE key = 'free_shipping_threshold'`
+    )
+    const threshold = parseFloat(thresholdResult.rows[0]?.value ?? '100')
+    const shippingCost = total >= threshold ? 0 : 4.99
+
     const orderResult = await client.query(
-      `INSERT INTO orders (user_id, status, total, address) VALUES ($1, 'pending', $2, $3) RETURNING id`,
-      [userId, total.toFixed(2), address]
+      `INSERT INTO orders (user_id, status, total, address, shipping_cost) VALUES ($1, 'processing', $2, $3, $4) RETURNING id`,
+      [userId, total.toFixed(2), address, shippingCost.toFixed(2)]
     )
     const orderId = orderResult.rows[0].id
 
@@ -181,12 +206,15 @@ router.post('/confirm', async (req, res) => {
 
     await client.query('COMMIT')
 
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(orderId).padStart(6, '0')}`
+
     queueInvoiceRequest({
-      invoice_number: `INV-${new Date().getFullYear()}-${String(orderId).padStart(6, '0')}`,
+      invoice_number: invoiceNumber,
       order_id: String(orderId),
       customer_name: inferCustomerName(req.user.email),
       customer_email: req.user.email,
       customer_address: address || 'Address not provided',
+      shipping_cost: shippingCost,
       items: reservations.rows.map((item) => ({
         description: item.name,
         quantity: item.quantity,
@@ -194,7 +222,24 @@ router.post('/confirm', async (req, res) => {
       })),
     })
 
-    res.json({ order_id: orderId })
+    // Echo the canonical order data so the success page renders the actual
+    // charged prices (matches order_items.price written above) instead of a
+    // stale cart snapshot the client built before any mid-checkout discount.
+    res.json({
+      order_id: orderId,
+      invoice_number: invoiceNumber,
+      customer_email: req.user.email,
+      total: Number(total.toFixed(2)),
+      shipping_cost: shippingCost,
+      items: reservations.rows.map((item) => ({
+        product_id: item.product_id,
+        name: item.name,
+        quantity: item.quantity,
+        size: item.size || '',
+        price: Number(item.price),
+        discounted_price: item.discount_percent != null ? Number(item.effective_price) : null,
+      })),
+    })
   } catch (err) {
     await client.query('ROLLBACK')
     throw err

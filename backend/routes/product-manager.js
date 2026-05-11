@@ -128,7 +128,6 @@ router.post('/products', async (req, res) => {
   const {
     name,
     description,
-    price,
     stock,
     category,
     country_of_origin,
@@ -140,9 +139,8 @@ router.post('/products', async (req, res) => {
     model_size,
     sizes,
   } = req.body
-  if (!name || price == null) return res.status(400).json({ error: 'Name and price are required' })
-  if (parseFloat(price) < 0 || Number.isNaN(parseFloat(price)))
-    return res.status(400).json({ error: 'Price must be a non-negative number' })
+  const trimmedName = (name || '').trim()
+  if (!trimmedName) return res.status(400).json({ error: 'Name is required' })
   const parsedStock = parseInt(stock, 10)
   if (
     stock !== undefined &&
@@ -160,9 +158,9 @@ router.post('/products', async (req, res) => {
        country_of_origin, material, model_height, model_chest, model_waist, model_hips, model_size, sizes)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [
-      name,
+      trimmedName,
       description || null,
-      price,
+      null,
       Number.isFinite(parsedStock) ? parsedStock : 0,
       category || null,
       country_of_origin || null,
@@ -183,7 +181,6 @@ router.put('/products/:id', async (req, res) => {
   const {
     name,
     description,
-    price,
     stock,
     category,
     country_of_origin,
@@ -205,20 +202,15 @@ router.put('/products/:id', async (req, res) => {
   let idx = 1
 
   if (name !== undefined) {
+    const trimmedName = (name || '').trim()
+    if (!trimmedName) return res.status(400).json({ error: 'Name is required' })
     sets.push(`name = $${idx}`)
-    params.push(name)
+    params.push(trimmedName)
     idx++
   }
   if (description !== undefined) {
     sets.push(`description = $${idx}`)
     params.push(description)
-    idx++
-  }
-  if (price !== undefined) {
-    if (parseFloat(price) < 0 || Number.isNaN(parseFloat(price)))
-      return res.status(400).json({ error: 'Price must be a non-negative number' })
-    sets.push(`price = $${idx}`)
-    params.push(price)
     idx++
   }
   if (stock !== undefined) {
@@ -338,7 +330,7 @@ router.get('/orders', async (req, res) => {
   const total = parseInt(countResult.rows[0].count)
 
   const dataResult = await pool.query(
-    `SELECT o.id, o.status, o.total, o.address, o.created_at, o.updated_at,
+    `SELECT o.id, o.status, o.total, o.shipping_cost, o.address, o.created_at, o.updated_at,
             u.id AS user_id, u.email AS user_email
      FROM orders o
      JOIN auth.users u ON u.id = o.user_id
@@ -378,7 +370,7 @@ router.patch('/orders/:id/status', async (req, res) => {
 // GET /api/product-manager/orders/:id
 router.get('/orders/:id', async (req, res) => {
   const orderResult = await pool.query(
-    `SELECT o.id, o.status, o.total, o.address, o.created_at, o.updated_at,
+    `SELECT o.id, o.status, o.total, o.shipping_cost, o.address, o.created_at, o.updated_at,
             u.id AS user_id, u.email AS user_email
      FROM orders o
      JOIN auth.users u ON u.id = o.user_id

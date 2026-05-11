@@ -261,7 +261,7 @@ describe('POST /api/checkout/confirm', () => {
     expect(res.body.error).toContain('Reservation expired')
   })
 
-  it('returns { order_id } on success and clears cart and reservations', async () => {
+  it('returns { order_id, total, items } on success and clears cart and reservations', async () => {
     pool.query.mockResolvedValueOnce({
       // reservations joined with products (single source of truth)
       rows: [
@@ -271,14 +271,17 @@ describe('POST /api/checkout/confirm', () => {
           size: 'M',
           name: 'Widget',
           price: '9.99',
+          discount_percent: null,
           effective_price: '9.99',
         },
       ],
     })
+    pool.query.mockResolvedValueOnce({ rows: [{ value: '100' }] }) // free_shipping_threshold
 
     const client = makeClient([
       { rows: [] }, // BEGIN
-      { rows: [] }, // UPDATE products stock
+      { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE (lock)
+      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock (conditional)
       { rows: [{ id: 55 }] }, // INSERT order RETURNING id
       { rows: [] }, // INSERT order_items
       { rows: [] }, // DELETE cart_items
@@ -295,12 +298,24 @@ describe('POST /api/checkout/confirm', () => {
     expect(res.status).toBe(200)
     expect(res.body).toHaveProperty('order_id')
     expect(res.body.order_id).toBe(55)
+    expect(res.body.total).toBeCloseTo(19.98, 2)
+    expect(res.body.items).toEqual([
+      {
+        product_id: 1,
+        name: 'Widget',
+        quantity: 2,
+        size: 'M',
+        price: 9.99,
+        discounted_price: null,
+      },
+    ])
     expect(queueInvoiceRequest).toHaveBeenCalledWith({
       invoice_number: expect.stringMatching(/^INV-\d{4}-\d{6}$/),
       order_id: '55',
       customer_name: 'User',
       customer_email: 'user@example.com',
       customer_address: '123 Main St',
+      shipping_cost: 4.99,
       items: [{ description: 'Widget', quantity: 2, unit_price: 9.99 }],
     })
   })
@@ -314,19 +329,22 @@ describe('POST /api/checkout/confirm', () => {
           size: '',
           name: 'Widget',
           price: '5.00',
+          discount_percent: null,
           effective_price: '5.00',
         },
       ],
     })
+    pool.query.mockResolvedValueOnce({ rows: [{ value: '100' }] }) // free_shipping_threshold
 
     const client = makeClient([
-      { rows: [] },
-      { rows: [] },
-      { rows: [{ id: 99 }] },
-      { rows: [] },
-      { rows: [] },
-      { rows: [] },
-      { rows: [] },
+      { rows: [] }, // BEGIN
+      { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE
+      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock
+      { rows: [{ id: 99 }] }, // INSERT order
+      { rows: [] }, // INSERT order_items
+      { rows: [] }, // DELETE cart_items
+      { rows: [] }, // DELETE stock_reservations
+      { rows: [] }, // COMMIT
     ])
     pool.connect.mockResolvedValueOnce(client)
 
@@ -349,14 +367,17 @@ describe('POST /api/checkout/confirm', () => {
           size: 'S',
           name: 'Widget',
           price: '20.00',
+          discount_percent: 20,
           effective_price: '16.00',
         },
       ],
     })
+    pool.query.mockResolvedValueOnce({ rows: [{ value: '100' }] }) // free_shipping_threshold
 
     const client = makeClient([
       { rows: [] }, // BEGIN
-      { rows: [] }, // UPDATE products stock
+      { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE
+      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock
       { rows: [{ id: 77 }] }, // INSERT order RETURNING id
       { rows: [] }, // INSERT order_items
       { rows: [] }, // DELETE cart_items
@@ -385,6 +406,60 @@ describe('POST /api/checkout/confirm', () => {
     )
     expect(orderInsert).toBeDefined()
     expect(orderInsert[1][1]).toBe('32.00') // total param
+
+    // Response echoes the canonical (post-discount) order so the success
+    // page can render the same numbers that orders.total / order_items.price
+    // reflect — fixes the divergence where success showed pre-discount prices.
+    expect(res.body.total).toBeCloseTo(32.0, 2)
+    expect(res.body.items).toEqual([
+      {
+        product_id: 1,
+        name: 'Widget',
+        quantity: 2,
+        size: 'S',
+        price: 20,
+        discounted_price: 16,
+      },
+    ])
+  })
+
+  it('returns 409 when product stock dropped below reserved quantity between reserve and confirm', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        {
+          product_id: 1,
+          quantity: 2,
+          size: 'M',
+          name: 'Widget',
+          price: '9.99',
+          discount_percent: null,
+          effective_price: '9.99',
+        },
+      ],
+    })
+
+    const client = makeClient([
+      { rows: [] }, // BEGIN
+      { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE
+      { rows: [], rowCount: 0 }, // UPDATE products stock — no row matched (stock < quantity)
+      { rows: [] }, // ROLLBACK
+    ])
+    pool.connect.mockResolvedValueOnce(client)
+
+    const res = await request(app)
+      .post('/api/checkout/confirm')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ address: '123 Main St' })
+
+    expect(res.status).toBe(409)
+    expect(res.body.error).toContain('Insufficient stock')
+    expect(res.body.productId).toBe(1)
+
+    // Order must not have been created
+    const orderInsert = client.query.mock.calls.find(
+      (call) => typeof call[0] === 'string' && call[0].includes('INSERT INTO orders')
+    )
+    expect(orderInsert).toBeUndefined()
   })
 
   it('returns 500 on database error', async () => {

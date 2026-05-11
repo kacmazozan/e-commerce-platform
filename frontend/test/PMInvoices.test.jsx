@@ -118,8 +118,7 @@ describe('PMInvoices', () => {
     expect(screen.getByText('Gadget')).toBeInTheDocument()
     expect(screen.getByText('Subtotal')).toBeInTheDocument()
     expect(screen.getByText('$120.00')).toBeInTheDocument()
-    expect(screen.getByText('Tax (20%)')).toBeInTheDocument()
-    expect(screen.getByText('$24.00')).toBeInTheDocument()
+    expect(screen.queryByText(/tax/i)).not.toBeInTheDocument()
   })
 
   it('requests the PDF endpoint when Download PDF is clicked', async () => {

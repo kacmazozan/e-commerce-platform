@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
 
 /* ── FAQ data ─────────────────────────────────────────────── */
 
@@ -231,24 +230,6 @@ const FAQ_CATEGORIES = [
 
 /* ── Icons ────────────────────────────────────────────────── */
 
-function BackIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  )
-}
-
 function SearchIcon() {
   return (
     <svg
@@ -316,7 +297,7 @@ function FaqItem({ question, answer }) {
 
 /* ── Page ─────────────────────────────────────────────────── */
 
-export default function HelpPage({ onBack }) {
+export default function HelpPage() {
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
 
@@ -334,24 +315,6 @@ export default function HelpPage({ onBack }) {
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
-      <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
-          <button
-            type="button"
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
-            onClick={onBack}
-          >
-            <BackIcon /> Back
-          </button>
-          <Link
-            to="/"
-            className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
-          >
-            FIER
-          </Link>
-        </div>
-      </header>
-
       {/* Hero */}
       <div className="flex flex-col items-center gap-3 bg-[linear-gradient(135deg,var(--bg)_0%,var(--bg-gradient-to)_50%,var(--accent-bg)_100%)] px-6 py-16 text-center">
         <p className="m-0 text-[11px] font-bold tracking-[5px] text-purple-400 uppercase">

@@ -6,6 +6,10 @@ const router = express.Router()
 
 const VALID_SORTS = ['newest', 'price_asc', 'price_desc', 'popularity']
 
+const PUBLIC_PRODUCT_COLUMNS = `
+  p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
+  p.model, p.serial_number, p.warranty_status, p.distributor_info`
+
 function getSortClause(sort) {
   const key = VALID_SORTS.includes(sort) ? sort : 'newest'
   const stockPin = `CASE WHEN GREATEST(0, p.stock - COALESCE(sr.reserved, 0)) = 0 THEN 1 ELSE 0 END ASC`
@@ -20,6 +24,32 @@ function getSortClause(sort) {
       return `ORDER BY ${stockPin}, p.created_at DESC`
   }
 }
+
+// GET /api/products/categories — public category list with product counts
+router.get('/categories', async (_req, res) => {
+  const result = await pool.query(
+    `SELECT name, SUM(product_count)::int AS product_count
+     FROM (
+       SELECT c.name, COUNT(p.id)::int AS product_count
+       FROM categories c
+       LEFT JOIN products p ON p.category = c.name
+       GROUP BY c.name
+
+       UNION ALL
+
+       SELECT p.category AS name, COUNT(p.id)::int AS product_count
+       FROM products p
+       WHERE p.category IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM categories c WHERE c.name = p.category)
+       GROUP BY p.category
+     ) category_counts
+     WHERE name IS NOT NULL
+     GROUP BY name
+     ORDER BY name`
+  )
+
+  res.json({ categories: result.rows })
+})
 
 // GET /api/products/search — search products by name or description, ?q= ?limit= ?sort=
 // Empty or missing q returns all products. Default sort is newest.
@@ -37,7 +67,9 @@ router.get('/search', async (req, res) => {
       : null
   const limit = explicitLimit ?? (q ? 50 : null)
 
-  const whereClause = q ? 'WHERE (p.name ILIKE $1 OR p.description ILIKE $1)' : ''
+  const whereClause = q
+    ? 'WHERE p.price IS NOT NULL AND (p.name ILIKE $1 OR p.description ILIKE $1)'
+    : 'WHERE p.price IS NOT NULL'
   const params = q ? [`%${q}%`] : []
   if (limit !== null) params.push(limit)
   const limitClause = limit !== null ? `LIMIT $${params.length}` : ''
@@ -53,7 +85,7 @@ router.get('/search', async (req, res) => {
        FROM order_items
        GROUP BY product_id
      )
-     SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
+     SELECT ${PUBLIC_PRODUCT_COLUMNS},
             GREATEST(0, p.stock - COALESCE(sr.reserved, 0)) AS available_stock,
             COALESCE(oi.units_sold, 0) AS units_sold,
             pd.discount_percent,
@@ -77,12 +109,13 @@ router.get('/search', async (req, res) => {
   res.json({ products: result.rows })
 })
 
-// GET /api/products — list products, optional ?category= ?limit= ?sort=
+// GET /api/products — list products, optional ?category= ?limit= ?sort= ?on_sale=
 router.get('/', async (req, res) => {
   const category = (req.query.category || '').trim()
+  const onSale = req.query.on_sale === 'true'
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50))
 
-  let where = []
+  let where = ['p.price IS NOT NULL']
   let params = []
   let idx = 1
 
@@ -90,6 +123,10 @@ router.get('/', async (req, res) => {
     where.push(`p.category = $${idx}`)
     params.push(category)
     idx++
+  }
+
+  if (onSale) {
+    where.push(`pd.discount_percent IS NOT NULL`)
   }
 
   const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : ''
@@ -105,7 +142,7 @@ router.get('/', async (req, res) => {
        FROM order_items
        GROUP BY product_id
      )
-     SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
+     SELECT ${PUBLIC_PRODUCT_COLUMNS},
             GREATEST(0, p.stock - COALESCE(sr.reserved, 0)) AS available_stock,
             COALESCE(oi.units_sold, 0) AS units_sold,
             pd.discount_percent,
@@ -127,6 +164,25 @@ router.get('/', async (req, res) => {
   )
 
   res.json({ products: result.rows })
+})
+
+// GET /api/products/reviews/mine — all reviews submitted by the authenticated customer
+router.get('/reviews/mine', authenticate, async (req, res) => {
+  if (req.user.role !== 'customer') {
+    return res.status(403).json({ error: 'Only customers can access their reviews' })
+  }
+
+  const result = await pool.query(
+    `SELECT r.id, r.product_id, p.name AS product_name, r.rating, r.content,
+            r.status, r.anonymous, r.created_at
+     FROM product_reviews r
+     JOIN products p ON p.id = r.product_id
+     WHERE r.user_id = $1
+     ORDER BY r.created_at DESC`,
+    [req.user.userId]
+  )
+
+  res.json({ reviews: result.rows })
 })
 
 // GET /api/products/:id/reviews — ratings aggregate + approved comment cards (public)
@@ -211,6 +267,49 @@ router.post('/:id/reviews', authenticate, async (req, res) => {
   res.status(201).json({ review: result.rows[0] })
 })
 
+// PATCH /api/products/:id/reviews — update the caller's existing review
+router.patch('/:id/reviews', authenticate, async (req, res) => {
+  const productId = parseInt(req.params.id, 10)
+  if (!Number.isInteger(productId) || productId <= 0) {
+    return res.status(400).json({ error: 'Invalid product ID' })
+  }
+
+  if (req.user.role !== 'customer') {
+    return res.status(403).json({ error: 'Only customers can update reviews' })
+  }
+
+  const existing = await pool.query(
+    'SELECT id, status FROM product_reviews WHERE product_id = $1 AND user_id = $2',
+    [productId, req.user.userId]
+  )
+  if (existing.rows.length === 0) {
+    return res.status(404).json({ error: 'No review found to update' })
+  }
+  if (existing.rows[0].status === 'pending') {
+    return res.status(409).json({ error: 'Review is pending approval and cannot be edited' })
+  }
+
+  const rating = parseInt(req.body.rating, 10)
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'Rating must be an integer between 1 and 5' })
+  }
+
+  const content = req.body.content?.trim() || null
+  const anonymous = req.body.anonymous === true
+  // Adding/changing a comment sends it back to pending for PM approval
+  const newStatus = content ? 'pending' : 'approved'
+
+  const result = await pool.query(
+    `UPDATE product_reviews
+     SET rating = $1, content = $2, status = $3::review_status, anonymous = $4
+     WHERE id = $5
+     RETURNING id, product_id, rating, content, status, anonymous, created_at`,
+    [rating, content, newStatus, anonymous, existing.rows[0].id]
+  )
+
+  res.json({ review: result.rows[0] })
+})
+
 // GET /api/products/:id — single product with discount info (public)
 router.get('/:id', async (req, res) => {
   const productId = parseInt(req.params.id, 10)
@@ -219,7 +318,7 @@ router.get('/:id', async (req, res) => {
   }
 
   const result = await pool.query(
-    `SELECT p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
+    `SELECT ${PUBLIC_PRODUCT_COLUMNS},
             p.country_of_origin, p.material, p.model_height, p.model_chest, p.model_waist,
             p.model_hips, p.model_size, p.sizes,
             GREATEST(0, p.stock - COALESCE(SUM(sr.quantity), 0)) AS available_stock,
@@ -233,7 +332,7 @@ router.get('/:id', async (req, res) => {
      LEFT JOIN product_discounts pd ON pd.product_id = p.id
        AND pd.start_at <= NOW()
        AND (pd.end_at IS NULL OR pd.end_at > NOW())
-     WHERE p.id = $1
+     WHERE p.id = $1 AND p.price IS NOT NULL
      GROUP BY p.id, pd.discount_percent`,
     [productId]
   )

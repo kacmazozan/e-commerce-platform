@@ -15,7 +15,7 @@ function statusBadge(status) {
   const colours = {
     pending: 'bg-yellow-500/15 text-yellow-400',
     processing: 'bg-blue-500/15 text-blue-400',
-    shipped: 'bg-purple-500/15 text-purple-400',
+    shipped: 'bg-sky-500/15 text-sky-400',
     delivered: 'bg-green-500/15 text-green-400',
     cancelled: 'bg-red-500/15 text-red-400',
   }
@@ -355,9 +355,17 @@ export default function SMInvoices({ token }) {
                     </span>
                   </p>
                   <p className="text-[var(--text)]">
-                    Tax (20%):{' '}
-                    <span className="font-medium text-[var(--text-h)]">
-                      ${detail.invoice.tax_amount.toFixed(2)}
+                    Shipping:{' '}
+                    <span
+                      className={
+                        (detail.invoice.shipping_cost ?? 0) === 0
+                          ? 'font-medium text-[#4caf82]'
+                          : 'font-medium text-[var(--text-h)]'
+                      }
+                    >
+                      {(detail.invoice.shipping_cost ?? 0) === 0
+                        ? 'Free'
+                        : `$${detail.invoice.shipping_cost.toFixed(2)}`}
                     </span>
                   </p>
                   <p className="text-base font-bold text-[var(--text-h)]">

@@ -3,8 +3,8 @@ import { getCategoryImageUrl, getProductImageUrl } from '../src/lib/catalogAsset
 
 describe('catalogAssets', () => {
   it('keeps ampersands literal in catalog image paths for Vite public assets', () => {
-    expect(getProductImageUrl({ category: 'Formal', name: 'Tie & Pocket Square' })).toBe(
-      '/catalog/Formal/Tie%20&%20Pocket%20Square.jpg'
+    expect(getProductImageUrl({ category: 'Formal', name: 'Tie & Pocket Square Set' })).toBe(
+      '/catalog/Formal/Tie%20&%20Pocket%20Square%20Set.jpg'
     )
   })
 

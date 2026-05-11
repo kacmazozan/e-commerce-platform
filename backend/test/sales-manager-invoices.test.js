@@ -75,8 +75,7 @@ describe('GET /api/sales-manager/invoices', () => {
       customer_email: 'jane.doe@example.com',
       item_count: 2,
       subtotal: 100,
-      tax_rate: 0,
-      tax_amount: 0,
+
       total: 100,
       status: 'delivered',
     })
@@ -159,8 +158,7 @@ describe('GET /api/sales-manager/invoices/:orderId', () => {
       number: 'INV-2026-000042',
       customer_email: 'jane.doe@example.com',
       subtotal: 100,
-      tax_rate: 0,
-      tax_amount: 0,
+
       total: 100,
     })
     expect(res.body.invoice.items).toHaveLength(2)

@@ -151,13 +151,16 @@ describe('POST /api/product-manager/products', () => {
     expect(res.body).toHaveProperty('error')
   })
 
-  it('returns 400 when price is negative', async () => {
+  it('ignores price field — price is set by sales manager only', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [{ id: 1, name: 'Test', price: null, stock: 0, category: null }],
+    })
     const res = await request(app)
       .post('/api/product-manager/products')
       .set('Authorization', `Bearer ${pmToken}`)
       .send({ name: 'Test', price: -5 })
-    expect(res.status).toBe(400)
-    expect(res.body.error).toMatch(/price/i)
+    expect(res.status).toBe(201)
+    expect(res.body.product.price).toBeNull()
   })
 
   it('returns 400 when stock is negative', async () => {

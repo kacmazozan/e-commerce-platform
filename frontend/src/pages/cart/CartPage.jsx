@@ -3,24 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import CatalogImage from '../../components/catalog/CatalogImage'
 import API_BASE from '../../api'
 import { getProductImageUrl } from '../../lib/catalogAssets'
-
-function BackIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  )
-}
+import useLiveCart from '../../hooks/useLiveCart'
 
 function TrashIcon() {
   return (
@@ -43,16 +26,27 @@ function TrashIcon() {
 }
 
 export default function CartPage({
-  onBack,
-  cartItems,
+  cartItems: cartItemsProp,
   onRemove,
   onUpdateQuantity,
   onAddToWishlist,
   wishlistItems = [],
   isLoggedIn,
   token,
+  onCartRefresh,
 }) {
   const navigate = useNavigate()
+  // Mount-fetch + 15s polling + tab-visibility revalidation. The hook also
+  // pushes fresh items back to App's global cart state via onCartRefresh so
+  // the navbar count and other consumers stay in sync.
+  // Hook polls every 15 s and calls onCartRefresh so App's cart state (cartItemsProp)
+  // stays fresh with server prices/stock. We render cartItemsProp directly so local
+  // mutations (add/remove/update) that write to App state are reflected immediately.
+  useLiveCart(token, {
+    initial: cartItemsProp,
+    onUpdate: onCartRefresh,
+  })
+  const cartItems = cartItemsProp
   const effectivePrice = (item) =>
     parseFloat(item.discounted_price != null ? item.discounted_price : item.price)
   const total = cartItems.reduce((sum, item) => sum + effectivePrice(item) * item.quantity, 0)
@@ -98,28 +92,11 @@ export default function CartPage({
   if (cartItems.length === 0) {
     return (
       <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
-        <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
-          <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
-            <button
-              type="button"
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
-              onClick={onBack}
-            >
-              <BackIcon /> Back
-            </button>
-            <Link
-              to="/"
-              className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
-            >
-              FIER
-            </Link>
-          </div>
-        </header>
-        <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
+        <main className="mx-auto box-border flex w-full max-w-[1280px] flex-1 flex-col px-6 pt-12 pb-16">
           <h1 className="mb-10 text-[32px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
             Shopping Cart
           </h1>
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 pb-32 text-center">
             <div className="mb-2 text-purple-400 opacity-50">
               <svg
                 width="64"
@@ -143,7 +120,7 @@ export default function CartPage({
             <button
               type="button"
               className="cursor-pointer rounded-lg border-none bg-purple-400 px-7 py-3 text-sm font-semibold tracking-[0.5px] text-white transition-opacity hover:opacity-88"
-              onClick={onBack}
+              onClick={() => navigate('/', { state: { scrollToCategories: true } })}
             >
               Start Shopping
             </button>
@@ -155,24 +132,6 @@ export default function CartPage({
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
-      <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
-          <button
-            type="button"
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
-            onClick={onBack}
-          >
-            <BackIcon /> Back
-          </button>
-          <Link
-            to="/"
-            className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
-          >
-            FIER
-          </Link>
-        </div>
-      </header>
-
       <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
         <h1 className="mb-10 text-[32px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
           Shopping Cart
@@ -259,8 +218,16 @@ export default function CartPage({
                       </span>
                       <button
                         type="button"
-                        className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400"
-                        onClick={() => onUpdateQuantity(item.id, itemSize, item.quantity + 1)}
+                        className="flex cursor-pointer items-center justify-center border-none bg-transparent px-1 text-lg leading-none font-normal text-[var(--text-h)] transition-colors hover:text-purple-400 disabled:cursor-not-allowed disabled:opacity-30"
+                        onClick={() => {
+                          const maxStock =
+                            item.available_stock != null ? parseInt(item.available_stock) : Infinity
+                          onUpdateQuantity(item.id, itemSize, Math.min(item.quantity + 1, maxStock))
+                        }}
+                        disabled={
+                          item.available_stock != null &&
+                          item.quantity >= parseInt(item.available_stock)
+                        }
                         aria-label="Increase quantity"
                       >
                         +
@@ -301,18 +268,18 @@ export default function CartPage({
             </div>
             <div className="flex items-center justify-between text-sm text-[var(--text)]">
               <span>Shipping</span>
-              <span className={total >= 50 ? 'font-semibold text-[#4caf82]' : ''}>
-                {total >= 50 ? 'Free' : '$4.99'}
+              <span className={total >= 100 ? 'font-semibold text-[#4caf82]' : ''}>
+                {total >= 100 ? 'Free' : '$4.99'}
               </span>
             </div>
             <hr className="my-1 border-t border-[var(--border)]" />
             <div className="flex items-center justify-between text-[16px] font-bold text-[var(--text-h)]">
               <span>Total</span>
-              <span>${(total + (total >= 50 ? 0 : 4.99)).toFixed(2)}</span>
+              <span>${(total + (total >= 100 ? 0 : 4.99)).toFixed(2)}</span>
             </div>
-            {total < 50 && (
+            {total < 100 && (
               <p className="-mt-1 text-center text-xs text-purple-400">
-                Add ${(50 - total).toFixed(2)} more for free shipping
+                Add ${(100 - total).toFixed(2)} more for free shipping
               </p>
             )}
             {hasOutOfStock && (

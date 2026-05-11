@@ -49,7 +49,7 @@ function PMOverview({ token, onNavigate }) {
     <div className="mb-7 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
       <button
         type="button"
-        className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-purple-400 hover:bg-purple-400/12"
+        className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-emerald-400 hover:bg-emerald-400/12"
         onClick={() => onNavigate('products')}
       >
         <span className="text-[28px] font-semibold tracking-tight text-[var(--text-h)]">
@@ -61,7 +61,7 @@ function PMOverview({ token, onNavigate }) {
       </button>
       <button
         type="button"
-        className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-purple-400 hover:bg-purple-400/12"
+        className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-emerald-400 hover:bg-emerald-400/12"
         onClick={() => onNavigate('categories')}
       >
         <span className="text-[28px] font-semibold tracking-tight text-[var(--text-h)]">
@@ -72,7 +72,7 @@ function PMOverview({ token, onNavigate }) {
         </span>
       </button>
       <button
-        className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-purple-400 hover:bg-purple-400/12"
+        className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-emerald-400 hover:bg-emerald-400/12"
         onClick={() => onNavigate('inventory')}
       >
         <span className="text-[28px] font-semibold tracking-tight text-[var(--text-h)]">
@@ -84,7 +84,7 @@ function PMOverview({ token, onNavigate }) {
       </button>
       <button
         type="button"
-        className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-purple-400 hover:bg-purple-400/12"
+        className="flex cursor-pointer flex-col gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-5 py-6 text-left font-[inherit] shadow-[var(--shadow)] transition-all duration-150 hover:border-emerald-400 hover:bg-emerald-400/12"
         onClick={() => onNavigate('orders')}
       >
         <span className="text-[28px] font-semibold tracking-tight text-[var(--text-h)]">
@@ -138,7 +138,7 @@ function ProductManagerDashboard({ token, onLogout }) {
 
   return (
     <DashboardLayout
-      title="MODÉ Manager"
+      title="FIER Manager"
       sections={sections}
       activeSection={activeSection}
       onSectionChange={setActiveSection}

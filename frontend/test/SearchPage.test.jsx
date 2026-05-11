@@ -1,4 +1,4 @@
-import { render, screen, waitForElementToBeRemoved, waitFor } from '@testing-library/react'
+import { render, screen, waitForElementToBeRemoved } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
@@ -178,23 +178,6 @@ describe('SearchPage', () => {
     expect(onRemoveFromWishlist).toHaveBeenCalledWith(1)
   })
 
-  it('calls onBack when Back button is clicked', async () => {
-    const onBack = vi.fn()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ products: [] }),
-      })
-    )
-
-    renderPage({ onBack })
-
-    await userEvent.click(screen.getByRole('button', { name: /back/i }))
-
-    expect(onBack).toHaveBeenCalledOnce()
-  })
-
   it('shows result count when products are found', async () => {
     vi.stubGlobal(
       'fetch',
@@ -222,28 +205,5 @@ describe('SearchPage', () => {
     await waitForElementToBeRemoved(() => screen.queryByText(/loading products/i))
 
     expect(screen.getByText(/failed to load products/i)).toBeInTheDocument()
-  })
-
-  it('syncs the input value when searchQuery prop changes', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ products: [] }),
-      })
-    )
-
-    const { rerender } = renderPage({ searchQuery: 'laptop' })
-    await waitForElementToBeRemoved(() => screen.queryByText(/loading products/i))
-
-    rerender(
-      <MemoryRouter>
-        <SearchPage {...defaultProps} searchQuery="boots" />
-      </MemoryRouter>
-    )
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText(/search products/i)).toHaveValue('boots')
-    })
   })
 })

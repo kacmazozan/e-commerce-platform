@@ -1,24 +1,6 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import CatalogImage from '../../components/catalog/CatalogImage'
 import { getProductImageUrl } from '../../lib/catalogAssets'
-
-function BackIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  )
-}
 
 function TrashIcon() {
   return (
@@ -40,32 +22,16 @@ function TrashIcon() {
   )
 }
 
-export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
+export default function WishlistPage({ wishlistItems, onRemove }) {
+  const navigate = useNavigate()
   if (wishlistItems.length === 0) {
     return (
       <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
-        <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
-          <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
-            <button
-              type="button"
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
-              onClick={onBack}
-            >
-              <BackIcon /> Back
-            </button>
-            <Link
-              to="/"
-              className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
-            >
-              FIER
-            </Link>
-          </div>
-        </header>
-        <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
+        <main className="mx-auto box-border flex w-full max-w-[1280px] flex-1 flex-col px-6 pt-12 pb-16">
           <h1 className="mb-10 text-[32px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
             Wishlist
           </h1>
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 pb-32 text-center">
             <div className="mb-2 text-purple-400 opacity-50">
               <svg
                 width="64"
@@ -89,7 +55,7 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
             <button
               type="button"
               className="cursor-pointer rounded-lg border-none bg-purple-400 px-7 py-3 text-sm font-semibold tracking-[0.5px] text-white transition-opacity hover:opacity-88"
-              onClick={onBack}
+              onClick={() => navigate('/', { state: { scrollToCategories: true } })}
             >
               Start Shopping
             </button>
@@ -101,21 +67,6 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
-      <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
-          <button
-            type="button"
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
-            onClick={onBack}
-          >
-            <BackIcon /> Back
-          </button>
-          <span className="ml-auto text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
-            FIER
-          </span>
-        </div>
-      </header>
-
       <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
         <h1 className="mb-10 text-[32px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
           Wishlist
@@ -124,7 +75,9 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
         <div className="grid [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] gap-5">
           {wishlistItems.map((item) => {
             const availableStock = parseInt(item.available_stock ?? 0)
+            const outOfStock = availableStock === 0
             const lowStock = availableStock > 0 && availableStock <= 10
+            const inStock = availableStock > 10
             return (
               <div
                 key={item.id}
@@ -175,10 +128,16 @@ export default function WishlistPage({ onBack, wishlistItems, onRemove }) {
                       ${parseFloat(item.price).toFixed(2)}
                     </span>
                   )}
+                  {outOfStock && (
+                    <span className="text-[11px] font-semibold text-red-400">Out of stock</span>
+                  )}
                   {lowStock && (
-                    <span className="text-[11px] font-semibold text-red-400">
+                    <span className="text-[11px] font-semibold text-amber-400">
                       Only {availableStock} left
                     </span>
+                  )}
+                  {inStock && (
+                    <span className="text-[11px] font-semibold text-green-400">In stock</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 px-4 pt-3 pb-4">

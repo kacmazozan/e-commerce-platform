@@ -75,8 +75,6 @@ describe('GET /api/product-manager/invoices', () => {
       customer_email: 'jane.doe@example.com',
       customer_name: 'Jane Doe',
       subtotal: 120,
-      tax_rate: 0,
-      tax_amount: 0,
       total: 120,
       status: 'pending',
     })
@@ -148,8 +146,6 @@ describe('GET /api/product-manager/invoices/:orderId', () => {
       order_id: '42',
       customer_email: 'jane.doe@example.com',
       subtotal: 120,
-      tax_rate: 0,
-      tax_amount: 0,
       total: 120,
     })
     expect(res.body.invoice.items).toHaveLength(2)

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { StarRating } from '../../components/icons'
 import CatalogImage from '../../components/catalog/CatalogImage'
 import Navbar from './components/Navbar'
@@ -9,7 +9,7 @@ import API_BASE from '../../api'
 import { getCategoryImageUrl, getProductImageUrl } from '../../lib/catalogAssets'
 import { fetchJsonWithRetry } from '../../lib/fetchJsonWithRetry'
 
-const CATEGORIES = [
+const FALLBACK_CATEGORIES = [
   { id: 1, title: "Women's Clothing", subtitle: 'New arrivals every week', hue: 280 },
   { id: 2, title: "Men's Clothing", subtitle: 'Timeless essentials', hue: 210 },
   { id: 3, title: 'Outerwear', subtitle: 'Coats, jackets & more', hue: 200 },
@@ -30,6 +30,11 @@ const CATEGORY_HUE = {
   Formal: 260,
   'Kids & Baby': 20,
 }
+
+const CATEGORY_META = FALLBACK_CATEGORIES.reduce((acc, cat) => {
+  acc[cat.title] = cat
+  return acc
+}, {})
 
 const REVIEWS = [
   {
@@ -98,9 +103,39 @@ const sectionCls = 'relative z-[1] mx-auto w-full max-w-[1280px] px-6 py-16 pb-2
 const sectionDividerCls =
   "after:absolute after:bottom-0 after:-left-[100vw] after:-right-[100vw] after:h-px after:content-[''] after:[background:linear-gradient(to_right,transparent,rgba(140,100,200,0.15)_30%,rgba(160,120,220,0.2)_50%,rgba(140,100,200,0.15)_70%,transparent)]"
 
+function getFallbackHue(title) {
+  if (CATEGORY_HUE[title]) return CATEGORY_HUE[title]
+  const hash = [...String(title)].reduce((sum, char) => sum + char.charCodeAt(0), 0)
+  return (hash * 47) % 360
+}
+
+function formatProductCount(count) {
+  if (count == null) return null
+  const n = Number(count)
+  if (!Number.isFinite(n)) return null
+  return `${n} product${n === 1 ? '' : 's'}`
+}
+
+function normaliseCategory(category, index) {
+  const title = category.name || category.title || ''
+  const meta = CATEGORY_META[title] || {}
+  return {
+    id: category.id ?? (title || index),
+    title,
+    subtitle: meta.subtitle || formatProductCount(category.product_count) || 'Explore products',
+    product_count: category.product_count,
+    hue: meta.hue ?? getFallbackHue(title),
+  }
+}
+
+function getProductModel(product) {
+  return product.model || product.serial_number || 'N/A'
+}
+
 export default function HomePage({
   isLoggedIn,
   userEmail,
+  userName,
   token,
   onNavigate,
   onRequireAuth,
@@ -109,9 +144,19 @@ export default function HomePage({
   wishlistCount = 0,
 }) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [categories, setCategories] = useState(FALLBACK_CATEGORIES)
   const [newReleases, setNewReleases] = useState([])
   const navigate = useNavigate()
+  const location = useLocation()
   const releasesRef = useRef(null)
+  const categoriesRef = useRef(null)
+
+  useEffect(() => {
+    if (location.state?.scrollToCategories) {
+      categoriesRef.current?.scrollIntoView({ behavior: 'smooth' })
+      window.history.replaceState({}, '', '/')
+    }
+  }, [location.state])
 
   useEffect(() => {
     let cancelled = false
@@ -122,6 +167,20 @@ export default function HomePage({
       })
       .catch(() => {
         if (!cancelled) setNewReleases([])
+      })
+
+    fetchJsonWithRetry(`${API_BASE}/api/products/categories`, { attempts: 1 })
+      .then((data) => {
+        const fetchedCategories = (data.categories ?? [])
+          .map(normaliseCategory)
+          .filter((cat) => cat.title)
+
+        if (!cancelled && fetchedCategories.length > 0) {
+          setCategories(fetchedCategories)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCategories(FALLBACK_CATEGORIES)
       })
 
     return () => {
@@ -149,6 +208,7 @@ export default function HomePage({
       <Navbar
         isLoggedIn={isLoggedIn}
         userEmail={userEmail}
+        userName={userName}
         token={token}
         onNavigate={onNavigate}
         onRequireAuth={onRequireAuth}
@@ -159,10 +219,10 @@ export default function HomePage({
         setSearchQuery={setSearchQuery}
       />
 
-      <HeroBanner />
+      <HeroBanner onShopNow={() => categoriesRef.current?.scrollIntoView({ behavior: 'smooth' })} />
 
       {/* ── Category grid ── */}
-      <main className={`${sectionCls} ${sectionDividerCls}`}>
+      <main ref={categoriesRef} className={`${sectionCls} ${sectionDividerCls}`}>
         <div className="mb-8">
           <h2 className="m-0 text-[28px] font-bold tracking-[-0.5px] text-[var(--text-h)]">
             Browse Categories
@@ -170,38 +230,48 @@ export default function HomePage({
         </div>
 
         <div className="grid grid-cols-4 gap-5 max-[720px]:grid-cols-2 max-[720px]:gap-3.5 max-[420px]:grid-cols-1 max-lg:grid-cols-3">
-          {CATEGORIES.map((cat) => (
-            <button
-              type="button"
-              key={cat.id}
-              className="flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] p-0 text-left shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
-              onClick={() => onNavigate('category', cat)}
-            >
-              <CatalogImage
-                src={getCategoryImageUrl(cat.title)}
-                alt={cat.title}
-                loading="eager"
-                containerClassName="aspect-[3/4] w-full border-b border-[var(--glass-border)]"
-                imageClassName="object-cover"
-                placeholderClassName=""
-                placeholder={
-                  <span
-                    className="text-[64px] font-bold opacity-35 select-none"
-                    style={{ color: `hsl(${cat.hue},70%,var(--cat-text-l,70%))` }}
-                  >
-                    {cat.title[0]}
+          {categories.map((cat) => {
+            const productCount = formatProductCount(cat.product_count)
+            return (
+              <button
+                type="button"
+                key={cat.id}
+                className="flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] p-0 text-left shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
+                onClick={() => onNavigate('category', cat)}
+              >
+                <CatalogImage
+                  src={getCategoryImageUrl(cat.title)}
+                  alt={cat.title}
+                  loading="eager"
+                  containerClassName="aspect-[3/4] w-full border-b border-[var(--glass-border)]"
+                  imageClassName="object-cover"
+                  placeholderClassName=""
+                  placeholder={
+                    <span
+                      className="text-[64px] font-bold opacity-35 select-none"
+                      style={{ color: `hsl(${cat.hue},70%,var(--cat-text-l,70%))` }}
+                    >
+                      {cat.title[0]}
+                    </span>
+                  }
+                  style={{
+                    background: `linear-gradient(160deg, hsl(${cat.hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${cat.hue},45%,var(--cat-bg-l2,17%)) 100%)`,
+                  }}
+                />
+                <div className="flex flex-col gap-1 p-4">
+                  <span className="text-[15px] font-semibold text-[var(--text-h)]">
+                    {cat.title}
                   </span>
-                }
-                style={{
-                  background: `linear-gradient(160deg, hsl(${cat.hue},35%,var(--cat-bg-l,10%)) 0%, hsl(${cat.hue},45%,var(--cat-bg-l2,17%)) 100%)`,
-                }}
-              />
-              <div className="flex flex-col gap-1 p-4">
-                <span className="text-[15px] font-semibold text-[var(--text-h)]">{cat.title}</span>
-                <span className="text-[13px] text-[var(--text)]">{cat.subtitle}</span>
-              </div>
-            </button>
-          ))}
+                  <span className="text-[13px] text-[var(--text)]">{cat.subtitle}</span>
+                  {productCount && productCount !== cat.subtitle && (
+                    <span className="text-[12px] text-[var(--text)] opacity-60">
+                      {productCount}
+                    </span>
+                  )}
+                </div>
+              </button>
+            )
+          })}
         </div>
       </main>
 
@@ -253,10 +323,11 @@ export default function HomePage({
           {newReleases.map((product) => {
             const hue = CATEGORY_HUE[product.category] ?? 280
             const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
+            const productModel = getProductModel(product)
             return (
               <div
                 key={product.id}
-                className="flex w-[210px] shrink-0 [scroll-snap-align:start] flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
+                className="flex w-[240px] shrink-0 [scroll-snap-align:start] flex-col overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl transition-[box-shadow,transform,border-color] duration-[250ms] hover:-translate-y-1 hover:border-purple-400/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,132,252,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
               >
                 <button
                   type="button"
@@ -289,6 +360,20 @@ export default function HomePage({
                   <span className="text-[13px] leading-[1.3] font-semibold text-[var(--text-h)]">
                     {product.name}
                   </span>
+                  <div className="mt-2 grid gap-1 border-t border-[var(--border)] pt-2 text-[11px]">
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="shrink-0 text-[var(--text)] opacity-60">ID</span>
+                      <span className="min-w-0 truncate text-right font-semibold text-[var(--text-h)]">
+                        #{product.id}
+                      </span>
+                    </div>
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="shrink-0 text-[var(--text)] opacity-60">Model</span>
+                      <span className="min-w-0 truncate text-right font-semibold text-[var(--text-h)]">
+                        {productModel}
+                      </span>
+                    </div>
+                  </div>
                   <div className="mt-2">
                     {product.discounted_price != null ? (
                       <div className="flex flex-col gap-0.5">

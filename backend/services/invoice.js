@@ -154,8 +154,9 @@ function buildInvoiceData(request, options = {}) {
     }
   })
   const subtotal = roundMoney(items.reduce((sum, item) => sum + item.total, 0))
+  const shipping_cost = roundMoney(request.shipping_cost ?? 0)
   const tax_amount = roundMoney(subtotal * taxRate)
-  const total = roundMoney(subtotal + tax_amount)
+  const total = roundMoney(subtotal + shipping_cost + tax_amount)
 
   return {
     number: request.invoice_number,
@@ -171,6 +172,7 @@ function buildInvoiceData(request, options = {}) {
       year: 'numeric',
     }),
     subtotal,
+    shipping_cost,
     tax_rate: taxRate,
     tax_amount,
     total,
@@ -244,22 +246,66 @@ function generateInvoicePdf(invoice) {
       .text('BILLED TO', 60, 175)
       .text('ISSUED BY', 350, 175, { width: 185, align: 'right' })
 
-    doc
-      .fillColor(colors.text)
-      .fontSize(11)
-      .font('Helvetica-Bold')
-      .text(invoice.customer_name, 60, 192, { width: 220 })
-      .text('FIER Store', 350, 192, { width: 185, align: 'right' })
+    const customerSectionX = 60
+    const customerSectionWidth = 220
+    const customerNameY = 192
+    const customerGap = 4
 
-    doc
-      .font('Helvetica')
-      .fontSize(10)
-      .text(invoice.customer_address, 60, 208, { width: 220 })
-      .text(invoice.customer_email, 60, 238, { width: 220 })
-      .text('support@fier.com', 350, 208, { width: 185, align: 'right' })
-      .text('www.fier.com', 350, 222, { width: 185, align: 'right' })
+    doc.fillColor(colors.text).fontSize(11).font('Helvetica-Bold')
+    const customerNameHeight = doc.heightOfString(invoice.customer_name, {
+      width: customerSectionWidth,
+    })
+    doc.text(invoice.customer_name, customerSectionX, customerNameY, {
+      width: customerSectionWidth,
+    })
 
-    const tableTop = 285
+    doc.font('Helvetica').fontSize(10)
+    const customerAddressY = customerNameY + customerNameHeight + customerGap
+    const customerAddressHeight = doc.heightOfString(invoice.customer_address, {
+      width: customerSectionWidth,
+    })
+    doc.text(invoice.customer_address, customerSectionX, customerAddressY, {
+      width: customerSectionWidth,
+    })
+
+    const customerEmailY = customerAddressY + customerAddressHeight + customerGap
+    const customerEmailHeight = doc.heightOfString(invoice.customer_email, {
+      width: customerSectionWidth,
+    })
+    doc.text(invoice.customer_email, customerSectionX, customerEmailY, {
+      width: customerSectionWidth,
+    })
+    const customerDetailsBottom = customerEmailY + customerEmailHeight
+
+    const issuerSectionX = 350
+    const issuerSectionWidth = 185
+    const issuerNameY = 192
+
+    doc.font('Helvetica-Bold').fontSize(11)
+    const issuerNameHeight = doc.heightOfString('FIER Store', { width: issuerSectionWidth })
+    doc.text('FIER Store', issuerSectionX, issuerNameY, {
+      width: issuerSectionWidth,
+      align: 'right',
+    })
+
+    doc.font('Helvetica').fontSize(10)
+    const issuerEmailY = issuerNameY + issuerNameHeight + customerGap
+    const issuerEmailHeight = doc.heightOfString('support@fier.com', { width: issuerSectionWidth })
+    doc.text('support@fier.com', issuerSectionX, issuerEmailY, {
+      width: issuerSectionWidth,
+      align: 'right',
+    })
+
+    const issuerWebsiteY = issuerEmailY + issuerEmailHeight + customerGap
+    const issuerWebsiteHeight = doc.heightOfString('www.fier.com', { width: issuerSectionWidth })
+    doc.text('www.fier.com', issuerSectionX, issuerWebsiteY, {
+      width: issuerSectionWidth,
+      align: 'right',
+    })
+    const issuerDetailsBottom = issuerWebsiteY + issuerWebsiteHeight
+
+    const detailsBottom = Math.max(customerDetailsBottom, issuerDetailsBottom)
+    const tableTop = Math.max(285, detailsBottom + 35)
     const descriptionX = 60
     const qtyX = 305
     const priceX = 380
@@ -322,11 +368,12 @@ function generateInvoicePdf(invoice) {
         align: 'right',
       })
 
+    const shippingLabel = invoice.shipping_cost === 0 ? 'Shipping (Free)' : 'Shipping'
     doc
       .fillColor(colors.muted)
-      .text(`Tax (${Math.round(invoice.tax_rate * 100)}%)`, totalsX, y + 40, { width: 80 })
+      .text(shippingLabel, totalsX, y + 40, { width: 80 })
       .fillColor(colors.text)
-      .text(formatMoney(invoice.tax_amount), totalsX + 100, y + 40, {
+      .text(formatMoney(invoice.shipping_cost), totalsX + 100, y + 40, {
         width: 80,
         align: 'right',
       })

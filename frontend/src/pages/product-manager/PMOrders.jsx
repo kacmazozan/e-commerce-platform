@@ -7,7 +7,7 @@ const API = `${API_BASE}/api/product-manager/orders`
 const STATUS_BADGE_CLASS = {
   pending: 'bg-blue-500/10 text-blue-400',
   processing: 'bg-amber-500/10 text-amber-400',
-  shipped: 'bg-purple-400/12 text-purple-400',
+  shipped: 'bg-sky-500/10 text-sky-400',
   delivered: 'bg-emerald-500/10 text-emerald-400',
   cancelled: 'bg-red-500/10 text-red-400',
 }
@@ -16,7 +16,7 @@ const tableWrap =
   'overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl'
 const tableClass = 'min-w-full divide-y divide-[var(--border)] text-left text-sm'
 const thClass =
-  'bg-purple-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
+  'bg-emerald-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
 const tdClass = 'px-4 py-3 text-[var(--text-h)]'
 const emptyClass = 'px-4 py-8 text-center text-[var(--text)]'
 
@@ -146,7 +146,10 @@ function PMOrders({ token }) {
                     </span>
                   </td>
                   <td className={tdClass}>
-                    ${parseFloat(o.total || o.total_price || 0).toFixed(2)}
+                    $
+                    {(
+                      parseFloat(o.total || o.total_price || 0) + parseFloat(o.shipping_cost || 0)
+                    ).toFixed(2)}
                   </td>
                   <td className={tdClass}>{new Date(o.created_at).toLocaleDateString()}</td>
                   <td className={tdClass}>
@@ -226,8 +229,9 @@ function PMOrders({ token }) {
                 </span>
                 <span className="text-sm text-[var(--text-h)]">
                   $
-                  {parseFloat(
-                    detail.order?.total ?? detail.total ?? detail.total_price ?? 0
+                  {(
+                    parseFloat(detail.order?.total ?? detail.total ?? detail.total_price ?? 0) +
+                    parseFloat(detail.order?.shipping_cost ?? detail.shipping_cost ?? 0)
                   ).toFixed(2)}
                 </span>
               </div>

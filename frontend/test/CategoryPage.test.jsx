@@ -8,7 +8,6 @@ const category = { title: 'Electronics', subtitle: 'Gadgets and gear' }
 
 const defaultProps = {
   category,
-  onBack: vi.fn(),
   onAddToWishlist: vi.fn(),
   onRemoveFromWishlist: vi.fn(),
   wishlistItems: [],
@@ -73,7 +72,37 @@ describe('CategoryPage', () => {
     expect(screen.queryByText(/loading products/i)).not.toBeInTheDocument()
   })
 
-  it('shows "n in stock" badge when available_stock >= 10', async () => {
+  it('renders product ID and model properties after fetch', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          products: [
+            {
+              id: 7,
+              name: 'Widget',
+              model: 'Model-X',
+              serial_number: 'SN-007',
+              price: '19.99',
+              stock: 10,
+              available_stock: 10,
+            },
+          ],
+        }),
+      })
+    )
+
+    renderPage()
+
+    expect(await screen.findByText('Widget')).toBeInTheDocument()
+    expect(screen.getByText('ID')).toBeInTheDocument()
+    expect(screen.getByText('#7')).toBeInTheDocument()
+    expect(screen.getByText('Model')).toBeInTheDocument()
+    expect(screen.getByText('Model-X')).toBeInTheDocument()
+  })
+
+  it('shows "In stock" badge when available_stock > 10', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -86,7 +115,7 @@ describe('CategoryPage', () => {
 
     renderPage()
 
-    expect(await screen.findByText('15 in stock')).toBeInTheDocument()
+    expect(await screen.findByText('In stock')).toBeInTheDocument()
   })
 
   it('shows "Only n left" badge when available_stock is between 1 and 9', async () => {
@@ -168,23 +197,6 @@ describe('CategoryPage', () => {
     await waitForElementToBeRemoved(() => screen.queryByText(/loading products/i))
 
     expect(screen.queryByRole('button', { name: /add to cart/i })).not.toBeInTheDocument()
-  })
-
-  it('calls onBack when Back button is clicked', async () => {
-    const onBack = vi.fn()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ products: [] }),
-      })
-    )
-
-    renderPage({ onBack })
-
-    await userEvent.click(screen.getByRole('button', { name: /back/i }))
-
-    expect(onBack).toHaveBeenCalledOnce()
   })
 
   it('fetches products using the category title in the URL', async () => {
