@@ -107,9 +107,20 @@ export default function RevenueChart({ token }) {
 
   const profitPositive = summary && parseFloat(summary.net_profit_loss) >= 0
 
+  const xAngle = chartData.length > 30 ? -35 : 0
+  const xAnchor = chartData.length > 30 ? 'end' : 'middle'
+  const xHeight = chartData.length > 30 ? 55 : 30
+  const xFormatter = (d) => {
+    if (chartData.length > 60) {
+      const [y, m] = d.split('-')
+      return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+    }
+    return d.slice(5)
+  }
+
   return (
     <div className="space-y-6 p-6">
-      <h2 className="text-xl font-semibold text-[var(--text-h)]">Revenue &amp; Profit / Loss</h2>
+      <h2 className="text-xl font-semibold text-[var(--text-h)]">Revenue &amp; Profit</h2>
 
       <form onSubmit={handleFilter} className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
@@ -133,7 +144,12 @@ export default function RevenueChart({ token }) {
             className={fieldInputClass}
           />
         </div>
-        <button type="submit" className={btnSearch} disabled={loading}>
+        <button
+          type="submit"
+          className={`${btnSearch} w-full sm:w-auto`}
+          style={{ paddingTop: '0.625rem', paddingBottom: '0.625rem' }}
+          disabled={loading}
+        >
           {loading ? 'Loading…' : 'Generate Report'}
         </button>
       </form>
@@ -147,30 +163,34 @@ export default function RevenueChart({ token }) {
       {summary && parseInt(summary.missing_cost_products) > 0 && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/15 p-3 text-sm text-amber-400">
           Warning: {summary.missing_cost_products} product(s) have no cost price set — treated as
-          $0, which may overstate profit.
+          $0, which may overstate profit calculations.
         </div>
       )}
 
       {summary && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-5 shadow-[var(--shadow)]">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 shadow-[var(--shadow)] sm:p-5">
             <p className="mb-1 text-xs tracking-wide text-[var(--text)] uppercase opacity-60">
               Total Revenue
             </p>
-            <p className="text-2xl font-bold text-emerald-400">{fmt(summary.total_revenue)}</p>
+            <p className="text-base font-bold text-emerald-400 sm:text-2xl">
+              {fmt(summary.total_revenue)}
+            </p>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-5 shadow-[var(--shadow)]">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 shadow-[var(--shadow)] sm:p-5">
             <p className="mb-1 text-xs tracking-wide text-[var(--text)] uppercase opacity-60">
               Total Cost
             </p>
-            <p className="text-2xl font-bold text-amber-400">{fmt(summary.total_cost)}</p>
+            <p className="text-base font-bold text-amber-400 sm:text-2xl">
+              {fmt(summary.total_cost)}
+            </p>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-5 shadow-[var(--shadow)]">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 shadow-[var(--shadow)] sm:p-5">
             <p className="mb-1 text-xs tracking-wide text-[var(--text)] uppercase opacity-60">
-              Net Profit / Loss
+              Net Profit
             </p>
             <p
-              className={`text-2xl font-bold ${profitPositive ? 'text-blue-400' : 'text-red-400'}`}
+              className={`text-base font-bold sm:text-2xl ${profitPositive ? 'text-blue-400' : 'text-red-400'}`}
             >
               {fmt(summary.net_profit_loss)}
             </p>
@@ -178,7 +198,11 @@ export default function RevenueChart({ token }) {
         </div>
       )}
 
-      {!loading && chartData.length === 0 ? (
+      {loading ? (
+        <div className="flex h-[340px] items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--card-bg)]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+        </div>
+      ) : chartData.length === 0 ? (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-10 text-center text-sm text-[var(--text)] opacity-50">
           No orders found for this period.
         </div>
@@ -200,8 +224,11 @@ export default function RevenueChart({ token }) {
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 11, fill: 'var(--text)' }}
-                tickFormatter={(d) => d.slice(5)}
+                tickFormatter={xFormatter}
                 interval={Math.max(0, Math.ceil(chartData.length / 7) - 1)}
+                angle={xAngle}
+                textAnchor={xAnchor}
+                height={xHeight}
               />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text)' }} tickFormatter={(v) => `$${v}`} />
               <Tooltip
@@ -218,6 +245,7 @@ export default function RevenueChart({ token }) {
                 dot={false}
                 activeDot={{ r: 5, fill: '#34d399', strokeWidth: 0 }}
                 name="Revenue"
+                legendType="line"
               />
               <Area
                 type="monotone"
@@ -228,6 +256,7 @@ export default function RevenueChart({ token }) {
                 dot={false}
                 activeDot={{ r: 5, fill: '#fbbf24', strokeWidth: 0 }}
                 name="Cost"
+                legendType="line"
               />
             </ComposedChart>
           </ResponsiveContainer>
