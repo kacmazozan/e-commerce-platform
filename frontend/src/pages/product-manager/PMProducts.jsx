@@ -90,7 +90,7 @@ function PMProducts({ token }) {
     fetchProducts(1)
   }
 
-  async function handleCreate(formData) {
+  async function handleCreate(formData, sizeStocks) {
     const res = await fetch(API, {
       method: 'POST',
       headers: authHeaders,
@@ -98,11 +98,18 @@ function PMProducts({ token }) {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to create product')
+    if (sizeStocks && Object.keys(sizeStocks).length > 0) {
+      await fetch(`${API}/${data.product.id}/size-stock`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({ stocks: sizeStocks }),
+      })
+    }
     setModal(null)
     fetchProducts(pagination.page)
   }
 
-  async function handleUpdate(productId, formData) {
+  async function handleUpdate(productId, formData, sizeStocks) {
     const res = await fetch(`${API}/${productId}`, {
       method: 'PUT',
       headers: authHeaders,
@@ -110,6 +117,13 @@ function PMProducts({ token }) {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to update product')
+    if (sizeStocks && Object.keys(sizeStocks).length > 0) {
+      await fetch(`${API}/${productId}/size-stock`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({ stocks: sizeStocks }),
+      })
+    }
     setModal(null)
     fetchProducts(pagination.page)
   }
@@ -311,7 +325,17 @@ function Field({ label, children, hint }) {
 function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }) {
   const [name, setName] = useState(product?.name || '')
   const [description, setDescription] = useState(product?.description || '')
+  const [stock, setStock] = useState(product?.stock ?? 0)
   const [category, setCategory] = useState(product?.category || '')
+  const [draftSizeStocks, setDraftSizeStocks] = useState(() => {
+    if (!product?.sizes?.length) return {}
+    const initial = {}
+    for (const sz of product.sizes) {
+      const found = (product.size_stocks || []).find((s) => s.size === sz)
+      initial[sz] = String(found ? found.stock : 0)
+    }
+    return initial
+  })
   const [countryOfOrigin, setCountryOfOrigin] = useState(product?.country_of_origin || '')
   const [material, setMaterial] = useState(product?.material || '')
   const [modelHeight, setModelHeight] = useState(product?.model_height || '')
@@ -334,6 +358,8 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
         .split(',')
         .map((s) => s.trim().toUpperCase())
         .filter(Boolean)
+
+      let sizeStocksToSave = null
       const body = {
         name,
         description,
@@ -347,10 +373,21 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
         model_size: modelSize,
         sizes: sizes.length > 0 ? sizes : null,
       }
-      if (mode === 'create') {
-        await onCreate(body)
+
+      if (sizes.length > 0) {
+        sizeStocksToSave = {}
+        for (const sz of sizes) {
+          const parsed = parseInt(draftSizeStocks[sz] || '0', 10)
+          sizeStocksToSave[sz] = Number.isNaN(parsed) ? 0 : parsed
+        }
       } else {
-        await onUpdate(product.id, body)
+        body.stock = parseInt(stock, 10) || 0
+      }
+
+      if (mode === 'create') {
+        await onCreate(body, sizeStocksToSave)
+      } else {
+        await onUpdate(product.id, body, sizeStocksToSave)
       }
     } catch (err) {
       setError(err.message)
@@ -395,32 +432,45 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
               placeholder="Brief description"
             />
           </Field>
-          {mode === 'edit' && (
-            <Field label="Stock" hint="(edit from Inventory tab)">
-              {product?.sizes && product.sizes.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {product.sizes.map((sz) => {
-                    const found = (product.size_stocks || []).find((s) => s.size === sz)
-                    const qty = found ? found.stock : 0
-                    return (
-                      <span
-                        key={sz}
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(qty)}`}
-                      >
-                        {sz}: {qty}
+          {(() => {
+            const parsedSizes = sizesInput
+              .split(',')
+              .map((s) => s.trim().toUpperCase())
+              .filter(Boolean)
+            return parsedSizes.length > 0 ? (
+              <Field label="Stock per Size">
+                <div className="flex flex-wrap gap-3">
+                  {parsedSizes.map((sz) => (
+                    <div key={sz} className="flex items-center gap-1.5">
+                      <span className="w-10 text-center text-xs font-semibold text-[var(--text)]">
+                        {sz}
                       </span>
-                    )
-                  })}
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-16 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-sm text-[var(--text-h)] outline-none focus:border-emerald-400"
+                        value={draftSizeStocks[sz] ?? '0'}
+                        onChange={(e) =>
+                          setDraftSizeStocks((prev) => ({ ...prev, [sz]: e.target.value }))
+                        }
+                      />
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(product?.total_stock ?? product?.stock ?? 0)}`}
-                >
-                  {product?.total_stock ?? product?.stock ?? 0}
-                </span>
-              )}
-            </Field>
-          )}
+              </Field>
+            ) : (
+              <Field label="Stock">
+                <input
+                  type="number"
+                  min="0"
+                  className={fieldInputClass}
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                  placeholder="0"
+                />
+              </Field>
+            )
+          })()}
           <Field label="Category">
             {categories.length > 0 ? (
               <select
