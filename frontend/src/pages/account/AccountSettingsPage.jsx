@@ -1,26 +1,8 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import API_BASE from '../../api'
-
-function BackIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  )
-}
+import { getInitial } from '../../utils/avatar'
 
 function Section({ title, description, children }) {
   return (
@@ -55,12 +37,24 @@ function Toggle({ checked, onChange, label }) {
   )
 }
 
-export default function AccountSettingsPage({ onBack, token }) {
-  // ... rest of state stays same ...
+export default function AccountSettingsPage({ token, onProfileUpdate }) {
   // Profile
-  const [name, setName] = useState('Jane Smith')
-  const [email, setEmail] = useState('user@example.com')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [taxId, setTaxId] = useState('')
+  const [pendingEmail, setPendingEmail] = useState(null)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [profileError, setProfileError] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
+
+  // Email change
+  const [newEmail, setNewEmail] = useState('')
+  const [emailChangePassword, setEmailChangePassword] = useState('')
+  const [emailChangeError, setEmailChangeError] = useState('')
+  const [emailChangeSubmitting, setEmailChangeSubmitting] = useState(false)
+  const [emailChangeSent, setEmailChangeSent] = useState(false)
+  const [cancelSubmitting, setCancelSubmitting] = useState(false)
 
   // Password
   const [currentPw, setCurrentPw] = useState('')
@@ -84,10 +78,82 @@ export default function AccountSettingsPage({ onBack, token }) {
   const [country, setCountry] = useState('')
   const [addressSaved, setAddressSaved] = useState(false)
 
-  function handleProfileSave(e) {
+  async function loadProfile(signal) {
+    setProfileLoading(true)
+    setProfileError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to load profile')
+      setName(data.name || '')
+      setEmail(data.email || '')
+      setTaxId(data.tax_id || '')
+      setPendingEmail(data.pending_email || null)
+      if (data.home_address) setLine1(data.home_address)
+    } catch (err) {
+      if (err.name === 'AbortError') return
+      setProfileError(err.message || 'Could not connect to server')
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!token) {
+      setProfileLoading(false)
+      return
+    }
+    const controller = new AbortController()
+    loadProfile(controller.signal)
+    return () => controller.abort()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
+
+  async function handleProfileSave(e) {
     e.preventDefault()
-    setProfileSaved(true)
-    setTimeout(() => setProfileSaved(false), 2500)
+    setProfileError('')
+    const trimmed = name.trim()
+    if (!trimmed) {
+      setProfileError('Name is required.')
+      return
+    }
+
+    const trimmedTaxId = taxId.trim()
+    if (trimmedTaxId.length > 50) {
+      setProfileError('Tax ID must be 50 characters or fewer.')
+      return
+    }
+
+    setProfileSaving(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: trimmed, tax_id: trimmedTaxId || null }),
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setProfileError(data.error || 'Failed to update profile')
+      } else {
+        const savedName = data.name || trimmed
+        setName(savedName)
+        setTaxId(data.tax_id || '')
+        if (onProfileUpdate) onProfileUpdate({ name: savedName })
+        setProfileSaved(true)
+        setTimeout(() => setProfileSaved(false), 2500)
+      }
+    } catch {
+      setProfileError('Could not connect to server')
+    } finally {
+      setProfileSaving(false)
+    }
   }
 
   async function handlePasswordSave(e) {
@@ -130,6 +196,69 @@ export default function AccountSettingsPage({ onBack, token }) {
     }
   }
 
+  async function handleEmailChangeRequest(e) {
+    e.preventDefault()
+    setEmailChangeError('')
+    setEmailChangeSent(false)
+
+    const trimmed = newEmail.trim().toLowerCase()
+    if (!trimmed || !emailChangePassword) {
+      setEmailChangeError('New email and current password are required.')
+      return
+    }
+    if (trimmed === email) {
+      setEmailChangeError('New email matches your current email.')
+      return
+    }
+
+    setEmailChangeSubmitting(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/email-change/request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ newEmail: trimmed, currentPassword: emailChangePassword }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setEmailChangeError(data.error || 'Failed to request email change')
+      } else {
+        setPendingEmail(data.pending_email || trimmed)
+        setNewEmail('')
+        setEmailChangePassword('')
+        setEmailChangeSent(true)
+      }
+    } catch {
+      setEmailChangeError('Could not connect to server')
+    } finally {
+      setEmailChangeSubmitting(false)
+    }
+  }
+
+  async function handleEmailChangeCancel() {
+    setEmailChangeError('')
+    setCancelSubmitting(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/email-change/cancel`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setEmailChangeError(data.error || 'Failed to cancel pending change')
+      } else {
+        setPendingEmail(null)
+        setEmailChangeSent(false)
+      }
+    } catch {
+      setEmailChangeError('Could not connect to server')
+    } finally {
+      setCancelSubmitting(false)
+    }
+  }
+
   function handleAddressSave(e) {
     e.preventDefault()
     setAddressSaved(true)
@@ -138,80 +267,152 @@ export default function AccountSettingsPage({ onBack, token }) {
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
-      <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
-          <button
-            type="button"
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
-            onClick={onBack}
-          >
-            <BackIcon /> Back
-          </button>
-          <Link
-            to="/"
-            className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
-          >
-            FIER
-          </Link>
-        </div>
-      </header>
-
       <main className="mx-auto box-border w-full max-w-[760px] px-6 pt-12 pb-20">
         <h1 className="mb-10 text-[32px] font-extrabold tracking-[-0.5px] text-[var(--text-h)]">
           Account Settings
         </h1>
 
         {/* Profile */}
-        <Section title="Profile" description="Update your display name and email address.">
+        <Section title="Profile" description="Update your display name and tax ID.">
           <form onSubmit={handleProfileSave}>
             <div className="mb-5 flex items-center gap-4 border-b border-[var(--border)] pb-5">
               <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-purple-400/12 text-[22px] font-bold text-purple-400">
-                {name ? name[0].toUpperCase() : '?'}
+                {getInitial(name, email)}
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="m-0 mb-0.5 text-[15px] font-semibold text-[var(--text-h)]">
-                  {name || 'Your Name'}
+                  {profileLoading ? 'Loading…' : name || 'Your Name'}
                 </p>
-                <p className="m-0 text-[13px] text-[var(--text)]">{email}</p>
+                <p className="m-0 truncate text-[13px] text-[var(--text)]" title={email}>
+                  {profileLoading ? '' : email}
+                </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1">
-              <div className="mb-4 flex flex-col gap-1.5">
-                <Label htmlFor="acc-name" className="text-[13px] text-[var(--text-h)]">
-                  Full Name
-                </Label>
-                <Input
-                  id="acc-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Jane Smith"
-                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-                />
-              </div>
-              <div className="mb-4 flex flex-col gap-1.5">
-                <Label htmlFor="acc-email" className="text-[13px] text-[var(--text-h)]">
-                  Email Address
-                </Label>
-                <Input
-                  id="acc-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-                />
-              </div>
+            <div className="mb-4 flex flex-col gap-1.5">
+              <Label htmlFor="acc-name" className="text-[13px] text-[var(--text-h)]">
+                Full Name
+              </Label>
+              <Input
+                id="acc-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                disabled={profileLoading}
+                className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+              />
             </div>
+            <div className="mb-4 flex flex-col gap-1.5">
+              <Label htmlFor="acc-tax-id" className="text-[13px] text-[var(--text-h)]">
+                Tax ID <span className="font-normal text-[var(--text)]">(optional)</span>
+              </Label>
+              <Input
+                id="acc-tax-id"
+                type="text"
+                value={taxId}
+                onChange={(e) => setTaxId(e.target.value)}
+                placeholder="e.g. 1234567890"
+                maxLength={50}
+                disabled={profileLoading}
+                className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+              />
+            </div>
+            {profileError && <p className="-mt-2 mb-3 text-[13px] text-red-500">{profileError}</p>}
             <div className="mt-2 flex items-center justify-end gap-3.5">
               {profileSaved && (
                 <span className="text-[13px] font-medium text-green-500">Changes saved!</span>
               )}
               <button
                 type="submit"
-                className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88"
+                disabled={profileLoading || profileSaving}
+                className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Save Profile
+                {profileSaving ? 'Saving…' : 'Save Profile'}
+              </button>
+            </div>
+          </form>
+        </Section>
+
+        {/* Email change */}
+        <Section
+          title="Email Address"
+          description="Changing your email requires confirmation from both your current and new address."
+        >
+          <div className="mb-4 flex flex-col gap-1.5">
+            <Label className="text-[13px] text-[var(--text-h)]">Current Email</Label>
+            <p
+              className="m-0 truncate rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[13px] text-[var(--text-h)] opacity-80"
+              title={email}
+            >
+              {profileLoading ? 'Loading…' : email}
+            </p>
+          </div>
+
+          {pendingEmail && (
+            <div className="mb-5 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4">
+              <p className="m-0 mb-1 text-[13px] font-semibold text-yellow-500">
+                Pending change to {pendingEmail}
+              </p>
+              <p className="m-0 mb-3 text-[12px] text-[var(--text)]">
+                Both verification links must be clicked within 1 hour. Check both inboxes.
+              </p>
+              <button
+                type="button"
+                onClick={handleEmailChangeCancel}
+                disabled={cancelSubmitting}
+                className="cursor-pointer rounded-md border border-yellow-500/60 bg-transparent px-3 py-1.5 text-[12px] font-semibold text-yellow-500 transition-colors hover:bg-yellow-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {cancelSubmitting ? 'Cancelling…' : 'Cancel pending change'}
+              </button>
+            </div>
+          )}
+
+          <form onSubmit={handleEmailChangeRequest}>
+            <div className="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1">
+              <div className="mb-4 flex flex-col gap-1.5">
+                <Label htmlFor="acc-new-email" className="text-[13px] text-[var(--text-h)]">
+                  New Email
+                </Label>
+                <Input
+                  id="acc-new-email"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  disabled={profileLoading}
+                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                />
+              </div>
+              <div className="mb-4 flex flex-col gap-1.5">
+                <Label htmlFor="acc-email-pw" className="text-[13px] text-[var(--text-h)]">
+                  Current Password
+                </Label>
+                <Input
+                  id="acc-email-pw"
+                  type="password"
+                  value={emailChangePassword}
+                  onChange={(e) => setEmailChangePassword(e.target.value)}
+                  placeholder="••••••••"
+                  disabled={profileLoading}
+                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                />
+              </div>
+            </div>
+            {emailChangeError && (
+              <p className="-mt-2 mb-3 text-[13px] text-red-500">{emailChangeError}</p>
+            )}
+            <div className="mt-2 flex items-center justify-end gap-3.5">
+              {emailChangeSent && (
+                <span className="text-[13px] font-medium text-green-500">
+                  Verification emails sent — check both inboxes.
+                </span>
+              )}
+              <button
+                type="submit"
+                disabled={profileLoading || emailChangeSubmitting}
+                className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {emailChangeSubmitting ? 'Sending…' : 'Request Email Change'}
               </button>
             </div>
           </form>

@@ -3,13 +3,11 @@ require('dotenv').config()
 const { processInvoiceRequest } = require('../services/invoice-workflow')
 
 async function main() {
-  process.env.SMTP_HOST = process.env.SMTP_HOST || 'localhost'
-
   const invoiceRequest = {
     invoice_number: 'INV-2026-001',
     order_id: 'ORD-984-ABC',
     customer_name: 'John Doe',
-    customer_email: 'john@example.com',
+    customer_email: 'borhanxj@gmail.com',
     customer_address: '123 Fashion Ave, London, UK',
     items: [
       { description: 'Oversized Black Hoodie', quantity: 1, unit_price: 85.0 },
@@ -19,7 +17,13 @@ async function main() {
   }
 
   await processInvoiceRequest(invoiceRequest)
-  console.log('Done! Check your local mail at http://localhost:8025')
+  const smtpHost = process.env.SMTP_HOST || 'mailserver'
+
+  if (smtpHost === 'mailserver' || smtpHost === 'localhost') {
+    console.log('Done! Check your local mail at http://localhost:8025')
+  } else {
+    console.log(`Done! Sent through SMTP host: ${smtpHost}`)
+  }
 }
 
 main().catch((error) => {

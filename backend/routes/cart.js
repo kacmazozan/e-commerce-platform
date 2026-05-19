@@ -42,7 +42,9 @@ router.post('/', async (req, res) => {
   if (!Number.isInteger(quantity) || quantity < 1)
     return res.status(400).json({ error: 'quantity must be a positive integer' })
 
-  const product = await pool.query('SELECT id FROM products WHERE id = $1', [productId])
+  const product = await pool.query('SELECT id FROM products WHERE id = $1 AND price IS NOT NULL', [
+    productId,
+  ])
   if (product.rows.length === 0) return res.status(404).json({ error: 'Product not found' })
 
   const sizeVal = (size || '').trim().toUpperCase() || ''

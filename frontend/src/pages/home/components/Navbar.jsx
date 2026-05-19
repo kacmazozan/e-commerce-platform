@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   CartIcon,
   WishlistIcon,
   SearchIcon,
   UserIcon,
   OrdersIcon,
+  ReviewsIcon,
   SettingsIcon,
   HelpIcon,
   LogoutIcon,
@@ -13,11 +14,13 @@ import {
   MoonIcon,
 } from '../../../components/icons'
 import { useTheme } from '../../../context/ThemeContext'
+import { getInitial } from '../../../utils/avatar'
 import NotificationBell from './NotificationBell'
 
 export default function Navbar({
   isLoggedIn,
   userEmail,
+  userName,
   token,
   onNavigate,
   onRequireAuth,
@@ -53,9 +56,12 @@ export default function Navbar({
     <header className="light:bg-white/95 light:shadow-[0_2px_15px_rgba(0,0,0,0.08)] fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb,16,13,30),0.75)] px-6 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-6">
         {/* Brand */}
-        <div className="shrink-0 text-[22px] font-bold tracking-[4px] text-[var(--text-h)]">
+        <Link
+          to="/"
+          className="shrink-0 text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
+        >
           FIER
-        </div>
+        </Link>
 
         {/* Search bar */}
         <form
@@ -104,7 +110,7 @@ export default function Navbar({
             type="button"
             className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-h)] transition-colors hover:border-purple-400/40 hover:bg-purple-400/12 hover:text-purple-400"
             aria-label="Wishlist"
-            onClick={() => (isLoggedIn ? onNavigate('wishlist') : onRequireAuth())}
+            onClick={() => onNavigate('wishlist')}
           >
             <WishlistIcon />
             {wishlistCount > 0 && (
@@ -138,8 +144,10 @@ export default function Navbar({
               aria-label="Account menu"
               aria-expanded={avatarOpen}
             >
-              {isLoggedIn && userEmail ? (
-                <span className="text-[13px] font-bold uppercase">{userEmail[0]}</span>
+              {isLoggedIn && (userName || userEmail) ? (
+                <span className="text-[13px] font-bold uppercase">
+                  {getInitial(userName, userEmail)}
+                </span>
               ) : (
                 <UserIcon />
               )}
@@ -150,14 +158,19 @@ export default function Navbar({
                 {isLoggedIn ? (
                   <>
                     <div className="flex items-center gap-2.5 px-2 pt-2 pb-2.5">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-400/12 text-purple-400">
-                        <UserIcon />
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-400/12 text-[14px] font-bold text-purple-400 uppercase">
+                        {getInitial(userName, userEmail)}
                       </div>
-                      <div>
-                        <p className="m-0 text-[13px] font-semibold text-[var(--text-h)]">
-                          My Account
+                      <div className="min-w-0 flex-1">
+                        <p className="m-0 truncate text-[13px] font-semibold text-[var(--text-h)]">
+                          {userName || 'My Account'}
                         </p>
-                        <p className="m-0 text-[11px] text-[var(--text)]">{userEmail}</p>
+                        <p
+                          className="m-0 truncate text-[11px] text-[var(--text)]"
+                          title={userEmail}
+                        >
+                          {userEmail}
+                        </p>
                       </div>
                     </div>
 
@@ -170,6 +183,14 @@ export default function Navbar({
                         action: () => {
                           setAvatarOpen(false)
                           onNavigate('orders')
+                        },
+                      },
+                      {
+                        icon: <ReviewsIcon />,
+                        label: 'My Reviews',
+                        action: () => {
+                          setAvatarOpen(false)
+                          onNavigate('my-reviews')
                         },
                       },
                     ].map(({ icon, label, action }) => (

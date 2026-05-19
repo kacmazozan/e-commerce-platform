@@ -4,6 +4,12 @@ import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import WishlistPage from '../src/pages/wishlist/WishlistPage'
 
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
 const regularItem = { id: 1, name: 'Widget', price: '19.99', available_stock: '5' }
 const discountedItem = {
   id: 2,
@@ -15,7 +21,6 @@ const discountedItem = {
 }
 
 const defaultProps = {
-  onBack: vi.fn(),
   wishlistItems: [regularItem],
   onRemove: vi.fn(),
 }
@@ -45,13 +50,12 @@ describe('WishlistPage', () => {
     expect(screen.getByRole('button', { name: /start shopping/i })).toBeInTheDocument()
   })
 
-  it('calls onBack when "Start Shopping" button is clicked in empty state', async () => {
-    const onBack = vi.fn()
-    renderPage({ wishlistItems: [], onBack })
+  it('navigates to home with scrollToCategories state when "Start Shopping" button is clicked', async () => {
+    renderPage({ wishlistItems: [] })
 
     await userEvent.click(screen.getByRole('button', { name: /start shopping/i }))
 
-    expect(onBack).toHaveBeenCalledOnce()
+    expect(mockNavigate).toHaveBeenCalledWith('/', { state: { scrollToCategories: true } })
   })
 
   it('renders item name and price', () => {
@@ -81,15 +85,6 @@ describe('WishlistPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /remove from wishlist/i }))
 
     expect(onRemove).toHaveBeenCalledWith(1)
-  })
-
-  it('calls onBack when Back button is clicked', async () => {
-    const onBack = vi.fn()
-    renderPage({ onBack })
-
-    await userEvent.click(screen.getByRole('button', { name: /back/i }))
-
-    expect(onBack).toHaveBeenCalledOnce()
   })
 
   it('"Go to item" link is rendered for each wishlist item', () => {

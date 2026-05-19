@@ -1,10 +1,16 @@
 node_modules/
+
+# Local environment files can contain secrets.
 .env
 .env.*
 !.env.example
+!*/.env.example
 .DS_Store
 dist/
 coverage/
+
+# Claude Code worktrees (each is its own git checkout)
+.claude/worktrees/
 
 # remove screenshot folder
 .screenshots/

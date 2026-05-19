@@ -1,29 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import CatalogImage from '../../components/catalog/CatalogImage'
 import Footer from '../home/components/Footer'
 import API_BASE from '../../api'
 import { SORT_OPTIONS } from '../../constants/sortOptions'
 import { getProductImageUrl } from '../../lib/catalogAssets'
 import { fetchJsonWithRetry } from '../../lib/fetchJsonWithRetry'
-
-function BackIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  )
-}
 
 function HeartIcon({ filled }) {
   return (
@@ -42,9 +24,12 @@ function HeartIcon({ filled }) {
   )
 }
 
+function getProductModel(product) {
+  return product.model || product.serial_number || 'N/A'
+}
+
 export default function CategoryPage({
   category,
-  onBack,
   onAddToWishlist,
   onRemoveFromWishlist,
   wishlistItems = [],
@@ -68,10 +53,11 @@ export default function CategoryPage({
     let cancelled = false
     const requestKey = `${category.title}::${sort}`
 
-    fetchJsonWithRetry(
-      `${API_BASE}/api/products?category=${encodeURIComponent(category.title)}&sort=${sort}`,
-      { attempts: 1 }
-    )
+    const apiUrl = category.on_sale
+      ? `${API_BASE}/api/products?on_sale=true&sort=${sort}&limit=100`
+      : `${API_BASE}/api/products?category=${encodeURIComponent(category.title)}&sort=${sort}`
+
+    fetchJsonWithRetry(apiUrl, { attempts: 1 })
       .then((data) => {
         if (!cancelled) {
           setProducts(data.products ?? [])
@@ -89,7 +75,7 @@ export default function CategoryPage({
     return () => {
       cancelled = true
     }
-  }, [category.title, sort])
+  }, [category.title, category.on_sale, sort])
 
   const wishlistIds = new Set(wishlistItems.map((i) => i.id))
 
@@ -103,24 +89,6 @@ export default function CategoryPage({
         }}
         aria-hidden="true"
       />
-      <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
-          <button
-            type="button"
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
-            onClick={onBack}
-          >
-            <BackIcon /> Back
-          </button>
-          <Link
-            to="/"
-            className="ml-auto cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
-          >
-            FIER
-          </Link>
-        </div>
-      </header>
-
       <main className="relative z-[1] mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
         <div className="mb-10">
           <p className="m-0 mb-2.5 text-[11px] font-bold tracking-[5px] text-purple-400 uppercase">
@@ -163,6 +131,7 @@ export default function CategoryPage({
           {products.map((product) => {
             const inWishlist = wishlistIds.has(product.id)
             const availableStock = parseInt(product.available_stock ?? product.stock ?? 0)
+            const productModel = getProductModel(product)
             return (
               <div
                 key={product.id}
@@ -192,6 +161,20 @@ export default function CategoryPage({
                 </button>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2.5">
                   <span className="text-sm font-semibold text-[var(--text-h)]">{product.name}</span>
+                  <div className="my-1.5 grid gap-1 border-t border-[var(--border)] pt-2 text-[11px]">
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="shrink-0 text-[var(--text)] opacity-60">ID</span>
+                      <span className="min-w-0 truncate text-right font-semibold text-[var(--text-h)]">
+                        #{product.id}
+                      </span>
+                    </div>
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="shrink-0 text-[var(--text)] opacity-60">Model</span>
+                      <span className="min-w-0 truncate text-right font-semibold text-[var(--text-h)]">
+                        {productModel}
+                      </span>
+                    </div>
+                  </div>
                   {product.discounted_price != null ? (
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[13px] text-red-400 line-through opacity-70">
@@ -211,16 +194,18 @@ export default function CategoryPage({
                   )}
                   <span
                     className={
-                      availableStock < 10
+                      availableStock === 0
                         ? 'text-[11px] font-semibold text-red-400'
-                        : 'text-[11px] text-[var(--text)] opacity-50'
+                        : availableStock <= 10
+                          ? 'text-[11px] font-semibold text-amber-400'
+                          : 'text-[11px] font-semibold text-green-400'
                     }
                   >
                     {availableStock === 0
                       ? 'Out of stock'
-                      : availableStock < 10
+                      : availableStock <= 10
                         ? `Only ${availableStock} left`
-                        : `${availableStock} in stock`}
+                        : 'In stock'}
                   </span>
                 </div>
                 <div className="flex justify-end px-3 pb-3.5">

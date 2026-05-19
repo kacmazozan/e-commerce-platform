@@ -124,6 +124,18 @@ describe('GET /api/products/search', () => {
     expect(res.body.products[0].discounted_price).toBe('1039.99')
   })
 
+  it('includes public product property columns in the SQL query', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/search?q=laptop')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.model')
+    expect(sql).toContain('p.serial_number')
+    expect(sql).toContain('p.warranty_status')
+    expect(sql).toContain('p.distributor_info')
+  })
+
   it('respects the limit query parameter', async () => {
     pool.query.mockResolvedValueOnce({ rows: [] })
 

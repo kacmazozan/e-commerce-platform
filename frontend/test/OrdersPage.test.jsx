@@ -328,6 +328,10 @@ describe('OrdersPage', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
+        json: async () => ({ reviews: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
         json: async () => ({ message: 'Order cancelled successfully' }),
       })
     vi.stubGlobal('fetch', fetchMock)
@@ -357,6 +361,10 @@ describe('OrdersPage', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ orders: [pendingOrder] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ reviews: [] }),
         })
         .mockResolvedValueOnce({
           ok: false,
@@ -557,6 +565,10 @@ describe('OrdersPage — refund button visibility', () => {
         })
         .mockResolvedValueOnce({
           ok: true,
+          json: () => Promise.resolve({ reviews: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
           json: () => Promise.resolve({ refund: { id: 10, status: 'pending' } }),
         })
         .mockResolvedValueOnce({
@@ -624,6 +636,10 @@ describe('OrdersPage — review modal', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
+        json: async () => ({ reviews: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
         json: async () => ({ id: 1, rating: 4 }),
       })
     vi.stubGlobal('fetch', fetchMock)
@@ -651,6 +667,10 @@ describe('OrdersPage — review modal', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ orders: [makeOrder()] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ reviews: [] }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -684,6 +704,10 @@ describe('OrdersPage — review modal', () => {
           json: async () => ({ orders: [makeOrder()] }),
         })
         .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ reviews: [] }),
+        })
+        .mockResolvedValueOnce({
           ok: false,
           json: async () => ({ error: 'You have already reviewed this product' }),
         })
@@ -705,6 +729,10 @@ describe('OrdersPage — review modal', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ orders: [makeOrder()] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ reviews: [] }),
         })
         .mockResolvedValueOnce({
           ok: false,

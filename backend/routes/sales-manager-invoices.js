@@ -10,7 +10,6 @@ const router = express.Router()
 router.use(authenticate)
 router.use(requireSalesManager)
 
-const TAX_RATE = 0
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function invoiceNumberFor(order) {
@@ -26,6 +25,7 @@ function buildInvoiceFromOrder(order, items) {
       customer_name: inferCustomerName(order.user_email),
       customer_email: order.user_email,
       customer_address: order.address || 'Address not provided',
+      shipping_cost: Number(order.shipping_cost ?? 0),
       items: items.map((item) => ({
         description: item.product_name,
         quantity: item.quantity,
@@ -78,7 +78,7 @@ router.get('/export/pdf', async (req, res) => {
   const { start, end } = range
 
   const ordersResult = await pool.query(
-    `SELECT o.id, o.status, o.total, o.address, o.created_at,
+    `SELECT o.id, o.status, o.total, o.shipping_cost, o.address, o.created_at,
             u.email AS user_email
      FROM orders o
      JOIN auth.users u ON u.id = o.user_id
@@ -188,7 +188,7 @@ router.get('/', async (req, res) => {
   const total = parseInt(countResult.rows[0].count, 10)
 
   const dataResult = await pool.query(
-    `SELECT o.id, o.status, o.total, o.address, o.created_at,
+    `SELECT o.id, o.status, o.total, o.shipping_cost, o.address, o.created_at,
             u.email AS user_email,
             COUNT(oi.id) AS item_count
      FROM orders o
@@ -203,8 +203,9 @@ router.get('/', async (req, res) => {
 
   const invoices = dataResult.rows.map((order) => {
     const subtotal = Math.round((Number(order.total) + Number.EPSILON) * 100) / 100
-    const tax_amount = Math.round((subtotal * TAX_RATE + Number.EPSILON) * 100) / 100
-    const invoice_total = Math.round((subtotal + tax_amount + Number.EPSILON) * 100) / 100
+    const shipping_cost =
+      Math.round((Number(order.shipping_cost ?? 0) + Number.EPSILON) * 100) / 100
+    const invoice_total = Math.round((subtotal + shipping_cost + Number.EPSILON) * 100) / 100
     return {
       order_id: order.id,
       invoice_number: invoiceNumberFor(order),
@@ -213,8 +214,7 @@ router.get('/', async (req, res) => {
       order_date: order.created_at,
       item_count: parseInt(order.item_count, 10),
       subtotal,
-      tax_rate: TAX_RATE,
-      tax_amount,
+      shipping_cost,
       total: invoice_total,
       status: order.status,
     }
@@ -228,7 +228,7 @@ router.get('/', async (req, res) => {
 
 async function loadOrderAndItems(orderId) {
   const orderResult = await pool.query(
-    `SELECT o.id, o.status, o.total, o.address, o.created_at,
+    `SELECT o.id, o.status, o.total, o.shipping_cost, o.address, o.created_at,
             u.id AS user_id, u.email AS user_email
      FROM orders o
      JOIN auth.users u ON u.id = o.user_id

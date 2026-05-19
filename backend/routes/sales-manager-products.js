@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
   const total = parseInt(countResult.rows[0].count)
 
   const dataResult = await pool.query(
-    `SELECT p.id, p.name, p.category, p.price, p.stock,
+    `SELECT p.id, p.name, p.category, p.price,
             pd.discount_percent,
             CASE WHEN pd.discount_percent IS NOT NULL
                  THEN ROUND(p.price * (1 - pd.discount_percent / 100.0), 2)
@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
        AND (pd.end_at IS NULL OR pd.end_at > NOW())
      WHERE ($3::text IS NULL OR p.category = $3)
        AND ($4::text IS NULL OR p.name ILIKE $4)
-     ORDER BY p.name ASC LIMIT $1 OFFSET $2`,
+     ORDER BY (p.price IS NULL) DESC, p.name ASC LIMIT $1 OFFSET $2`,
     [limit, offset, category, q]
   )
 
@@ -118,6 +118,12 @@ router.post('/discount', async (req, res) => {
       return res.status(404).json({ error: 'One or more products not found' })
     }
 
+    const nullPriced = productsResult.rows.filter((r) => r.price == null)
+    if (nullPriced.length > 0) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Cannot apply discount to products without a price' })
+    }
+
     await client.query(
       `INSERT INTO product_discounts (product_id, discount_percent, created_by)
        SELECT id, $2, $3 FROM UNNEST($1::int[]) AS id
@@ -135,7 +141,11 @@ router.post('/discount', async (req, res) => {
       `DELETE FROM notifications
        WHERE product_id = ANY($1)
          AND NOT is_read
-         AND user_id IN (SELECT user_id FROM wishlist_items WHERE product_id = ANY($1))`,
+         AND user_id IN (
+           SELECT user_id FROM wishlist_items WHERE product_id = ANY($1)
+           UNION
+           SELECT user_id FROM cart_items WHERE product_id = ANY($1)
+         )`,
       [ids]
     )
 
@@ -151,8 +161,28 @@ router.post('/discount', async (req, res) => {
       [ids, pct]
     )
 
+    const cartResult = await client.query(
+      `INSERT INTO notifications (user_id, product_id, product_name, original_price, discounted_price, discount_percent)
+       SELECT DISTINCT ci.user_id, p.id, p.name, p.price,
+              ROUND(p.price * (1 - $2 / 100.0), 2),
+              $2
+       FROM cart_items ci
+       JOIN products p ON p.id = ci.product_id
+       WHERE ci.product_id = ANY($1)
+         AND NOT EXISTS (
+           SELECT 1 FROM notifications n
+           WHERE n.user_id = ci.user_id
+             AND n.product_id = ci.product_id
+             AND NOT n.is_read
+         )
+       RETURNING user_id`,
+      [ids, pct]
+    )
+
     await client.query('COMMIT')
-    const distinctCustomers = new Set(wishlistResult.rows.map((r) => r.user_id)).size
+    const distinctCustomers = new Set(
+      [...wishlistResult.rows, ...cartResult.rows].map((r) => r.user_id)
+    ).size
     res.json({ updated: productsResult.rows.length, notified: distinctCustomers })
   } catch (err) {
     await client.query('ROLLBACK')

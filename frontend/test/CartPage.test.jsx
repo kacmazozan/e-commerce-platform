@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import CartPage from '../src/pages/cart/CartPage'
 
-const cartItem = { id: 1, name: 'Widget', price: '19.99', quantity: 2 }
+const cartItem = { id: 1, name: 'Widget', price: '19.99', quantity: 2, available_stock: '10' }
 
 const defaultProps = {
   onBack: vi.fn(),
@@ -166,20 +166,11 @@ describe('CartPage', () => {
     expect(screen.getByText('$44.97')).toBeInTheDocument()
   })
 
-  it('shows free shipping when total is $50 or more', () => {
-    const expensiveItem = { id: 2, name: 'Expensive', price: '30.00', quantity: 2 }
+  it('shows free shipping when total is $100 or more', () => {
+    const expensiveItem = { id: 2, name: 'Expensive', price: '55.00', quantity: 2 }
     renderPage({ cartItems: [expensiveItem] })
 
     expect(screen.getByText('Free')).toBeInTheDocument()
-  })
-
-  it('calls onBack when Back button is clicked', async () => {
-    const onBack = vi.fn()
-    renderPage({ onBack })
-
-    await userEvent.click(screen.getByRole('button', { name: /back/i }))
-
-    expect(onBack).toHaveBeenCalledOnce()
   })
 })
 
@@ -291,13 +282,5 @@ describe('CartPage — product links', () => {
     const productLinks = allLinks.filter((l) => l.getAttribute('href') === '/product/1')
     // There should be 2 links: thumbnail and name
     expect(productLinks.length).toBe(2)
-  })
-
-  it('FIER logo links to /', () => {
-    renderPage()
-
-    const fierLink = screen.getByRole('link', { name: 'FIER' })
-    expect(fierLink).toBeInTheDocument()
-    expect(fierLink).toHaveAttribute('href', '/')
   })
 })

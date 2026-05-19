@@ -18,7 +18,7 @@ const tableWrap =
   'overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] shadow-[var(--shadow)] backdrop-blur-xl'
 const tableClass = 'min-w-full divide-y divide-[var(--border)] text-left text-sm'
 const thClass =
-  'bg-purple-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
+  'bg-emerald-400/12 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text)]'
 const tdClass = 'px-4 py-3 text-[var(--text-h)]'
 const emptyClass = 'px-4 py-8 text-center text-[var(--text)]'
 
@@ -134,7 +134,7 @@ function PMProducts({ token }) {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <form className="flex items-center gap-2" onSubmit={handleSearch}>
           <select
-            className="rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-h)] focus:ring-2 focus:ring-purple-500/40 focus:outline-none"
+            className="rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-h)] focus:ring-2 focus:ring-emerald-500/40 focus:outline-none"
             value={sort}
             onChange={(e) => {
               setSort(e.target.value)
@@ -308,7 +308,6 @@ function Field({ label, children, hint }) {
 function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }) {
   const [name, setName] = useState(product?.name || '')
   const [description, setDescription] = useState(product?.description || '')
-  const [price, setPrice] = useState(product?.price || '')
   const [stock, setStock] = useState(product?.stock ?? 0)
   const [category, setCategory] = useState(product?.category || '')
   const [countryOfOrigin, setCountryOfOrigin] = useState(product?.country_of_origin || '')
@@ -337,7 +336,6 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
       const body = {
         name,
         description,
-        price: parseFloat(price),
         stock: Number.isNaN(parsedStock) ? 0 : parsedStock,
         category,
         country_of_origin: countryOfOrigin,
@@ -362,7 +360,7 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
   }
 
   const sectionLabel =
-    'mb-3 mt-6 text-[11px] font-bold tracking-[3px] text-purple-400 uppercase border-b border-[var(--border)] pb-2'
+    'mb-3 mt-6 text-[11px] font-bold tracking-[3px] text-emerald-400 uppercase border-b border-[var(--border)] pb-2'
 
   return (
     <div
@@ -397,30 +395,16 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
               placeholder="Brief description"
             />
           </Field>
-          <div className="mb-4 grid grid-cols-2 gap-4">
-            <Field label="Price ($)">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className={fieldInputClass}
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required
-                placeholder="0.00"
-              />
-            </Field>
-            <Field label="Stock">
-              <input
-                type="number"
-                min="0"
-                className={fieldInputClass}
-                value={stock}
-                onChange={(e) => setStock(e.target.value)}
-                placeholder="0"
-              />
-            </Field>
-          </div>
+          <Field label="Stock">
+            <input
+              type="number"
+              min="0"
+              className={fieldInputClass}
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              placeholder="0"
+            />
+          </Field>
           <Field label="Category">
             {categories.length > 0 ? (
               <select

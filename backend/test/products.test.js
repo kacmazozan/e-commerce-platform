@@ -11,6 +11,38 @@ process.env.JWT_SECRET = 'test-secret'
 
 const app = require('../app')
 
+describe('GET /api/products/categories', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns public categories with product counts', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        { name: 'Electronics', product_count: 3 },
+        { name: 'Footwear', product_count: 1 },
+      ],
+    })
+
+    const res = await request(app).get('/api/products/categories')
+
+    expect(res.status).toBe(200)
+    expect(res.body.categories).toEqual([
+      { name: 'Electronics', product_count: 3 },
+      { name: 'Footwear', product_count: 1 },
+    ])
+  })
+
+  it('reads categories from the categories table and product categories', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products/categories')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('FROM categories c')
+    expect(sql).toContain('FROM products p')
+    expect(sql).toContain('product_count')
+  })
+})
+
 describe('GET /api/products', () => {
   beforeEach(() => jest.clearAllMocks())
 
@@ -228,6 +260,18 @@ describe('GET /api/products', () => {
     expect(sql).toContain('discounted_price')
   })
 
+  it('includes public product property columns in the SQL query', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    await request(app).get('/api/products')
+
+    const [sql] = pool.query.mock.calls[0]
+    expect(sql).toContain('p.model')
+    expect(sql).toContain('p.serial_number')
+    expect(sql).toContain('p.warranty_status')
+    expect(sql).toContain('p.distributor_info')
+  })
+
   it('JOINs product_discounts table in the SQL query', async () => {
     pool.query.mockResolvedValueOnce({ rows: [] })
 
@@ -297,6 +341,10 @@ describe('GET /api/products/:id', () => {
             model_waist: '68cm',
             model_hips: '94cm',
             model_size: 'S',
+            model: 'FW-2026',
+            serial_number: 'WC-MER-001',
+            warranty_status: '30-day returns',
+            distributor_info: 'Anatolia Knit Exports',
             sizes: ['XS', 'S', 'M', 'L'],
             available_stock: '20',
             discount_percent: null,
@@ -338,6 +386,10 @@ describe('GET /api/products/:id', () => {
             model_waist: '68cm',
             model_hips: '94cm',
             model_size: 'S',
+            model: 'FW-2026',
+            serial_number: 'WC-MER-001',
+            warranty_status: '30-day returns',
+            distributor_info: 'Anatolia Knit Exports',
             sizes: ['XS', 'S', 'M', 'L'],
             available_stock: '20',
             discount_percent: null,
@@ -358,6 +410,10 @@ describe('GET /api/products/:id', () => {
     expect(p.model_waist).toBe('68cm')
     expect(p.model_hips).toBe('94cm')
     expect(p.model_size).toBe('S')
+    expect(p.model).toBe('FW-2026')
+    expect(p.serial_number).toBe('WC-MER-001')
+    expect(p.warranty_status).toBe('30-day returns')
+    expect(p.distributor_info).toBe('Anatolia Knit Exports')
     expect(p.sizes).toEqual(['XS', 'S', 'M', 'L'])
   })
 

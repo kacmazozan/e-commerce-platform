@@ -1,45 +1,9 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import CatalogImage from '../../components/catalog/CatalogImage'
 import API_BASE from '../../api'
 import { SORT_OPTIONS } from '../../constants/sortOptions'
 import { getProductImageUrl } from '../../lib/catalogAssets'
-
-function BackIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  )
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  )
-}
 
 function HeartIcon({ filled }) {
   return (
@@ -60,14 +24,12 @@ function HeartIcon({ filled }) {
 
 export default function SearchPage({
   searchQuery,
-  onBack,
   onAddToWishlist,
   onRemoveFromWishlist,
   wishlistItems = [],
 }) {
   const [products, setProducts] = useState([])
   const [loadedKey, setLoadedKey] = useState(null)
-  const [inputValue, setInputValue] = useState(searchQuery)
   const [sort, setSort] = useState('newest')
   const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery)
   const [error, setError] = useState(false)
@@ -108,64 +70,10 @@ export default function SearchPage({
     }
   }, [searchQuery, sort])
 
-  useEffect(() => {
-    setInputValue(searchQuery)
-  }, [searchQuery])
-
-  function handleSearchSubmit(e) {
-    e.preventDefault()
-    const q = inputValue.trim()
-    if (q.length !== 1)
-      navigate(q ? '/search?q=' + encodeURIComponent(q) : '/search', { replace: true })
-  }
-
   const wishlistIds = new Set(wishlistItems.map((i) => i.id))
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
-      <header className="fixed top-0 right-0 left-0 z-[1000] border-b border-[var(--border)] bg-[rgba(var(--background-rgb),0.75)] px-6 backdrop-blur-[20px]">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4">
-          <button
-            type="button"
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border-none bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-purple-400/12 hover:text-purple-400"
-            onClick={onBack}
-          >
-            <BackIcon /> Back
-          </button>
-          <form
-            onSubmit={handleSearchSubmit}
-            className="flex h-9 flex-1 items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--card-bg)] px-3 backdrop-blur-xl transition-[border-color] focus-within:border-purple-400/50"
-          >
-            <button
-              type="submit"
-              aria-label="Search"
-              className="flex items-center border-none bg-transparent p-0 text-[var(--text)] hover:text-purple-400"
-            >
-              <SearchIcon />
-            </button>
-            <input
-              type="text"
-              placeholder="Search products…"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              className="flex-1 border-none bg-transparent text-sm text-[var(--text-h)] outline-none placeholder:text-[var(--text)]/40"
-            />
-            <button
-              type="submit"
-              className="shrink-0 rounded-md border-none bg-purple-400/15 px-2.5 py-1 text-[12px] font-semibold text-purple-400 transition-colors hover:bg-purple-400/28"
-            >
-              Search
-            </button>
-          </form>
-          <Link
-            to="/"
-            className="ml-auto shrink-0 cursor-pointer text-[22px] font-bold tracking-[4px] text-[var(--text-h)] no-underline"
-          >
-            FIER
-          </Link>
-        </div>
-      </header>
-
       <main className="mx-auto box-border w-full max-w-[1280px] px-6 pt-12 pb-16">
         <div className="mb-10">
           <p className="m-0 mb-2.5 text-[11px] font-bold tracking-[5px] text-purple-400 uppercase">
@@ -237,6 +145,12 @@ export default function SearchPage({
                 </button>
                 <div className="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-2.5">
                   <span className="text-sm font-semibold text-[var(--text-h)]">{product.name}</span>
+                  <span className="text-[11px] text-[var(--text)] opacity-50">
+                    #{product.id}
+                    {(product.model || product.serial_number) && (
+                      <> · {product.model || product.serial_number}</>
+                    )}
+                  </span>
                   {product.discounted_price != null ? (
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[13px] text-red-400 line-through opacity-70">
@@ -256,16 +170,18 @@ export default function SearchPage({
                   )}
                   <span
                     className={
-                      availableStock < 10
+                      availableStock === 0
                         ? 'text-[11px] font-semibold text-red-400'
-                        : 'text-[11px] text-[var(--text)] opacity-50'
+                        : availableStock <= 10
+                          ? 'text-[11px] font-semibold text-amber-400'
+                          : 'text-[11px] font-semibold text-green-400'
                     }
                   >
                     {availableStock === 0
                       ? 'Out of stock'
-                      : availableStock < 10
+                      : availableStock <= 10
                         ? `Only ${availableStock} left`
-                        : `${availableStock} in stock`}
+                        : 'In stock'}
                   </span>
                 </div>
                 <div className="flex justify-end px-3 pb-3.5">

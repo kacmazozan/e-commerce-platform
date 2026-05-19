@@ -141,7 +141,7 @@ docker compose exec backend node scripts/seed-products.js
 Route files in `backend/routes/`:
 
 - `auth.js` — `POST /api/auth/register`, `POST /api/auth/login`, password reset endpoints
-- `products.js` — public; `GET /api/products` (`?category=`, `?limit=`, `?sort=`), `GET /api/products/search` (`?q=`, `?limit=`, `?sort=`); valid sort values: `newest` (default), `price_asc`, `price_desc`, `popularity`
+- `products.js` — public; `GET /api/products` (`?category=`, `?limit=`, `?sort=`), `GET /api/products/search` (`?q=`, `?limit=`, `?sort=`); valid sort values: `newest` (default), `price_asc`, `price_desc`, `popularity`; authenticated: `GET /api/products/reviews/mine`, `GET /api/products/:id/reviews`, `POST /api/products/:id/reviews`, `PATCH /api/products/:id/reviews`
 - `cart.js` — authenticated; `GET/POST /api/cart`, `PUT /api/cart/:productId`, `DELETE /api/cart/:productId`, `DELETE /api/cart`
 - `checkout.js` — authenticated; `POST /api/checkout/reserve`, `DELETE /api/checkout/reserve`, `POST /api/checkout/confirm`
 - `admin.js` — `GET/POST/PUT/DELETE /api/admin/users`, `GET /api/admin/me`
@@ -149,6 +149,9 @@ Route files in `backend/routes/`:
 - `admin-orders.js` — order management at `/api/admin/orders`
 - `admin-settings.js` — system settings + dashboard stats at `/api/admin/settings`
 - `sales-manager-products.js` — `GET /api/sales-manager/products` (`?category=`, `?q=`), `GET /api/sales-manager/products/categories`, `PATCH /api/sales-manager/products/:id/price`, `POST /api/sales-manager/products/discount`, `DELETE /api/sales-manager/products/:id/discount`
+- `product-manager.js` — `GET /api/product-manager/me`, product CRUD at `/api/product-manager/products`, categories at `/api/product-manager/categories`, orders at `/api/product-manager/orders`, comments at `/api/product-manager/comments`
+- `product-manager-invoices.js` — invoices at `/api/product-manager/invoices` (separate file from `product-manager.js`)
+- `sales-manager-invoices.js` — `GET /api/sales-manager/invoices` (`?startDate=`, `?endDate=`), `GET /api/sales-manager/invoices/:orderId`, `GET /api/sales-manager/invoices/:orderId/pdf`, `GET /api/sales-manager/invoices/export/pdf`
 - `notifications.js` — authenticated; `GET /api/notifications`, `PATCH /api/notifications/:id/read`, `PATCH /api/notifications/read-all`, `DELETE /api/notifications`
 - `wishlist.js` — authenticated; `GET/POST /api/wishlist`, `DELETE /api/wishlist/:productId`
 - `invoices.js` — `GET /api/invoices/health`, `POST /api/invoices/generate`; checkout confirmation also queues invoice email delivery automatically
@@ -158,6 +161,7 @@ Middleware in `backend/middleware/`:
 - `auth.js` — verifies Bearer JWT and sets `req.user`
 - `admin.js` — requires `role === 'admin'`; stack with `auth.js` on all admin routes
 - `sales-manager.js` — requires `role === 'sales_manager'`; stack with `auth.js` on all SM routes
+- `product-manager.js` — requires `role === 'product_manager'`; stack with `auth.js` on all PM routes
 
 ### Invoice service
 
@@ -167,28 +171,36 @@ Invoice generation and email delivery now live inside the Node backend. `backend
 
 `src/main.jsx` wraps `<App>` in `<BrowserRouter>`. All routing in `src/App.jsx` (React Router v7).
 
-Auth state (`token`, `adminToken`, `salesManagerToken`) held in `App`, initialised from `localStorage`. JWT decoded client-side via `src/utils/jwt.js`.
+Auth state (`token`, `adminToken`, `salesManagerToken`, `pmToken`) held in `App`, each initialised from its own `localStorage` key. JWT decoded client-side via `src/utils/jwt.js`.
 
-Shared: `src/styles/dashboardStyles.js` (Tailwind constants), `src/components/DashboardLayout.jsx` (sidebar+header shell for admin and SM dashboards), `src/constants/sortOptions.js` (sort dropdown options for product listing pages).
+Shared: `src/styles/dashboardStyles.js` (Tailwind constants for buttons/inputs), `src/components/DashboardLayout.jsx` (sidebar+header shell used by SM, PM, and admin dashboards), `src/constants/sortOptions.js` (sort dropdown options for product listing pages).
 
 **Route guards:**
 
 - Customers: `localStorage.token` → `RequireAuth` → `/login`
 - Sales managers: `localStorage.salesManagerToken` → `RequireSalesManager` → `/sales-manager/login`
+- Product managers: `localStorage.pmToken` → `RequireProductManager` → `/product-manager/login`
 - Admin: `localStorage.adminToken` → `RequireAdmin` → `/admin/login`
 
 `src/api.js` exports `API_BASE` from `VITE_API_BASE_URL`, falling back to `http://localhost:3000`.
 
-Pages live in `src/pages/<section>/`. Key SM pages:
+Pages live in `src/pages/<section>/`. Key pages:
 
 - `DiscountManagement` (`src/pages/sales-manager/DiscountManagement.jsx`) — paginated product table with category filter, search bar, and bulk discount apply/remove
+- `PriceManagement` (`src/pages/sales-manager/PriceManagement.jsx`) — per-product price editor; shows amber banner listing unpriced products by name
+- `PMLoginPage` (`src/pages/product-manager/PMLoginPage.jsx`) — standalone PM login at `/product-manager/login`, issues `pmToken`
 - `NotificationBell` (`src/pages/home/components/NotificationBell.jsx`) — price-drop notifications for logged-in customers; mark-read, mark-all-read, clear-all
+- `MyReviewsPage` (`src/pages/reviews/MyReviewsPage.jsx`) — customer's review list at `/my-reviews`; edit reviews in place; accessible from Navbar user dropdown
 
 ### Database schema
 
 Auth schema: `auth.users`, `auth.customers`, `auth.sales_managers`, `auth.product_managers`.
-Public schema: `products`, `orders`, `order_items`, `system_settings`, `cart_items`, `stock_reservations`, `wishlist_items`, `product_discounts`, `notifications`.
+Public schema: `products`, `orders`, `order_items`, `system_settings`, `cart_items`, `stock_reservations`, `wishlist_items`, `product_discounts`, `notifications`, `product_reviews`.
 Role enum: `auth.user_role` — `customer`, `sales_manager`, `product_manager`, `admin`.
+
+`orders.total` stores the product subtotal only (excluding shipping). `orders.shipping_cost` is a separate column (added in migration 26); calculated server-side from `system_settings.free_shipping_threshold`.
+
+`products.price` is nullable. `NULL` price means the product is unpublished — hidden from all public routes (`/api/products`, search, cart add, wishlist add). Only the sales manager can set a price via `PATCH /api/sales-manager/products/:id/price`, which publishes the product.
 
 ### Testing
 
