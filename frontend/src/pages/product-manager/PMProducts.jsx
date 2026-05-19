@@ -209,42 +209,47 @@ function PMProducts({ token }) {
             ) : (
               (showMissingCost ? products.filter((p) => p.cost_price == null) : products).map(
                 (p) => (
-                <tr key={p.id} className="transition-colors hover:bg-[var(--card-bg)]/60">
-                  <td className={tdClass}>{p.id}</td>
-                  <td className={tdClass}>{p.name}</td>
-                  <td className={tdClass}>{p.category || '—'}</td>
-                  <td className={tdClass}>${parseFloat(p.price).toFixed(2)}</td>
-                  <td className={tdClass}>
-                    {p.cost_price != null ? (
-                      <span>${parseFloat(p.cost_price).toFixed(2)}</span>
-                    ) : (
-                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-400">
-                        No cost
+                  <tr key={p.id} className="transition-colors hover:bg-[var(--card-bg)]/60">
+                    <td className={tdClass}>{p.id}</td>
+                    <td className={tdClass}>{p.name}</td>
+                    <td className={tdClass}>{p.category || '—'}</td>
+                    <td className={tdClass}>${parseFloat(p.price).toFixed(2)}</td>
+                    <td className={tdClass}>
+                      {p.cost_price != null ? (
+                        <span>${parseFloat(p.cost_price).toFixed(2)}</span>
+                      ) : (
+                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-400">
+                          No cost
+                        </span>
+                      )}
+                    </td>
+                    <td className={tdClass}>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(p.stock)}`}
+                      >
+                        {p.stock}
                       </span>
-                    )}
-                  </td>
-                  <td className={tdClass}>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(p.stock)}`}
-                    >
-                      {p.stock}
-                    </span>
-                  </td>
-                  <td className={tdClass}>{new Date(p.created_at).toLocaleDateString()}</td>
-                  <td className={`${tdClass} flex gap-2`}>
-                    <button
-                      type="button"
-                      className={btnEdit}
-                      onClick={() => setModal({ mode: 'edit', product: p })}
-                    >
-                      Edit
-                    </button>
-                    <button type="button" className={btnDelete} onClick={() => setDeleteConfirm(p)}>
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className={tdClass}>{new Date(p.created_at).toLocaleDateString()}</td>
+                    <td className={`${tdClass} flex gap-2`}>
+                      <button
+                        type="button"
+                        className={btnEdit}
+                        onClick={() => setModal({ mode: 'edit', product: p })}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={btnDelete}
+                        onClick={() => setDeleteConfirm(p)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                )
+              )
             )}
           </tbody>
         </table>
