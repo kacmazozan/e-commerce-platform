@@ -42,8 +42,9 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: normalized.error })
   }
 
-  const client = await pool.connect()
+  let client
   try {
+    client = await pool.connect()
     await client.query('BEGIN')
 
     const duplicate = await client.query(
@@ -68,10 +69,10 @@ router.post('/', async (req, res) => {
     await client.query('COMMIT')
     res.status(201).json({ paymentMethod: publicPaymentMethod(row) })
   } catch (err) {
-    await client.query('ROLLBACK')
+    if (client) await client.query('ROLLBACK')
     throw err
   } finally {
-    client.release()
+    if (client) client.release()
   }
 })
 
@@ -84,8 +85,9 @@ router.patch('/:id/default', async (req, res) => {
     return res.status(400).json({ error: 'Invalid payment method ID' })
   }
 
-  const client = await pool.connect()
+  let client
   try {
+    client = await pool.connect()
     await client.query('BEGIN')
     const existing = await client.query(
       'SELECT id FROM customer_payment_methods WHERE id = $1 AND user_id = $2',
@@ -111,10 +113,10 @@ router.patch('/:id/default', async (req, res) => {
     await client.query('COMMIT')
     res.json({ paymentMethod: publicPaymentMethod(result.rows[0]) })
   } catch (err) {
-    await client.query('ROLLBACK')
+    if (client) await client.query('ROLLBACK')
     throw err
   } finally {
-    client.release()
+    if (client) client.release()
   }
 })
 
@@ -127,8 +129,9 @@ router.delete('/:id', async (req, res) => {
     return res.status(400).json({ error: 'Invalid payment method ID' })
   }
 
-  const client = await pool.connect()
+  let client
   try {
+    client = await pool.connect()
     await client.query('BEGIN')
     const deleted = await client.query(
       `DELETE FROM customer_payment_methods
@@ -159,10 +162,10 @@ router.delete('/:id', async (req, res) => {
     await client.query('COMMIT')
     res.json({ message: 'Payment method deleted' })
   } catch (err) {
-    await client.query('ROLLBACK')
+    if (client) await client.query('ROLLBACK')
     throw err
   } finally {
-    client.release()
+    if (client) client.release()
   }
 })
 

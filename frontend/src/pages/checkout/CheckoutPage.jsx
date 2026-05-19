@@ -308,13 +308,11 @@ export default function CheckoutPage({
       if (!payment.cardName.trim()) pe.cardName = 'Required'
       const rawCard = payment.cardNumber.replace(/\s/g, '')
       if (!rawCard) pe.cardNumber = 'Required'
-      else if (rawCard.length < 4 || rawCard.length > 19)
-        pe.cardNumber = 'Must be 4 to 19 digits'
+      else if (rawCard.length < 4 || rawCard.length > 19) pe.cardNumber = 'Must be 4 to 19 digits'
       if (!payment.expiry) pe.expiry = 'Required'
       else if (!validateExpiry(payment.expiry)) pe.expiry = 'Invalid date'
       if (!payment.cvv) pe.cvv = 'Required'
-      else if (payment.cvv.length < 3 || payment.cvv.length > 4)
-        pe.cvv = 'Must be 3 or 4 digits'
+      else if (payment.cvv.length < 3 || payment.cvv.length > 4) pe.cvv = 'Must be 3 or 4 digits'
     } else if (!selectedPaymentMethodId) {
       pe.savedCard = 'Choose a saved card or enter a new one'
     }
