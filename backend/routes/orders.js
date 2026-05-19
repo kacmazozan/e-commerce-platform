@@ -98,7 +98,7 @@ router.patch('/:id/cancel', async (req, res) => {
   }
 
   const itemsResult = await pool.query(
-    'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
+    'SELECT product_id, quantity, size FROM order_items WHERE order_id = $1',
     [orderId]
   )
 
@@ -107,10 +107,17 @@ router.patch('/:id/cancel', async (req, res) => {
     await client.query('BEGIN')
 
     for (const item of itemsResult.rows) {
-      await client.query(
-        'UPDATE products SET stock = stock + $1, updated_at = NOW() WHERE id = $2',
-        [item.quantity, item.product_id]
-      )
+      if (item.size) {
+        await client.query(
+          'UPDATE product_size_stock SET stock = stock + $1 WHERE product_id = $2 AND size = $3',
+          [item.quantity, item.product_id, item.size]
+        )
+      } else {
+        await client.query(
+          'UPDATE products SET stock = stock + $1, updated_at = NOW() WHERE id = $2',
+          [item.quantity, item.product_id]
+        )
+      }
     }
 
     const updateResult = await client.query(

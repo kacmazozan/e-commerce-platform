@@ -992,12 +992,13 @@ async function seed() {
   console.log(`Inserting ${PRODUCTS.length} products…`)
 
   for (const p of PRODUCTS) {
-    await pool.query(
+    const result = await pool.query(
       `INSERT INTO products
          (name, description, price, category, stock, sizes, material, country_of_origin,
           model_height, model_chest, model_waist, model_hips, model_size,
           serial_number, warranty_status, distributor_info)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       RETURNING id`,
       [
         p.name,
         p.description,
@@ -1017,6 +1018,19 @@ async function seed() {
         p.distributor_info ?? null,
       ]
     )
+
+    if (p.sizes && p.sizes.length > 0) {
+      const productId = result.rows[0].id
+      const perSize = Math.floor(p.stock / p.sizes.length)
+      for (const size of p.sizes) {
+        await pool.query(
+          `INSERT INTO product_size_stock (product_id, size, stock)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (product_id, size) DO UPDATE SET stock = EXCLUDED.stock`,
+          [productId, size, perSize]
+        )
+      }
+    }
   }
 
   console.log('Done.')
