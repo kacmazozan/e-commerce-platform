@@ -200,9 +200,12 @@ function PMProducts({ token }) {
                   <td className={tdClass}>${parseFloat(p.price).toFixed(2)}</td>
                   <td className={tdClass}>
                     <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(p.stock)}`}
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(p.total_stock ?? p.stock)}`}
                     >
-                      {p.stock}
+                      {p.total_stock ?? p.stock}
+                      {p.sizes && p.sizes.length > 0 && (
+                        <span className="ml-1 opacity-60">total</span>
+                      )}
                     </span>
                   </td>
                   <td className={tdClass}>{new Date(p.created_at).toLocaleDateString()}</td>
@@ -308,7 +311,6 @@ function Field({ label, children, hint }) {
 function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }) {
   const [name, setName] = useState(product?.name || '')
   const [description, setDescription] = useState(product?.description || '')
-  const [stock, setStock] = useState(product?.stock ?? 0)
   const [category, setCategory] = useState(product?.category || '')
   const [countryOfOrigin, setCountryOfOrigin] = useState(product?.country_of_origin || '')
   const [material, setMaterial] = useState(product?.material || '')
@@ -328,7 +330,6 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
     setError('')
     setSaving(true)
     try {
-      const parsedStock = parseInt(stock, 10)
       const sizes = sizesInput
         .split(',')
         .map((s) => s.trim().toUpperCase())
@@ -336,7 +337,6 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
       const body = {
         name,
         description,
-        stock: Number.isNaN(parsedStock) ? 0 : parsedStock,
         category,
         country_of_origin: countryOfOrigin,
         material,
@@ -395,16 +395,32 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
               placeholder="Brief description"
             />
           </Field>
-          <Field label="Stock">
-            <input
-              type="number"
-              min="0"
-              className={fieldInputClass}
-              value={stock}
-              onChange={(e) => setStock(e.target.value)}
-              placeholder="0"
-            />
-          </Field>
+          {mode === 'edit' && (
+            <Field label="Stock" hint="(edit from Inventory tab)">
+              {product?.sizes && product.sizes.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map((sz) => {
+                    const found = (product.size_stocks || []).find((s) => s.size === sz)
+                    const qty = found ? found.stock : 0
+                    return (
+                      <span
+                        key={sz}
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(qty)}`}
+                      >
+                        {sz}: {qty}
+                      </span>
+                    )
+                  })}
+                </div>
+              ) : (
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(product?.total_stock ?? product?.stock ?? 0)}`}
+                >
+                  {product?.total_stock ?? product?.stock ?? 0}
+                </span>
+              )}
+            </Field>
+          )}
           <Field label="Category">
             {categories.length > 0 ? (
               <select
