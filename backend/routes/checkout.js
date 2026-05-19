@@ -4,10 +4,7 @@ const pool = require('../db')
 const { inferCustomerName } = require('../services/invoice')
 const { queueInvoiceRequest } = require('../services/invoice-workflow')
 const { encryptField } = require('../services/secure-fields')
-const {
-  ensureSavedPaymentMethod,
-  normalizeCardPayload,
-} = require('../services/payment-methods')
+const { ensureSavedPaymentMethod, normalizeCardPayload } = require('../services/payment-methods')
 
 const router = express.Router()
 router.use(authenticate)
