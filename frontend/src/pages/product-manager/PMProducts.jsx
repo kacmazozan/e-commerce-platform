@@ -320,6 +320,9 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
   const [sizesInput, setSizesInput] = useState(
     Array.isArray(product?.sizes) ? product.sizes.join(', ') : ''
   )
+  const [costPrice, setCostPrice] = useState(
+    product?.cost_price != null ? String(product.cost_price) : ''
+  )
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -340,6 +343,7 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
         category,
         country_of_origin: countryOfOrigin,
         material,
+        cost_price: costPrice !== '' ? costPrice : null,
         model_height: modelHeight,
         model_chest: modelChest,
         model_waist: modelWaist,
@@ -403,6 +407,17 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
               value={stock}
               onChange={(e) => setStock(e.target.value)}
               placeholder="0"
+            />
+          </Field>
+          <Field label="Cost Price ($)" hint="(purchasing / wholesale cost)">
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className={fieldInputClass}
+              value={costPrice}
+              onChange={(e) => setCostPrice(e.target.value)}
+              placeholder="e.g. 45.00"
             />
           </Field>
           <Field label="Category">

@@ -3,12 +3,14 @@ import DashboardLayout from '../../components/DashboardLayout'
 import PriceManagement from './PriceManagement'
 import DiscountManagement from './DiscountManagement'
 import SMInvoices from './SMInvoices'
+import RevenueChart from './RevenueChart'
 import { decodeJwtPayload } from '../../utils/jwt'
 
 const sections = [
   { key: 'products', label: 'Products', icon: <PriceTagIcon /> },
   { key: 'discounts', label: 'Discounts', icon: <DiscountIcon /> },
   { key: 'invoices', label: 'Invoices', icon: <InvoiceIcon /> },
+  { key: 'revenue', label: 'Revenue', icon: <ChartIcon /> },
 ]
 
 export default function SalesManagerDashboard({ token, onLogout }) {
@@ -27,6 +29,7 @@ export default function SalesManagerDashboard({ token, onLogout }) {
       {activeSection === 'products' && <PriceManagement token={token} />}
       {activeSection === 'discounts' && <DiscountManagement token={token} />}
       {activeSection === 'invoices' && <SMInvoices token={token} />}
+      {activeSection === 'revenue' && <RevenueChart token={token} />}
     </DashboardLayout>
   )
 }
@@ -79,6 +82,24 @@ function InvoiceIcon() {
       <line x1="16" y1="13" x2="8" y2="13" />
       <line x1="16" y1="17" x2="8" y2="17" />
       <polyline points="10 9 9 9 8 9" />
+    </svg>
+  )
+}
+
+function ChartIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+      <line x1="2" y1="20" x2="22" y2="20" />
     </svg>
   )
 }

@@ -992,12 +992,13 @@ async function seed() {
   console.log(`Inserting ${PRODUCTS.length} products…`)
 
   for (const p of PRODUCTS) {
+    const costPrice = Math.round(p.price * 0.6 * 100) / 100
     await pool.query(
       `INSERT INTO products
          (name, description, price, category, stock, sizes, material, country_of_origin,
           model_height, model_chest, model_waist, model_hips, model_size,
-          serial_number, warranty_status, distributor_info)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+          serial_number, warranty_status, distributor_info, cost_price)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
       [
         p.name,
         p.description,
@@ -1015,6 +1016,7 @@ async function seed() {
         p.serial_number ?? null,
         p.warranty_status ?? null,
         p.distributor_info ?? null,
+        costPrice,
       ]
     )
   }
