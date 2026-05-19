@@ -89,7 +89,24 @@ describe('/api/payment-methods', () => {
     expect(res.body.paymentMethods[0]).not.toHaveProperty('cardNumber')
   })
 
-  it('rejects invalid card numbers before writing', async () => {
+  it('rejects card numbers outside the demo-friendly length range before writing', async () => {
+    const res = await request(app)
+      .post('/api/payment-methods')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        cardholderName: 'Jane Smith',
+        cardNumber: '123',
+        expiry: '12/40',
+      })
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('Card number must be 4 to 19 digits')
+    expect(pool.connect).not.toHaveBeenCalled()
+  })
+
+  it('returns a server error when a database client cannot be acquired', async () => {
+    pool.connect.mockRejectedValueOnce(new Error('connect failed'))
+
     const res = await request(app)
       .post('/api/payment-methods')
       .set('Authorization', `Bearer ${userToken}`)
@@ -99,9 +116,8 @@ describe('/api/payment-methods', () => {
         expiry: '12/40',
       })
 
-    expect(res.status).toBe(400)
-    expect(res.body.error).toBe('Card number is invalid')
-    expect(pool.connect).not.toHaveBeenCalled()
+    expect(res.status).toBe(500)
+    expect(res.body.error).toBe('Internal server error')
   })
 
   it('stores card data encrypted and returns a masked saved card', async () => {
