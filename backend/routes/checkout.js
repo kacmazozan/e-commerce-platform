@@ -3,11 +3,51 @@ const authenticate = require('../middleware/auth')
 const pool = require('../db')
 const { inferCustomerName } = require('../services/invoice')
 const { queueInvoiceRequest } = require('../services/invoice-workflow')
+const { encryptField } = require('../services/secure-fields')
+const {
+  ensureSavedPaymentMethod,
+  normalizeCardPayload,
+} = require('../services/payment-methods')
 
 const router = express.Router()
 router.use(authenticate)
 
 const RESERVATION_MINUTES = 10
+
+async function resolveStoredPaymentMethod(userId, paymentMethodId) {
+  const id = Number(paymentMethodId)
+  if (!Number.isInteger(id) || id <= 0) {
+    return { error: 'Invalid saved card selected' }
+  }
+
+  const result = await pool.query(
+    `SELECT id
+     FROM customer_payment_methods
+     WHERE id = $1 AND user_id = $2`,
+    [id, userId]
+  )
+
+  const row = result.rows[0]
+  if (!row) return { error: 'Saved card not found' }
+
+  return { paymentMethodId: id }
+}
+
+async function resolveCheckoutPayment(req, userId) {
+  const savedPaymentMethodId = req.body.paymentMethodId ?? req.body.payment_method_id
+  if (savedPaymentMethodId) {
+    return resolveStoredPaymentMethod(userId, savedPaymentMethodId)
+  }
+
+  const paymentPayload = req.body.paymentMethod ?? req.body.payment_method ?? req.body.payment
+  const normalized = normalizeCardPayload(paymentPayload, { requireCvv: true })
+  if (normalized.error) return { error: normalized.error }
+
+  return {
+    newCard: normalized.card,
+    savePaymentMethod: Boolean(req.body.savePaymentMethod ?? req.body.save_payment_method),
+  }
+}
 
 // POST /api/checkout/reserve
 // Soft-locks stock for every item in the user's cart.
@@ -124,6 +164,10 @@ router.delete('/reserve', async (req, res) => {
 router.post('/confirm', async (req, res) => {
   const userId = req.user.userId
   const address = (req.body.address || '').trim() || null
+  const payment = await resolveCheckoutPayment(req, userId)
+  if (payment.error) {
+    return res.status(400).json({ error: payment.error })
+  }
 
   // Use reservations joined with products as the single source of truth for both
   // stock decrement and order item creation — avoids cart/reservation divergence.
@@ -188,9 +232,23 @@ router.post('/confirm', async (req, res) => {
     const threshold = parseFloat(thresholdResult.rows[0]?.value ?? '100')
     const shippingCost = total >= threshold ? 0 : 4.99
 
+    let paymentMethodId = payment.paymentMethodId ?? null
+    if (!paymentMethodId && payment.savePaymentMethod) {
+      const savedPaymentMethod = await ensureSavedPaymentMethod(client, userId, payment.newCard)
+      paymentMethodId = savedPaymentMethod.id
+    }
+
     const orderResult = await client.query(
-      `INSERT INTO orders (user_id, status, total, address, shipping_cost) VALUES ($1, 'processing', $2, $3, $4) RETURNING id`,
-      [userId, total.toFixed(2), address, shippingCost.toFixed(2)]
+      `INSERT INTO orders (user_id, status, total, address, shipping_cost, payment_method_id)
+       VALUES ($1, 'processing', $2, $3, $4, $5)
+       RETURNING id`,
+      [
+        userId,
+        total.toFixed(2),
+        address ? encryptField(address) : null,
+        shippingCost.toFixed(2),
+        paymentMethodId,
+      ]
     )
     const orderId = orderResult.rows[0].id
 

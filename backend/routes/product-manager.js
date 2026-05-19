@@ -2,8 +2,16 @@ const express = require('express')
 const authenticate = require('../middleware/auth')
 const requireProductManager = require('../middleware/product-manager')
 const pool = require('../db')
+const { decryptField } = require('../services/secure-fields')
 
 const router = express.Router()
+
+function serializeOrder(order) {
+  return {
+    ...order,
+    address: decryptField(order.address),
+  }
+}
 
 router.use(authenticate)
 router.use(requireProductManager)
@@ -341,7 +349,7 @@ router.get('/orders', async (req, res) => {
   )
 
   res.json({
-    orders: dataResult.rows,
+    orders: dataResult.rows.map(serializeOrder),
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   })
 })
@@ -388,7 +396,7 @@ router.get('/orders/:id', async (req, res) => {
     [req.params.id]
   )
 
-  res.json({ order: orderResult.rows[0], items: itemsResult.rows })
+  res.json({ order: serializeOrder(orderResult.rows[0]), items: itemsResult.rows })
 })
 
 // ─── Comments / Reviews ──────────────────────────────────────────────────────

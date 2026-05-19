@@ -37,6 +37,59 @@ function Toggle({ checked, onChange, label }) {
   )
 }
 
+function formatCardNumber(value) {
+  const raw = value.replace(/\D/g, '')
+  const isAmex = /^3[47]/.test(raw)
+  if (isAmex) {
+    const digits = raw.slice(0, 15)
+    return digits.replace(/^(\d{0,4})(\d{0,6})(\d{0,5})$/, (_, a, b, c) =>
+      [a, b, c].filter(Boolean).join(' ')
+    )
+  }
+  return raw
+    .slice(0, 16)
+    .replace(/(.{4})/g, '$1 ')
+    .trim()
+}
+
+function formatExpiry(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 4)
+  if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`
+  return digits
+}
+
+function buildAddressString({ line1, line2, city, postcode, country }) {
+  return [
+    line1.trim(),
+    line2.trim(),
+    [city.trim(), postcode.trim()].filter(Boolean).join(' '),
+    country.trim(),
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+function applyAddressString(address, setters) {
+  const lines = String(address || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  setters.setLine1(lines[0] || '')
+  if (lines.length >= 3) {
+    const hasLine2 = lines.length >= 4
+    const cityLine = (hasLine2 ? lines[2] : lines[1]).split(/\s+/)
+    setters.setLine2(hasLine2 ? lines[1] : '')
+    setters.setPostcode(cityLine.pop() || '')
+    setters.setCity(cityLine.join(' '))
+    setters.setCountry(hasLine2 ? lines[3] || '' : lines[2] || '')
+  } else {
+    setters.setLine2(lines[1] || '')
+    setters.setCity('')
+    setters.setPostcode('')
+    setters.setCountry('')
+  }
+}
+
 export default function AccountSettingsPage({ token, onProfileUpdate }) {
   // Profile
   const [name, setName] = useState('')
@@ -77,6 +130,21 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
   const [postcode, setPostcode] = useState('')
   const [country, setCountry] = useState('')
   const [addressSaved, setAddressSaved] = useState(false)
+  const [addressError, setAddressError] = useState('')
+  const [addressSaving, setAddressSaving] = useState(false)
+
+  // Payment methods
+  const [paymentMethods, setPaymentMethods] = useState([])
+  const [cardsLoading, setCardsLoading] = useState(true)
+  const [cardsSaving, setCardsSaving] = useState(false)
+  const [cardsError, setCardsError] = useState('')
+  const [cardSaved, setCardSaved] = useState(false)
+  const [cardForm, setCardForm] = useState({
+    cardholderName: '',
+    cardNumber: '',
+    expiry: '',
+    makeDefault: false,
+  })
 
   async function loadProfile(signal) {
     setProfileLoading(true)
@@ -92,7 +160,15 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
       setEmail(data.email || '')
       setTaxId(data.tax_id || '')
       setPendingEmail(data.pending_email || null)
-      if (data.home_address) setLine1(data.home_address)
+      if (data.home_address) {
+        applyAddressString(data.home_address, {
+          setLine1,
+          setLine2,
+          setCity,
+          setPostcode,
+          setCountry,
+        })
+      }
     } catch (err) {
       if (err.name === 'AbortError') return
       setProfileError(err.message || 'Could not connect to server')
@@ -101,13 +177,34 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
     }
   }
 
+  async function loadPaymentMethods(signal) {
+    setCardsLoading(true)
+    setCardsError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/payment-methods`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to load saved cards')
+      setPaymentMethods(data.paymentMethods || [])
+    } catch (err) {
+      if (err.name === 'AbortError') return
+      setCardsError(err.message || 'Could not connect to server')
+    } finally {
+      setCardsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!token) {
       setProfileLoading(false)
+      setCardsLoading(false)
       return
     }
     const controller = new AbortController()
     loadProfile(controller.signal)
+    loadPaymentMethods(controller.signal)
     return () => controller.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
@@ -259,10 +356,113 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
     }
   }
 
-  function handleAddressSave(e) {
+  async function handleAddressSave(e) {
     e.preventDefault()
-    setAddressSaved(true)
-    setTimeout(() => setAddressSaved(false), 2500)
+    setAddressError('')
+    setAddressSaving(true)
+    const homeAddress = buildAddressString({ line1, line2, city, postcode, country })
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me/address`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ home_address: homeAddress }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setAddressError(data.error || 'Failed to save address')
+      } else {
+        setAddressSaved(true)
+        setTimeout(() => setAddressSaved(false), 2500)
+      }
+    } catch {
+      setAddressError('Could not connect to server')
+    } finally {
+      setAddressSaving(false)
+    }
+  }
+
+  async function handleCardAdd(e) {
+    e.preventDefault()
+    setCardsError('')
+    setCardSaved(false)
+
+    if (!cardForm.cardholderName.trim() || !cardForm.cardNumber.trim() || !cardForm.expiry.trim()) {
+      setCardsError('Cardholder name, card number, and expiry are required.')
+      return
+    }
+
+    setCardsSaving(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/payment-methods`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(cardForm),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCardsError(data.error || 'Failed to save card')
+      } else {
+        setPaymentMethods((prev) => {
+          const next = prev.map((card) =>
+            data.paymentMethod.isDefault ? { ...card, isDefault: false } : card
+          )
+          return [data.paymentMethod, ...next]
+        })
+        setCardForm({ cardholderName: '', cardNumber: '', expiry: '', makeDefault: false })
+        setCardSaved(true)
+        setTimeout(() => setCardSaved(false), 2500)
+      }
+    } catch {
+      setCardsError('Could not connect to server')
+    } finally {
+      setCardsSaving(false)
+    }
+  }
+
+  async function handleMakeDefault(cardId) {
+    setCardsError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/payment-methods/${cardId}/default`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCardsError(data.error || 'Failed to update default card')
+      } else {
+        setPaymentMethods((prev) =>
+          prev.map((card) => ({ ...card, isDefault: card.id === data.paymentMethod.id }))
+        )
+      }
+    } catch {
+      setCardsError('Could not connect to server')
+    }
+  }
+
+  async function handleDeleteCard(cardId) {
+    setCardsError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/payment-methods/${cardId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCardsError(data.error || 'Failed to delete card')
+      } else {
+        setPaymentMethods((prev) => prev.filter((card) => card.id !== cardId))
+        loadPaymentMethods()
+      }
+    } catch {
+      setCardsError('Could not connect to server')
+    }
   }
 
   return (
@@ -478,6 +678,133 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
           </form>
         </Section>
 
+        {/* Payment Cards */}
+        <Section title="Payment Cards" description="Manage cards you can use during checkout.">
+          <div className="mb-5 grid gap-2">
+            {cardsLoading && <p className="m-0 text-[13px] text-[var(--text)]">Loading cards…</p>}
+            {!cardsLoading && paymentMethods.length === 0 && (
+              <p className="m-0 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-[13px] text-[var(--text)]">
+                No saved cards yet.
+              </p>
+            )}
+            {paymentMethods.map((card) => (
+              <div
+                key={card.id}
+                className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 max-[600px]:flex-col max-[600px]:items-start"
+              >
+                <div className="min-w-0">
+                  <p className="m-0 text-[14px] font-semibold text-[var(--text-h)]">
+                    {card.brand} ending in {card.last4}
+                    {card.isDefault && (
+                      <span className="ml-2 rounded-full bg-purple-400/12 px-2 py-0.5 text-[11px] text-purple-400">
+                        Default
+                      </span>
+                    )}
+                  </p>
+                  <p className="m-0 mt-0.5 text-[12px] text-[var(--text)]">
+                    {card.cardholderName} · Expires {card.expiry}
+                    {card.expired ? ' · Expired' : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {!card.isDefault && (
+                    <button
+                      type="button"
+                      onClick={() => handleMakeDefault(card.id)}
+                      className="cursor-pointer rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-[12px] font-semibold text-[var(--text)] transition-colors hover:border-purple-400/40 hover:text-purple-400"
+                    >
+                      Make Default
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCard(card.id)}
+                    className="cursor-pointer rounded-md border border-red-500/50 bg-transparent px-3 py-1.5 text-[12px] font-semibold text-red-500 transition-colors hover:bg-red-500 hover:text-white"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <form onSubmit={handleCardAdd}>
+            <div className="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1">
+              <div className="col-span-2 flex flex-col gap-1.5 max-[600px]:col-span-1">
+                <Label htmlFor="cardholder-name" className="text-[13px] text-[var(--text-h)]">
+                  Cardholder Name
+                </Label>
+                <Input
+                  id="cardholder-name"
+                  value={cardForm.cardholderName}
+                  onChange={(e) =>
+                    setCardForm((prev) => ({ ...prev, cardholderName: e.target.value }))
+                  }
+                  placeholder="Jane Smith"
+                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                />
+              </div>
+              <div className="col-span-2 flex flex-col gap-1.5 max-[600px]:col-span-1">
+                <Label htmlFor="card-number" className="text-[13px] text-[var(--text-h)]">
+                  Card Number
+                </Label>
+                <Input
+                  id="card-number"
+                  value={cardForm.cardNumber}
+                  inputMode="numeric"
+                  onChange={(e) =>
+                    setCardForm((prev) => ({
+                      ...prev,
+                      cardNumber: formatCardNumber(e.target.value),
+                    }))
+                  }
+                  placeholder="4242 4242 4242 4242"
+                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="card-expiry" className="text-[13px] text-[var(--text-h)]">
+                  Expiry
+                </Label>
+                <Input
+                  id="card-expiry"
+                  value={cardForm.expiry}
+                  inputMode="numeric"
+                  maxLength={5}
+                  onChange={(e) =>
+                    setCardForm((prev) => ({ ...prev, expiry: formatExpiry(e.target.value) }))
+                  }
+                  placeholder="MM/YY"
+                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                />
+              </div>
+              <label className="mt-6 flex cursor-pointer items-center gap-2 text-[13px] text-[var(--text-h)] max-[600px]:mt-0">
+                <input
+                  type="checkbox"
+                  checked={cardForm.makeDefault}
+                  onChange={(e) =>
+                    setCardForm((prev) => ({ ...prev, makeDefault: e.target.checked }))
+                  }
+                />
+                Make default
+              </label>
+            </div>
+            {cardsError && <p className="mt-3 mb-0 text-[13px] text-red-500">{cardsError}</p>}
+            <div className="mt-4 flex items-center justify-end gap-3.5">
+              {cardSaved && (
+                <span className="text-[13px] font-medium text-green-500">Card saved!</span>
+              )}
+              <button
+                type="submit"
+                disabled={cardsSaving}
+                className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {cardsSaving ? 'Saving…' : 'Save Card'}
+              </button>
+            </div>
+          </form>
+        </Section>
+
         {/* Notifications */}
         <Section title="Notifications" description="Choose what you'd like to hear about.">
           <Toggle
@@ -568,15 +895,17 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
                 className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
               />
             </div>
+            {addressError && <p className="-mt-2 mb-3 text-[13px] text-red-500">{addressError}</p>}
             <div className="mt-2 flex items-center justify-end gap-3.5">
               {addressSaved && (
                 <span className="text-[13px] font-medium text-green-500">Address saved!</span>
               )}
               <button
                 type="submit"
-                className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88"
+                disabled={addressSaving}
+                className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Save Address
+                {addressSaving ? 'Saving…' : 'Save Address'}
               </button>
             </div>
           </form>

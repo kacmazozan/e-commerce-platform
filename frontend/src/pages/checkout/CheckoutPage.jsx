@@ -70,14 +70,7 @@ function getCardType(number) {
 
 function formatCardNumber(value) {
   const raw = value.replace(/\D/g, '')
-  const isAmex = /^3[47]/.test(raw)
-  if (isAmex) {
-    const digits = raw.slice(0, 15)
-    return digits.replace(/^(\d{0,4})(\d{0,6})(\d{0,5})$/, (_, a, b, c) =>
-      [a, b, c].filter(Boolean).join(' ')
-    )
-  }
-  const digits = raw.slice(0, 16)
+  const digits = raw.slice(0, 19)
   return digits.replace(/(.{4})/g, '$1 ').trim()
 }
 
@@ -92,12 +85,42 @@ function validateExpiry(value) {
   if (!mm || !yy || mm.length !== 2 || yy.length !== 2) return false
   const month = parseInt(mm)
   if (month < 1 || month > 12) return false
-  const now = new Date()
-  const expYear = 2000 + parseInt(yy)
-  const expMonth = month
-  return (
-    expYear > now.getFullYear() || (expYear === now.getFullYear() && expMonth >= now.getMonth() + 1)
-  )
+  return true
+}
+
+function parseSavedAddress(value) {
+  const lines = String(value || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (lines.length === 0) return null
+  if (lines.length >= 5) {
+    const cityLine = lines[3].match(/^(.+?),\s*(.*?)\s+(\S+)$/)
+    return {
+      fullName: lines[0] || '',
+      address1: lines[1] || '',
+      address2: lines[2] || '',
+      city: cityLine?.[1] || '',
+      state: cityLine?.[2] || '',
+      zip: cityLine?.[3] || '',
+      country: lines[4] || '',
+    }
+  }
+
+  const hasLine2 = lines.length >= 4
+  const cityLine = (hasLine2 ? lines[2] : lines[1] || '').split(/\s+/)
+  const zip = cityLine.length > 1 ? cityLine.pop() : ''
+
+  return {
+    fullName: '',
+    address1: lines[0] || '',
+    address2: hasLine2 ? lines[1] || '' : '',
+    city: cityLine.join(' '),
+    state: '',
+    zip,
+    country: hasLine2 ? lines[3] || '' : lines[2] || '',
+  }
 }
 
 const inputCls =
@@ -181,10 +204,67 @@ export default function CheckoutPage({
   // ── Payment form ───────────────────────────────────
   const [payment, setPayment] = useState({ cardName: '', cardNumber: '', expiry: '', cvv: '' })
   const [paymentErrors, setPaymentErrors] = useState({})
+  const [paymentMethods, setPaymentMethods] = useState([])
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false)
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState('')
+  const [useNewCard, setUseNewCard] = useState(true)
+  const [savePaymentMethod, setSavePaymentMethod] = useState(false)
 
   // ── Submit state ───────────────────────────────────
   const [confirming, setConfirming] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+
+  useEffect(() => {
+    if (!token) return
+
+    const controller = new AbortController()
+
+    async function loadCustomerCheckoutData() {
+      setPaymentMethodsLoading(true)
+      try {
+        const [cardsRes, profileRes] = await Promise.all([
+          fetch(`${API_BASE}/api/payment-methods`, {
+            headers: { Authorization: `Bearer ${token}` },
+            signal: controller.signal,
+          }),
+          fetch(`${API_BASE}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+            signal: controller.signal,
+          }),
+        ])
+
+        if (cardsRes.ok) {
+          const data = await cardsRes.json()
+          const cards = data.paymentMethods || []
+          setPaymentMethods(cards)
+          const defaultCard = cards.find((card) => card.isDefault) || cards[0]
+          if (defaultCard) {
+            setSelectedPaymentMethodId(String(defaultCard.id))
+            setUseNewCard(false)
+          }
+        }
+
+        if (profileRes.ok) {
+          const data = await profileRes.json()
+          const savedAddress = parseSavedAddress(data.home_address)
+          if (savedAddress) {
+            setShipping((prev) =>
+              Object.values(prev).some(Boolean) ? prev : { ...prev, ...savedAddress }
+            )
+          }
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setPaymentMethods([])
+        }
+      } finally {
+        if (!controller.signal.aborted) setPaymentMethodsLoading(false)
+      }
+    }
+
+    loadCustomerCheckoutData()
+    return () => controller.abort()
+  }, [token])
 
   function clearShippingError(field) {
     setShippingErrors((p) => ({ ...p, [field]: undefined }))
@@ -197,10 +277,18 @@ export default function CheckoutPage({
     parseFloat(item.discounted_price != null ? item.discounted_price : item.price)
   const total = cartItems.reduce((sum, item) => sum + effectivePrice(item) * item.quantity, 0)
   const shippingCost = total >= 100 ? 0 : 4.99
-  const cardType = getCardType(payment.cardNumber)
-  const maskedCard = payment.cardNumber
-    ? '•••• •••• •••• ' + payment.cardNumber.replace(/\s/g, '').slice(-4).padStart(4, '•')
-    : '•••• •••• •••• ••••'
+  const selectedPaymentMethod = paymentMethods.find(
+    (method) => String(method.id) === String(selectedPaymentMethodId)
+  )
+  const cardType = useNewCard
+    ? getCardType(payment.cardNumber)
+    : selectedPaymentMethod?.brand || null
+  const maskedCard =
+    useNewCard && payment.cardNumber
+      ? '•••• •••• •••• ' + payment.cardNumber.replace(/\s/g, '').slice(-4).padStart(4, '•')
+      : selectedPaymentMethod
+        ? `•••• •••• •••• ${selectedPaymentMethod.last4}`
+        : '•••• •••• •••• ••••'
   const minutes = Math.floor(timeLeft / 60)
   const seconds = timeLeft % 60
   const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
@@ -216,16 +304,20 @@ export default function CheckoutPage({
     if (!shipping.country.trim()) se.country = 'Required'
 
     const pe = {}
-    if (!payment.cardName.trim()) pe.cardName = 'Required'
-    const rawCard = payment.cardNumber.replace(/\s/g, '')
-    const expectedLen = cardType === 'AMEX' ? 15 : 16
-    if (!rawCard) pe.cardNumber = 'Required'
-    else if (rawCard.length !== expectedLen) pe.cardNumber = `Must be ${expectedLen} digits`
-    if (!payment.expiry) pe.expiry = 'Required'
-    else if (!validateExpiry(payment.expiry)) pe.expiry = 'Invalid or expired date'
-    const cvvLen = cardType === 'AMEX' ? 4 : 3
-    if (!payment.cvv) pe.cvv = 'Required'
-    else if (payment.cvv.length !== cvvLen) pe.cvv = `Must be ${cvvLen} digits`
+    if (useNewCard) {
+      if (!payment.cardName.trim()) pe.cardName = 'Required'
+      const rawCard = payment.cardNumber.replace(/\s/g, '')
+      if (!rawCard) pe.cardNumber = 'Required'
+      else if (rawCard.length < 4 || rawCard.length > 19)
+        pe.cardNumber = 'Must be 4 to 19 digits'
+      if (!payment.expiry) pe.expiry = 'Required'
+      else if (!validateExpiry(payment.expiry)) pe.expiry = 'Invalid date'
+      if (!payment.cvv) pe.cvv = 'Required'
+      else if (payment.cvv.length < 3 || payment.cvv.length > 4)
+        pe.cvv = 'Must be 3 or 4 digits'
+    } else if (!selectedPaymentMethodId) {
+      pe.savedCard = 'Choose a saved card or enter a new one'
+    }
 
     setShippingErrors(se)
     setPaymentErrors(pe)
@@ -271,10 +363,22 @@ export default function CheckoutPage({
     setConfirming(true)
     setSubmitError(null)
     try {
+      const paymentBody = useNewCard
+        ? {
+            paymentMethod: {
+              cardholderName: payment.cardName,
+              cardNumber: payment.cardNumber,
+              expiry: payment.expiry,
+              cvv: payment.cvv,
+            },
+            savePaymentMethod,
+          }
+        : { paymentMethodId: Number(selectedPaymentMethodId) }
+
       const res = await fetch(`${API_BASE}/api/checkout/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ address: addressStr }),
+        body: JSON.stringify({ address: addressStr, ...paymentBody }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -508,6 +612,73 @@ export default function CheckoutPage({
                 Payment Details
               </h2>
 
+              {paymentMethods.length > 0 && (
+                <div className="mb-5 grid gap-2">
+                  {paymentMethods.map((method) => (
+                    <label
+                      key={method.id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                        !useNewCard && String(selectedPaymentMethodId) === String(method.id)
+                          ? 'border-purple-400/50 bg-purple-400/10'
+                          : 'border-[var(--border)] bg-[var(--bg)] hover:border-purple-400/30'
+                      } ${method.expired ? 'cursor-not-allowed opacity-55' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment-option"
+                        checked={
+                          !useNewCard && String(selectedPaymentMethodId) === String(method.id)
+                        }
+                        disabled={method.expired}
+                        onChange={() => {
+                          setUseNewCard(false)
+                          setSelectedPaymentMethodId(String(method.id))
+                          clearPaymentError('savedCard')
+                        }}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] font-semibold text-[var(--text-h)]">
+                          {method.brand} ending in {method.last4}
+                        </span>
+                        <span className="block text-[12px] text-[var(--text)]">
+                          {method.cardholderName} · Expires {method.expiry}
+                          {method.expired ? ' · Expired' : ''}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+
+                  <label
+                    className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                      useNewCard
+                        ? 'border-purple-400/50 bg-purple-400/10'
+                        : 'border-[var(--border)] bg-[var(--bg)] hover:border-purple-400/30'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment-option"
+                      checked={useNewCard}
+                      onChange={() => {
+                        setUseNewCard(true)
+                        clearPaymentError('savedCard')
+                      }}
+                    />
+                    <span className="text-[13px] font-semibold text-[var(--text-h)]">
+                      Use a new card
+                    </span>
+                  </label>
+
+                  {paymentErrors.savedCard && (
+                    <p className="m-0 text-[12px] text-red-400">{paymentErrors.savedCard}</p>
+                  )}
+                </div>
+              )}
+
+              {paymentMethodsLoading && (
+                <p className="m-0 mb-4 text-[12px] text-[var(--text)]">Loading saved cards…</p>
+              )}
+
               {/* Card preview */}
               <div
                 className="mb-6 h-[160px] w-full max-w-[300px] rounded-2xl p-5"
@@ -537,7 +708,9 @@ export default function CheckoutPage({
                       Card Holder
                     </p>
                     <p className="m-0 text-[13px] font-semibold tracking-wide text-white/85 uppercase">
-                      {payment.cardName || 'YOUR NAME'}
+                      {useNewCard
+                        ? payment.cardName || 'YOUR NAME'
+                        : selectedPaymentMethod?.cardholderName || 'YOUR NAME'}
                     </p>
                   </div>
                   <div className="text-right">
@@ -545,73 +718,88 @@ export default function CheckoutPage({
                       Expires
                     </p>
                     <p className="m-0 font-mono text-[13px] font-semibold text-white/85">
-                      {payment.expiry || 'MM/YY'}
+                      {useNewCard
+                        ? payment.expiry || 'MM/YY'
+                        : selectedPaymentMethod?.expiry || 'MM/YY'}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 max-[560px]:grid-cols-1">
-                <div className="col-span-2 max-[560px]:col-span-1">
-                  <Field label="Cardholder Name" required>
+              {useNewCard && (
+                <div className="grid grid-cols-2 gap-4 max-[560px]:grid-cols-1">
+                  <div className="col-span-2 max-[560px]:col-span-1">
+                    <Field label="Cardholder Name" required>
+                      <input
+                        className={paymentErrors.cardName ? inputErrCls : inputCls}
+                        placeholder="Jane Smith"
+                        value={payment.cardName}
+                        onChange={(e) => {
+                          setPayment((p) => ({ ...p, cardName: e.target.value.toUpperCase() }))
+                          clearPaymentError('cardName')
+                        }}
+                      />
+                    </Field>
+                  </div>
+                  <div className="col-span-2 max-[560px]:col-span-1">
+                    <Field label="Card Number" required>
+                      <input
+                        className={paymentErrors.cardNumber ? inputErrCls : inputCls}
+                        placeholder="1234 5678 9012 3456"
+                        value={payment.cardNumber}
+                        inputMode="numeric"
+                        onChange={(e) => {
+                          setPayment((p) => ({
+                            ...p,
+                            cardNumber: formatCardNumber(e.target.value),
+                          }))
+                          clearPaymentError('cardNumber')
+                        }}
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Expiry Date" required>
                     <input
-                      className={paymentErrors.cardName ? inputErrCls : inputCls}
-                      placeholder="Jane Smith"
-                      value={payment.cardName}
-                      onChange={(e) => {
-                        setPayment((p) => ({ ...p, cardName: e.target.value.toUpperCase() }))
-                        clearPaymentError('cardName')
-                      }}
-                    />
-                  </Field>
-                </div>
-                <div className="col-span-2 max-[560px]:col-span-1">
-                  <Field label="Card Number" required>
-                    <input
-                      className={paymentErrors.cardNumber ? inputErrCls : inputCls}
-                      placeholder="1234 5678 9012 3456"
-                      value={payment.cardNumber}
+                      className={paymentErrors.expiry ? inputErrCls : inputCls}
+                      placeholder="MM/YY"
+                      value={payment.expiry}
                       inputMode="numeric"
+                      maxLength={5}
                       onChange={(e) => {
-                        setPayment((p) => ({ ...p, cardNumber: formatCardNumber(e.target.value) }))
-                        clearPaymentError('cardNumber')
+                        setPayment((p) => ({ ...p, expiry: formatExpiry(e.target.value) }))
+                        clearPaymentError('expiry')
                       }}
                     />
                   </Field>
+                  <Field label={`CVV${cardType === 'AMEX' ? ' (4 digits)' : ''}`} required>
+                    <input
+                      className={paymentErrors.cvv ? inputErrCls : inputCls}
+                      placeholder={cardType === 'AMEX' ? '1234' : '123'}
+                      value={payment.cvv}
+                      inputMode="numeric"
+                      maxLength={cardType === 'AMEX' ? 4 : 3}
+                      type="password"
+                      onChange={(e) => {
+                        setPayment((p) => ({
+                          ...p,
+                          cvv: e.target.value
+                            .replace(/\D/g, '')
+                            .slice(0, cardType === 'AMEX' ? 4 : 3),
+                        }))
+                        clearPaymentError('cvv')
+                      }}
+                    />
+                  </Field>
+                  <label className="col-span-2 flex cursor-pointer items-center gap-2 text-[13px] text-[var(--text-h)] max-[560px]:col-span-1">
+                    <input
+                      type="checkbox"
+                      checked={savePaymentMethod}
+                      onChange={(e) => setSavePaymentMethod(e.target.checked)}
+                    />
+                    Save this card to my account
+                  </label>
                 </div>
-                <Field label="Expiry Date" required>
-                  <input
-                    className={paymentErrors.expiry ? inputErrCls : inputCls}
-                    placeholder="MM/YY"
-                    value={payment.expiry}
-                    inputMode="numeric"
-                    maxLength={5}
-                    onChange={(e) => {
-                      setPayment((p) => ({ ...p, expiry: formatExpiry(e.target.value) }))
-                      clearPaymentError('expiry')
-                    }}
-                  />
-                </Field>
-                <Field label={`CVV${cardType === 'AMEX' ? ' (4 digits)' : ''}`} required>
-                  <input
-                    className={paymentErrors.cvv ? inputErrCls : inputCls}
-                    placeholder={cardType === 'AMEX' ? '1234' : '123'}
-                    value={payment.cvv}
-                    inputMode="numeric"
-                    maxLength={cardType === 'AMEX' ? 4 : 3}
-                    type="password"
-                    onChange={(e) => {
-                      setPayment((p) => ({
-                        ...p,
-                        cvv: e.target.value
-                          .replace(/\D/g, '')
-                          .slice(0, cardType === 'AMEX' ? 4 : 3),
-                      }))
-                      clearPaymentError('cvv')
-                    }}
-                  />
-                </Field>
-              </div>
+              )}
             </section>
           </div>
 

@@ -4,6 +4,7 @@ const requireSalesManager = require('../middleware/sales-manager')
 const pool = require('../db')
 const { buildInvoiceData, generateInvoicePdf, inferCustomerName } = require('../services/invoice')
 const PDFDocument = require('pdfkit')
+const { decryptField } = require('../services/secure-fields')
 
 const router = express.Router()
 
@@ -18,13 +19,14 @@ function invoiceNumberFor(order) {
 }
 
 function buildInvoiceFromOrder(order, items) {
+  const address = decryptField(order.address)
   return buildInvoiceData(
     {
       invoice_number: invoiceNumberFor(order),
       order_id: String(order.id),
       customer_name: inferCustomerName(order.user_email),
       customer_email: order.user_email,
-      customer_address: order.address || 'Address not provided',
+      customer_address: address || 'Address not provided',
       shipping_cost: Number(order.shipping_cost ?? 0),
       items: items.map((item) => ({
         description: item.product_name,
@@ -265,7 +267,7 @@ router.get('/:orderId', async (req, res) => {
     order: {
       id: loaded.order.id,
       status: loaded.order.status,
-      address: loaded.order.address,
+      address: decryptField(loaded.order.address),
       user_id: loaded.order.user_id,
       user_email: loaded.order.user_email,
       created_at: loaded.order.created_at,

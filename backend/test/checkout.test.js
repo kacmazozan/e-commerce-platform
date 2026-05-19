@@ -11,6 +11,7 @@ jest.mock('../services/invoice-workflow', () => ({
 
 const pool = require('../db')
 const { queueInvoiceRequest } = require('../services/invoice-workflow')
+const { decryptField, encryptField } = require('../services/secure-fields')
 
 process.env.JWT_SECRET = 'test-secret'
 
@@ -21,6 +22,14 @@ const userToken = jwt.sign(
   { userId: 7, email: 'user@example.com', role: 'customer' },
   'test-secret'
 )
+const validPayment = {
+  paymentMethod: {
+    cardholderName: 'Jane Smith',
+    cardNumber: '4242 4242 4242 4242',
+    expiry: '12/40',
+    cvv: '123',
+  },
+}
 
 function makeClient(queryResponses = []) {
   let callCount = 0
@@ -249,13 +258,24 @@ describe('POST /api/checkout/confirm', () => {
     expect(res.status).toBe(401)
   })
 
+  it('returns 400 when no payment details are provided', async () => {
+    const res = await request(app)
+      .post('/api/checkout/confirm')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ address: '123 Main St' })
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('Cardholder name is required')
+    expect(pool.query).not.toHaveBeenCalled()
+  })
+
   it('returns 409 when reservation is expired or missing', async () => {
     pool.query.mockResolvedValueOnce({ rows: [] }) // no valid reservations
 
     const res = await request(app)
       .post('/api/checkout/confirm')
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ address: '123 Main St' })
+      .send({ address: '123 Main St', ...validPayment })
 
     expect(res.status).toBe(409)
     expect(res.body.error).toContain('Reservation expired')
@@ -293,7 +313,7 @@ describe('POST /api/checkout/confirm', () => {
     const res = await request(app)
       .post('/api/checkout/confirm')
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ address: '123 Main St' })
+      .send({ address: '123 Main St', ...validPayment })
 
     expect(res.status).toBe(200)
     expect(res.body).toHaveProperty('order_id')
@@ -318,6 +338,124 @@ describe('POST /api/checkout/confirm', () => {
       shipping_cost: 4.99,
       items: [{ description: 'Widget', quantity: 2, unit_price: 9.99 }],
     })
+
+    const orderInsert = client.query.mock.calls.find(
+      (call) => typeof call[0] === 'string' && call[0].includes('INSERT INTO orders')
+    )
+    expect(orderInsert[1][2]).toMatch(/^enc:v1:/)
+    expect(decryptField(orderInsert[1][2])).toBe('123 Main St')
+  })
+
+  it('uses a saved payment method selected by the customer', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 12,
+          expiry_month_enc: encryptField('12'),
+          expiry_year_enc: encryptField('2040'),
+        },
+      ],
+    })
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        {
+          product_id: 1,
+          quantity: 1,
+          size: 'M',
+          name: 'Widget',
+          price: '9.99',
+          discount_percent: null,
+          effective_price: '9.99',
+        },
+      ],
+    })
+    pool.query.mockResolvedValueOnce({ rows: [{ value: '100' }] })
+
+    const client = makeClient([
+      { rows: [] }, // BEGIN
+      { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE
+      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock
+      { rows: [{ id: 56 }] }, // INSERT order RETURNING id
+      { rows: [] }, // INSERT order_items
+      { rows: [] }, // DELETE cart_items
+      { rows: [] }, // DELETE stock_reservations
+      { rows: [] }, // COMMIT
+    ])
+    pool.connect.mockResolvedValueOnce(client)
+
+    const res = await request(app)
+      .post('/api/checkout/confirm')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ address: '123 Main St', paymentMethodId: 12 })
+
+    expect(res.status).toBe(200)
+    const orderInsert = client.query.mock.calls.find(
+      (call) => typeof call[0] === 'string' && call[0].includes('INSERT INTO orders')
+    )
+    expect(orderInsert[1][4]).toBe(12)
+  })
+
+  it('saves a new checkout card without storing CVV', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        {
+          product_id: 1,
+          quantity: 1,
+          size: '',
+          name: 'Widget',
+          price: '9.99',
+          discount_percent: null,
+          effective_price: '9.99',
+        },
+      ],
+    })
+    pool.query.mockResolvedValueOnce({ rows: [{ value: '100' }] })
+
+    const savedCardRow = {
+      id: 33,
+      brand: 'VISA',
+      last4: '4242',
+      cardholder_name_enc: encryptField('Jane Smith'),
+      card_number_enc: encryptField('4242424242424242'),
+      expiry_month_enc: encryptField('12'),
+      expiry_year_enc: encryptField('2040'),
+      fingerprint_hash: 'f'.repeat(64),
+      is_default: true,
+      created_at: new Date().toISOString(),
+    }
+    const client = makeClient([
+      { rows: [] }, // BEGIN
+      { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE
+      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock
+      { rows: [] }, // existing saved card lookup
+      { rows: [{ count: 0 }] }, // saved-card count
+      { rows: [] }, // clear defaults
+      { rows: [savedCardRow] }, // INSERT customer_payment_methods
+      { rows: [{ id: 57 }] }, // INSERT order RETURNING id
+      { rows: [] }, // INSERT order_items
+      { rows: [] }, // DELETE cart_items
+      { rows: [] }, // DELETE stock_reservations
+      { rows: [] }, // COMMIT
+    ])
+    pool.connect.mockResolvedValueOnce(client)
+
+    const res = await request(app)
+      .post('/api/checkout/confirm')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ address: '123 Main St', ...validPayment, savePaymentMethod: true })
+
+    expect(res.status).toBe(200)
+    const cardInsert = client.query.mock.calls.find(
+      (call) =>
+        typeof call[0] === 'string' && call[0].includes('INSERT INTO customer_payment_methods')
+    )
+    expect(cardInsert).toBeDefined()
+    expect(cardInsert[1]).not.toContain('123')
+
+    const orderInsert = client.query.mock.calls.find(
+      (call) => typeof call[0] === 'string' && call[0].includes('INSERT INTO orders')
+    )
+    expect(orderInsert[1][4]).toBe(33)
   })
 
   it('accepts confirm without address', async () => {
@@ -351,7 +489,7 @@ describe('POST /api/checkout/confirm', () => {
     const res = await request(app)
       .post('/api/checkout/confirm')
       .set('Authorization', `Bearer ${userToken}`)
-      .send({})
+      .send(validPayment)
 
     expect(res.status).toBe(200)
     expect(res.body.order_id).toBe(99)
@@ -389,7 +527,7 @@ describe('POST /api/checkout/confirm', () => {
     const res = await request(app)
       .post('/api/checkout/confirm')
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ address: '123 Main St' })
+      .send({ address: '123 Main St', ...validPayment })
 
     expect(res.status).toBe(200)
 
@@ -449,7 +587,7 @@ describe('POST /api/checkout/confirm', () => {
     const res = await request(app)
       .post('/api/checkout/confirm')
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ address: '123 Main St' })
+      .send({ address: '123 Main St', ...validPayment })
 
     expect(res.status).toBe(409)
     expect(res.body.error).toContain('Insufficient stock')
@@ -468,7 +606,7 @@ describe('POST /api/checkout/confirm', () => {
     const res = await request(app)
       .post('/api/checkout/confirm')
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ address: '123 Main St' })
+      .send({ address: '123 Main St', ...validPayment })
 
     expect(res.status).toBe(500)
   })
