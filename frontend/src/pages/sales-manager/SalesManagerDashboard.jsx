@@ -1,33 +1,71 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import DashboardLayout from '../../components/DashboardLayout'
+import SMOverview from './SMOverview'
 import PriceManagement from './PriceManagement'
 import DiscountManagement from './DiscountManagement'
 import SMInvoices from './SMInvoices'
+import RefundsManagement from './RefundsManagement'
 import { decodeJwtPayload } from '../../utils/jwt'
 
 const sections = [
+  { key: 'overview', label: 'Overview', icon: <OverviewIcon /> },
   { key: 'products', label: 'Products', icon: <PriceTagIcon /> },
   { key: 'discounts', label: 'Discounts', icon: <DiscountIcon /> },
   { key: 'invoices', label: 'Invoices', icon: <InvoiceIcon /> },
+  { key: 'refunds', label: 'Refunds', icon: <RefundIcon /> },
 ]
 
+const validKeys = sections.map((s) => s.key)
+
 export default function SalesManagerDashboard({ token, onLogout }) {
-  const [activeSection, setActiveSection] = useState('products')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab')
+  const [activeSection, setActiveSection] = useState(
+    validKeys.includes(initialTab) ? initialTab : 'overview'
+  )
   const email = decodeJwtPayload(token)?.email
+
+  function handleSectionChange(key) {
+    setActiveSection(key)
+    setSearchParams({ tab: key }, { replace: true })
+  }
 
   return (
     <DashboardLayout
       title="FIER Sales Manager"
       sections={sections}
       activeSection={activeSection}
-      onSectionChange={setActiveSection}
+      onSectionChange={handleSectionChange}
       onLogout={onLogout}
       userEmail={email}
     >
+      {activeSection === 'overview' && (
+        <SMOverview token={token} onNavigate={handleSectionChange} />
+      )}
       {activeSection === 'products' && <PriceManagement token={token} />}
       {activeSection === 'discounts' && <DiscountManagement token={token} />}
       {activeSection === 'invoices' && <SMInvoices token={token} />}
+      {activeSection === 'refunds' && <RefundsManagement token={token} />}
     </DashboardLayout>
+  )
+}
+
+function OverviewIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+    </svg>
   )
 }
 
@@ -79,6 +117,22 @@ function InvoiceIcon() {
       <line x1="16" y1="13" x2="8" y2="13" />
       <line x1="16" y1="17" x2="8" y2="17" />
       <polyline points="10 9 9 9 8 9" />
+    </svg>
+  )
+}
+
+function RefundIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="1 4 1 10 7 10" />
+      <path d="M3.51 15a9 9 0 1 0 .49-4.95" />
     </svg>
   )
 }
