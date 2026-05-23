@@ -17,11 +17,7 @@ exports.up = (pgm) => {
     'UNIQUE (product_id, size)'
   )
 
-  pgm.addConstraint(
-    'product_size_stock',
-    'product_size_stock_stock_check',
-    'CHECK (stock >= 0)'
-  )
+  pgm.addConstraint('product_size_stock', 'product_size_stock_stock_check', 'CHECK (stock >= 0)')
 
   // Distribute existing stock evenly across sizes for all products that have sizes defined
   pgm.sql(`
