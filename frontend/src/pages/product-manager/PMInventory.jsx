@@ -256,9 +256,7 @@ function PMInventory({ token }) {
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(p.total_stock ?? p.stock)}`}
                         >
                           {p.total_stock ?? p.stock}
-                          {isSized(p) && (
-                            <span className="ml-1 opacity-60">total</span>
-                          )}
+                          {isSized(p) && <span className="ml-1 opacity-60">total</span>}
                         </span>
                       )}
                     </td>
