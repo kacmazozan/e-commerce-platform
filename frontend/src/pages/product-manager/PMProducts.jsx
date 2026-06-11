@@ -100,11 +100,15 @@ function PMProducts({ token }) {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to create product')
     if (sizeStocks && Object.keys(sizeStocks).length > 0) {
-      await fetch(`${API}/${data.product.id}/size-stock`, {
+      const stockRes = await fetch(`${API}/${data.product.id}/size-stock`, {
         method: 'PUT',
         headers: authHeaders,
         body: JSON.stringify({ stocks: sizeStocks }),
       })
+      if (!stockRes.ok) {
+        const stockData = await stockRes.json().catch(() => ({}))
+        throw new Error(stockData.error || 'Product created but size stocks failed to save')
+      }
     }
     setModal(null)
     fetchProducts(pagination.page)
@@ -119,11 +123,15 @@ function PMProducts({ token }) {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to update product')
     if (sizeStocks && Object.keys(sizeStocks).length > 0) {
-      await fetch(`${API}/${productId}/size-stock`, {
+      const stockRes = await fetch(`${API}/${productId}/size-stock`, {
         method: 'PUT',
         headers: authHeaders,
         body: JSON.stringify({ stocks: sizeStocks }),
       })
+      if (!stockRes.ok) {
+        const stockData = await stockRes.json().catch(() => ({}))
+        throw new Error(stockData.error || 'Product updated but size stocks failed to save')
+      }
     }
     setModal(null)
     fetchProducts(pagination.page)
@@ -169,7 +177,7 @@ function PMProducts({ token }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="button" type="submit" className={btnSearch}>
+          <button type="submit" className={btnSearch}>
             Search
           </button>
         </form>
@@ -626,7 +634,7 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
             <button type="button" className={btnBase} onClick={onClose}>
               Cancel
             </button>
-            <button type="button" type="submit" className={btnCreate} disabled={saving}>
+            <button type="submit" className={btnCreate} disabled={saving}>
               {saving ? 'Saving…' : mode === 'create' ? 'Create' : 'Save Changes'}
             </button>
           </div>

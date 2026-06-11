@@ -160,20 +160,41 @@ router.put('/products/:id/size-stock', async (req, res) => {
     return res.status(400).json({ error: 'stocks must be an object mapping size to quantity' })
   }
 
+  const productSizes = product.rows[0].sizes || []
   for (const [size, qty] of Object.entries(stocks)) {
+    if (!productSizes.includes(size)) {
+      return res.status(400).json({ error: `Size ${size} is not defined for this product` })
+    }
     const parsed = parseInt(qty, 10)
     if (!Number.isFinite(parsed) || parsed < 0) {
       return res.status(400).json({ error: `Invalid stock value for size ${size}` })
     }
   }
 
-  for (const [size, qty] of Object.entries(stocks)) {
-    await pool.query(
-      `INSERT INTO product_size_stock (product_id, size, stock)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (product_id, size) DO UPDATE SET stock = EXCLUDED.stock`,
-      [productId, size, parseInt(qty, 10)]
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    for (const [size, qty] of Object.entries(stocks)) {
+      await client.query(
+        `INSERT INTO product_size_stock (product_id, size, stock)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (product_id, size) DO UPDATE SET stock = EXCLUDED.stock`,
+        [productId, size, parseInt(qty, 10)]
+      )
+    }
+    // products.stock is the aggregate the storefront reads — keep it equal to the per-size sum
+    await client.query(
+      `UPDATE products SET stock = COALESCE(
+         (SELECT SUM(stock) FROM product_size_stock WHERE product_id = $1), 0
+       ), updated_at = NOW() WHERE id = $1`,
+      [productId]
     )
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
   }
 
   const result = await pool.query(
@@ -375,7 +396,9 @@ router.put('/products/:id', async (req, res) => {
     params
   )
 
-  // Sync product_size_stock: add rows for any newly added sizes (stock=0), preserve existing
+  // Sync product_size_stock: add rows for newly added sizes (stock=0), preserve
+  // existing rows, and drop rows for sizes that were removed so they no longer
+  // count toward the per-size total.
   if (sizes !== undefined) {
     const sizesArr = Array.isArray(sizes) && sizes.length > 0 ? sizes : null
     if (sizesArr) {
@@ -385,6 +408,12 @@ router.put('/products/:id', async (req, res) => {
          ON CONFLICT (product_id, size) DO NOTHING`,
         [productId, sizesArr]
       )
+      await pool.query(
+        `DELETE FROM product_size_stock WHERE product_id = $1 AND size != ALL($2::text[])`,
+        [productId, sizesArr]
+      )
+    } else {
+      await pool.query(`DELETE FROM product_size_stock WHERE product_id = $1`, [productId])
     }
   }
 

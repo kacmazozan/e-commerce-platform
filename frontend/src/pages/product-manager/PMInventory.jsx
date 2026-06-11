@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { Fragment, useState, useEffect, useCallback } from 'react'
 import API_BASE from '../../api'
 import {
   btnBase,
@@ -216,7 +216,7 @@ function PMInventory({ token }) {
               </tr>
             ) : (
               products.map((p) => (
-                <>
+                <Fragment key={p.id}>
                   <tr key={p.id} className="transition-colors hover:bg-[var(--card-bg)]/60">
                     <td className={tdClass}>{p.id}</td>
                     <td className={tdClass}>{p.name}</td>
@@ -311,7 +311,7 @@ function PMInventory({ token }) {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))
             )}
           </tbody>

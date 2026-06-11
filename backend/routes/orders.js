@@ -112,12 +112,13 @@ router.patch('/:id/cancel', async (req, res) => {
           'UPDATE product_size_stock SET stock = stock + $1 WHERE product_id = $2 AND size = $3',
           [item.quantity, item.product_id, item.size]
         )
-      } else {
-        await client.query(
-          'UPDATE products SET stock = stock + $1, updated_at = NOW() WHERE id = $2',
-          [item.quantity, item.product_id]
-        )
       }
+      // products.stock is the aggregate total and must be restored either way —
+      // public routes derive availability from it.
+      await client.query(
+        'UPDATE products SET stock = stock + $1, updated_at = NOW() WHERE id = $2',
+        [item.quantity, item.product_id]
+      )
     }
 
     const updateResult = await client.query(

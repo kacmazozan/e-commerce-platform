@@ -182,6 +182,14 @@ router.post('/confirm', async (req, res) => {
            RETURNING product_id`,
           [r.quantity, r.product_id, r.size]
         )
+        // Keep the aggregate products.stock in sync — public routes derive
+        // availability from it (see products.js available_stock).
+        if (upd.rowCount > 0) {
+          await client.query(
+            'UPDATE products SET stock = GREATEST(0, stock - $1), updated_at = NOW() WHERE id = $2',
+            [r.quantity, r.product_id]
+          )
+        }
       } else {
         upd = await client.query(
           'UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2 AND stock >= $1 RETURNING id',
