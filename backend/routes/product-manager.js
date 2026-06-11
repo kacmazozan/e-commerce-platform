@@ -1,8 +1,29 @@
 const express = require('express')
+const path = require('path')
+const fs = require('fs')
+const multer = require('multer')
 const authenticate = require('../middleware/auth')
 const requireProductManager = require('../middleware/product-manager')
 const pool = require('../db')
 const { decryptField } = require('../services/secure-fields')
+
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads')
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true })
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || '.jpg'
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`)
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true)
+    else cb(new Error('Only image files are allowed'))
+  },
+})
 
 const router = express.Router()
 
@@ -616,6 +637,18 @@ router.put('/comments/:id/reject', async (req, res) => {
   )
   if (result.rows.length === 0) return res.status(404).json({ error: 'Comment not found' })
   res.json({ comment: result.rows[0] })
+})
+
+// ─── Image Upload ────────────────────────────────────────────────────────────
+
+// POST /api/product-manager/upload
+router.post('/upload', (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message })
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
+    const baseUrl = `${req.protocol}://${req.get('host')}`
+    res.json({ url: `${baseUrl}/uploads/${req.file.filename}` })
+  })
 })
 
 // ─── Product Images ──────────────────────────────────────────────────────────
