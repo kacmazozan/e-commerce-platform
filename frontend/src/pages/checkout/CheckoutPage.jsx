@@ -85,7 +85,11 @@ function validateExpiry(value) {
   if (!mm || !yy || mm.length !== 2 || yy.length !== 2) return false
   const month = parseInt(mm)
   if (month < 1 || month > 12) return false
-  return true
+  const now = new Date()
+  const expYear = 2000 + parseInt(yy)
+  return (
+    expYear > now.getFullYear() || (expYear === now.getFullYear() && month >= now.getMonth() + 1)
+  )
 }
 
 function parseSavedAddress(value) {
@@ -237,7 +241,9 @@ export default function CheckoutPage({
           const data = await cardsRes.json()
           const cards = data.paymentMethods || []
           setPaymentMethods(cards)
-          const defaultCard = cards.find((card) => card.isDefault) || cards[0]
+          // Never auto-select an expired card — its radio is disabled in the UI
+          const usable = cards.filter((card) => !card.expired)
+          const defaultCard = usable.find((card) => card.isDefault) || usable[0]
           if (defaultCard) {
             setSelectedPaymentMethodId(String(defaultCard.id))
             setUseNewCard(false)
@@ -255,7 +261,11 @@ export default function CheckoutPage({
         }
       } catch (err) {
         if (err.name !== 'AbortError') {
+          // Reset the whole selection state — otherwise the saved-card picker
+          // disappears while useNewCard stays false, hiding all payment inputs
           setPaymentMethods([])
+          setSelectedPaymentMethodId('')
+          setUseNewCard(true)
         }
       } finally {
         if (!controller.signal.aborted) setPaymentMethodsLoading(false)
@@ -313,8 +323,15 @@ export default function CheckoutPage({
       else if (!validateExpiry(payment.expiry)) pe.expiry = 'Invalid date'
       if (!payment.cvv) pe.cvv = 'Required'
       else if (payment.cvv.length < 3 || payment.cvv.length > 4) pe.cvv = 'Must be 3 or 4 digits'
-    } else if (!selectedPaymentMethodId) {
-      pe.savedCard = 'Choose a saved card or enter a new one'
+    } else {
+      const selected = paymentMethods.find(
+        (method) => String(method.id) === String(selectedPaymentMethodId)
+      )
+      if (!selected) {
+        pe.savedCard = 'Choose a saved card or enter a new one'
+      } else if (selected.expired) {
+        pe.savedCard = 'Selected card is expired. Choose another card or enter a new one'
+      }
     }
 
     setShippingErrors(se)

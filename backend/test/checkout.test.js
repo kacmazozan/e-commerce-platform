@@ -395,6 +395,44 @@ describe('POST /api/checkout/confirm', () => {
     expect(orderInsert[1][4]).toBe(12)
   })
 
+  it('rejects an expired saved payment method', async () => {
+    pool.query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 12,
+          expiry_month_enc: encryptField('1'),
+          expiry_year_enc: encryptField('2020'),
+        },
+      ],
+    })
+
+    const res = await request(app)
+      .post('/api/checkout/confirm')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ address: '123 Main St', paymentMethodId: 12 })
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/expired/i)
+  })
+
+  it('rejects an expired new card', async () => {
+    const res = await request(app)
+      .post('/api/checkout/confirm')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        address: '123 Main St',
+        paymentMethod: {
+          cardholderName: 'Jane Smith',
+          cardNumber: '4242 4242 4242 4242',
+          expiry: '01/20',
+          cvv: '123',
+        },
+      })
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('Card is expired')
+  })
+
   it('saves a new checkout card without storing CVV', async () => {
     pool.query.mockResolvedValueOnce({
       rows: [

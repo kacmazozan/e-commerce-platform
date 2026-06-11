@@ -63,6 +63,7 @@ function normalizeCardPayload(payload = {}, { requireCvv = false } = {}) {
     return { error: 'Card number must be 4 to 19 digits' }
   }
   if (!validateExpiry(month, year)) return { error: 'Expiry date is invalid' }
+  if (isExpired(month, year)) return { error: 'Card is expired' }
   if (requireCvv && (cvv.length < 3 || cvv.length > 4)) {
     return { error: 'CVV must be 3 or 4 digits' }
   }

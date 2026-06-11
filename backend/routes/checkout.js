@@ -3,8 +3,12 @@ const authenticate = require('../middleware/auth')
 const pool = require('../db')
 const { inferCustomerName } = require('../services/invoice')
 const { queueInvoiceRequest } = require('../services/invoice-workflow')
-const { encryptField } = require('../services/secure-fields')
-const { ensureSavedPaymentMethod, normalizeCardPayload } = require('../services/payment-methods')
+const { decryptField, encryptField } = require('../services/secure-fields')
+const {
+  ensureSavedPaymentMethod,
+  isExpired,
+  normalizeCardPayload,
+} = require('../services/payment-methods')
 
 const router = express.Router()
 router.use(authenticate)
@@ -18,7 +22,7 @@ async function resolveStoredPaymentMethod(userId, paymentMethodId) {
   }
 
   const result = await pool.query(
-    `SELECT id
+    `SELECT id, expiry_month_enc, expiry_year_enc
      FROM customer_payment_methods
      WHERE id = $1 AND user_id = $2`,
     [id, userId]
@@ -26,6 +30,13 @@ async function resolveStoredPaymentMethod(userId, paymentMethodId) {
 
   const row = result.rows[0]
   if (!row) return { error: 'Saved card not found' }
+
+  // The UI disables expired saved cards, but enforce it server-side too
+  const expiryMonth = Number(decryptField(row.expiry_month_enc))
+  const expiryYear = Number(decryptField(row.expiry_year_enc))
+  if (isExpired(expiryMonth, expiryYear)) {
+    return { error: 'Saved card is expired. Please choose another card or enter a new one.' }
+  }
 
   return { paymentMethodId: id }
 }
@@ -160,7 +171,7 @@ router.delete('/reserve', async (req, res) => {
 // Body: { address } — verifies reservation still valid, hard-decrements stock, creates order, clears cart.
 router.post('/confirm', async (req, res) => {
   const userId = req.user.userId
-  const address = (req.body.address || '').trim() || null
+  const address = typeof req.body.address === 'string' ? req.body.address.trim() || null : null
   const payment = await resolveCheckoutPayment(req, userId)
   if (payment.error) {
     return res.status(400).json({ error: payment.error })

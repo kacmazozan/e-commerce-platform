@@ -6,22 +6,30 @@ const HMAC_SALT = 'fier-sensitive-hmac-v1'
 
 let warnedAboutFallback = false
 
+// scrypt derivation costs tens of milliseconds — cache per raw value so list
+// endpoints that decrypt many rows don't re-derive the key on every field.
+const keyCache = new Map()
+
 function decodeKey(raw) {
   const trimmed = String(raw || '').trim()
   if (!trimmed) return null
+  if (keyCache.has(trimmed)) return keyCache.get(trimmed)
 
+  let key
   if (/^[a-f0-9]{64}$/i.test(trimmed)) {
-    return Buffer.from(trimmed, 'hex')
+    key = Buffer.from(trimmed, 'hex')
+  } else {
+    try {
+      const decoded = Buffer.from(trimmed, 'base64')
+      if (decoded.length === 32) key = decoded
+    } catch {
+      // Fall through to passphrase derivation.
+    }
+    if (!key) key = crypto.scryptSync(trimmed, KEY_SALT, 32)
   }
 
-  try {
-    const decoded = Buffer.from(trimmed, 'base64')
-    if (decoded.length === 32) return decoded
-  } catch {
-    // Fall through to passphrase derivation.
-  }
-
-  return crypto.scryptSync(trimmed, KEY_SALT, 32)
+  keyCache.set(trimmed, key)
+  return key
 }
 
 function getEncryptionKey() {
