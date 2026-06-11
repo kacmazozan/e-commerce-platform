@@ -10,8 +10,8 @@ async function fetchCart(userId) {
     `SELECT ci.product_id AS id, p.name, p.price, p.category, ci.quantity, ci.size,
             GREATEST(0,
               CASE
-                WHEN ci.size != '' AND pss.stock IS NOT NULL
-                THEN pss.stock - COALESCE(
+                WHEN ci.size != ''
+                THEN COALESCE(pss.stock, 0) - COALESCE(
                   (SELECT SUM(sr.quantity) FROM stock_reservations sr
                    WHERE sr.product_id = p.id AND sr.size = ci.size AND sr.expires_at > NOW()), 0)
                 ELSE p.stock - COALESCE(

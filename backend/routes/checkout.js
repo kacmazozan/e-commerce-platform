@@ -51,7 +51,7 @@ router.post('/reserve', async (req, res) => {
       )
 
       const productResult = await client.query(
-        'SELECT name, stock FROM products WHERE id = $1 FOR UPDATE',
+        'SELECT name, stock, sizes FROM products WHERE id = $1 FOR UPDATE',
         [product.id]
       )
 
@@ -74,6 +74,10 @@ router.post('/reserve', async (req, res) => {
           [product.id, product.size]
         )
         stock = sizeStockResult.rows.length > 0 ? sizeStockResult.rows[0].stock : 0
+      } else if (productResult.rows[0].sizes?.length > 0) {
+        // Sized product reserved without a size (API misuse) — never fall back to
+        // the aggregate, that could oversell an individual size at confirm.
+        stock = 0
       } else {
         stock = productResult.rows[0].stock
       }

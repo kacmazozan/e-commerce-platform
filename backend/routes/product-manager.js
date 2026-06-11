@@ -412,6 +412,13 @@ router.put('/products/:id', async (req, res) => {
         `DELETE FROM product_size_stock WHERE product_id = $1 AND size != ALL($2::text[])`,
         [productId, sizesArr]
       )
+      // Removed sizes may have carried stock — resync the aggregate the storefront reads
+      await pool.query(
+        `UPDATE products SET stock = COALESCE(
+           (SELECT SUM(stock) FROM product_size_stock WHERE product_id = $1), 0
+         ), updated_at = NOW() WHERE id = $1`,
+        [productId]
+      )
     } else {
       await pool.query(`DELETE FROM product_size_stock WHERE product_id = $1`, [productId])
     }

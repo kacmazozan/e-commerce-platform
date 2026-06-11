@@ -22,6 +22,18 @@ const thClass =
 const tdClass = 'px-4 py-3 text-[var(--text-h)]'
 const emptyClass = 'px-4 py-8 text-center text-[var(--text)]'
 
+function parseSizesInput(input) {
+  // De-duplicate so "S, S" can't produce duplicate React keys or double size rows
+  return Array.from(
+    new Set(
+      input
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean)
+    )
+  )
+}
+
 function stockBadgeClass(stock) {
   const n = parseInt(stock)
   if (n === 0) return 'bg-red-500/10 text-red-400 border-0'
@@ -395,10 +407,7 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
     setError('')
     setSaving(true)
     try {
-      const sizes = sizesInput
-        .split(',')
-        .map((s) => s.trim().toUpperCase())
-        .filter(Boolean)
+      const sizes = parseSizesInput(sizesInput)
 
       let sizeStocksToSave = null
       const body = {
@@ -475,10 +484,7 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
             />
           </Field>
           {(() => {
-            const parsedSizes = sizesInput
-              .split(',')
-              .map((s) => s.trim().toUpperCase())
-              .filter(Boolean)
+            const parsedSizes = parseSizesInput(sizesInput)
             return parsedSizes.length > 0 ? (
               <Field label="Stock per Size">
                 <div className="flex flex-wrap gap-3">
