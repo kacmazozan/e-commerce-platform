@@ -66,7 +66,7 @@ router.patch('/:id/approve', async (req, res) => {
 
     const { rows } = await client.query(
       `SELECT r.id, r.status, r.refund_amount, r.user_id,
-              oi.product_id, oi.quantity,
+              oi.product_id, oi.quantity, oi.size,
               p.name AS product_name,
               o.created_at AS purchase_date
        FROM refunds r
@@ -97,6 +97,13 @@ router.patch('/:id/approve', async (req, res) => {
       refund.quantity,
       refund.product_id,
     ])
+    if (refund.size) {
+      // Sized products track per-size stock as well — restore the size row too
+      await client.query(
+        `UPDATE product_size_stock SET stock = stock + $1 WHERE product_id = $2 AND size = $3`,
+        [refund.quantity, refund.product_id, refund.size]
+      )
+    }
     await client.query(
       `UPDATE auth.customers SET credit_balance = credit_balance + $1 WHERE customer_id = $2`,
       [refund.refund_amount, refund.user_id]

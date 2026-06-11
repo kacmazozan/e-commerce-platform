@@ -106,7 +106,15 @@ router.get('/products', async (req, res) => {
   const total = parseInt(countResult.rows[0].count)
 
   const dataResult = await pool.query(
-    `SELECT * FROM products ${whereClause} ORDER BY ${orderBy} LIMIT $${idx} OFFSET $${idx + 1}`,
+    `SELECT p.*,
+       CASE
+         WHEN p.sizes IS NOT NULL AND array_length(p.sizes, 1) > 0
+         THEN COALESCE((SELECT SUM(s.stock) FROM product_size_stock s WHERE s.product_id = p.id), 0)
+         ELSE p.stock
+       END AS total_stock,
+       (SELECT json_agg(json_build_object('size', s.size, 'stock', s.stock) ORDER BY s.size)
+        FROM product_size_stock s WHERE s.product_id = p.id) AS size_stocks
+     FROM products p ${whereClause} ORDER BY ${orderBy} LIMIT $${idx} OFFSET $${idx + 1}`,
     [...params, limit, offset]
   )
 
@@ -121,6 +129,79 @@ router.get('/products/:id', async (req, res) => {
   const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id])
   if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' })
   res.json({ product: result.rows[0] })
+})
+
+// GET /api/product-manager/products/:id/size-stock
+router.get('/products/:id/size-stock', async (req, res) => {
+  const productId = parseInt(req.params.id, 10)
+  if (!Number.isInteger(productId) || productId <= 0)
+    return res.status(400).json({ error: 'Invalid product ID' })
+  const product = await pool.query('SELECT id FROM products WHERE id = $1', [productId])
+  if (product.rows.length === 0) return res.status(404).json({ error: 'Product not found' })
+  const result = await pool.query(
+    `SELECT size, stock FROM product_size_stock WHERE product_id = $1 ORDER BY size`,
+    [productId]
+  )
+  res.json({ size_stocks: result.rows })
+})
+
+// PUT /api/product-manager/products/:id/size-stock
+// Body: { stocks: { XS: 10, S: 20, M: 15, L: 8, XL: 5 } }
+router.put('/products/:id/size-stock', async (req, res) => {
+  const productId = parseInt(req.params.id, 10)
+  if (!Number.isInteger(productId) || productId <= 0)
+    return res.status(400).json({ error: 'Invalid product ID' })
+
+  const product = await pool.query('SELECT id, sizes FROM products WHERE id = $1', [productId])
+  if (product.rows.length === 0) return res.status(404).json({ error: 'Product not found' })
+
+  const { stocks } = req.body
+  if (!stocks || typeof stocks !== 'object' || Array.isArray(stocks)) {
+    return res.status(400).json({ error: 'stocks must be an object mapping size to quantity' })
+  }
+
+  const productSizes = product.rows[0].sizes || []
+  for (const [size, qty] of Object.entries(stocks)) {
+    if (!productSizes.includes(size)) {
+      return res.status(400).json({ error: `Size ${size} is not defined for this product` })
+    }
+    const parsed = parseInt(qty, 10)
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return res.status(400).json({ error: `Invalid stock value for size ${size}` })
+    }
+  }
+
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    for (const [size, qty] of Object.entries(stocks)) {
+      await client.query(
+        `INSERT INTO product_size_stock (product_id, size, stock)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (product_id, size) DO UPDATE SET stock = EXCLUDED.stock`,
+        [productId, size, parseInt(qty, 10)]
+      )
+    }
+    // products.stock is the aggregate the storefront reads — keep it equal to the per-size sum
+    await client.query(
+      `UPDATE products SET stock = COALESCE(
+         (SELECT SUM(stock) FROM product_size_stock WHERE product_id = $1), 0
+       ), updated_at = NOW() WHERE id = $1`,
+      [productId]
+    )
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
+
+  const result = await pool.query(
+    `SELECT size, stock FROM product_size_stock WHERE product_id = $1 ORDER BY size`,
+    [productId]
+  )
+  res.json({ size_stocks: result.rows })
 })
 
 // POST /api/product-manager/products
@@ -183,7 +264,18 @@ router.post('/products', async (req, res) => {
       parsedCostPrice,
     ]
   )
-  res.status(201).json({ product: result.rows[0] })
+
+  const newProduct = result.rows[0]
+  if (sizesArr && sizesArr.length > 0) {
+    await pool.query(
+      `INSERT INTO product_size_stock (product_id, size, stock)
+       SELECT $1, unnest($2::text[]), 0
+       ON CONFLICT (product_id, size) DO NOTHING`,
+      [newProduct.id, sizesArr]
+    )
+  }
+
+  res.status(201).json({ product: newProduct })
 })
 
 // PUT /api/product-manager/products/:id
@@ -303,6 +395,35 @@ router.put('/products/:id', async (req, res) => {
     `UPDATE products SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
     params
   )
+
+  // Sync product_size_stock: add rows for newly added sizes (stock=0), preserve
+  // existing rows, and drop rows for sizes that were removed so they no longer
+  // count toward the per-size total.
+  if (sizes !== undefined) {
+    const sizesArr = Array.isArray(sizes) && sizes.length > 0 ? sizes : null
+    if (sizesArr) {
+      await pool.query(
+        `INSERT INTO product_size_stock (product_id, size, stock)
+         SELECT $1, unnest($2::text[]), 0
+         ON CONFLICT (product_id, size) DO NOTHING`,
+        [productId, sizesArr]
+      )
+      await pool.query(
+        `DELETE FROM product_size_stock WHERE product_id = $1 AND size != ALL($2::text[])`,
+        [productId, sizesArr]
+      )
+      // Removed sizes may have carried stock — resync the aggregate the storefront reads
+      await pool.query(
+        `UPDATE products SET stock = COALESCE(
+           (SELECT SUM(stock) FROM product_size_stock WHERE product_id = $1), 0
+         ), updated_at = NOW() WHERE id = $1`,
+        [productId]
+      )
+    } else {
+      await pool.query(`DELETE FROM product_size_stock WHERE product_id = $1`, [productId])
+    }
+  }
+
   res.json({ product: result.rows[0] })
 })
 

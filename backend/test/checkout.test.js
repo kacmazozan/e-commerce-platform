@@ -64,6 +64,7 @@ describe('POST /api/checkout/reserve', () => {
       { rows: [] }, // BEGIN
       { rows: [] }, // DELETE stale reservations
       { rows: [{ name: 'Widget', stock: 3 }] }, // SELECT product FOR UPDATE
+      { rows: [{ stock: 3 }] }, // SELECT stock FROM product_size_stock FOR UPDATE
       { rows: [{ reserved: '0' }] }, // SUM reserved by others
       { rows: [] }, // ROLLBACK
     ])
@@ -81,7 +82,7 @@ describe('POST /api/checkout/reserve', () => {
     expect(res.body.unavailable[0].available).toBe(3)
   })
 
-  it('aggregates multiple sizes of the same product for stock check', async () => {
+  it('checks each size independently when same product has multiple sizes in cart', async () => {
     pool.query.mockResolvedValueOnce({
       rows: [
         { product_id: 1, quantity: 5, size: 'S' },
@@ -89,11 +90,17 @@ describe('POST /api/checkout/reserve', () => {
       ],
     })
 
+    // Two separate (product_id, size) keys → two full loop iterations
     const client = makeClient([
       { rows: [] }, // BEGIN
-      { rows: [] }, // DELETE stale reservations
-      { rows: [{ name: 'Widget', stock: 8 }] }, // SELECT product FOR UPDATE (only 8 available)
-      { rows: [{ reserved: '0' }] }, // SUM reserved by others
+      { rows: [] }, // DELETE stale reservations (S)
+      { rows: [{ name: 'Widget', stock: 8 }] }, // SELECT product FOR UPDATE (S)
+      { rows: [{ stock: 4 }] }, // SELECT stock FROM product_size_stock FOR UPDATE (S)
+      { rows: [{ reserved: '0' }] }, // SUM reserved by others (S)
+      { rows: [] }, // DELETE stale reservations (M)
+      { rows: [{ name: 'Widget', stock: 8 }] }, // SELECT product FOR UPDATE (M)
+      { rows: [{ stock: 4 }] }, // SELECT stock FROM product_size_stock FOR UPDATE (M)
+      { rows: [{ reserved: '0' }] }, // SUM reserved by others (M)
       { rows: [] }, // ROLLBACK
     ])
     pool.connect.mockResolvedValueOnce(client)
@@ -104,8 +111,12 @@ describe('POST /api/checkout/reserve', () => {
 
     expect(res.status).toBe(409)
     expect(res.body.error).toBe('Some items are out of stock')
-    expect(res.body.unavailable[0].requested).toBe(10) // 5 + 5
-    expect(res.body.unavailable[0].available).toBe(8)
+    // Each size is evaluated independently — both S and M have stock 4 < requested 5
+    expect(res.body.unavailable).toHaveLength(2)
+    expect(res.body.unavailable[0].requested).toBe(5)
+    expect(res.body.unavailable[0].available).toBe(4)
+    expect(res.body.unavailable[1].requested).toBe(5)
+    expect(res.body.unavailable[1].available).toBe(4)
   })
 
   it('returns 409 with available=0 when stock is fully reserved by others', async () => {
@@ -117,6 +128,7 @@ describe('POST /api/checkout/reserve', () => {
       { rows: [] }, // BEGIN
       { rows: [] }, // DELETE stale reservations
       { rows: [{ name: 'Widget', stock: 5 }] }, // SELECT product FOR UPDATE
+      { rows: [{ stock: 5 }] }, // SELECT stock FROM product_size_stock FOR UPDATE
       { rows: [{ reserved: '5' }] }, // SUM reserved by others (fully reserved)
       { rows: [] }, // ROLLBACK
     ])
@@ -139,6 +151,7 @@ describe('POST /api/checkout/reserve', () => {
       { rows: [] }, // BEGIN
       { rows: [] }, // DELETE stale reservations
       { rows: [{ name: 'Widget', stock: 5 }] }, // SELECT product FOR UPDATE
+      { rows: [{ stock: 5 }] }, // SELECT stock FROM product_size_stock FOR UPDATE
       { rows: [{ reserved: '7' }] }, // reserved > stock
       { rows: [] }, // ROLLBACK
     ])
@@ -161,6 +174,7 @@ describe('POST /api/checkout/reserve', () => {
       { rows: [] }, // BEGIN
       { rows: [] }, // DELETE stale reservations
       { rows: [{ name: 'Widget', stock: 10 }] }, // SELECT product FOR UPDATE
+      { rows: [{ stock: 10 }] }, // SELECT stock FROM product_size_stock FOR UPDATE
       { rows: [{ reserved: '0' }] }, // SUM reserved by others
       { rows: [] }, // UPSERT reservation
       { rows: [] }, // COMMIT
@@ -281,7 +295,8 @@ describe('POST /api/checkout/confirm', () => {
     const client = makeClient([
       { rows: [] }, // BEGIN
       { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE (lock)
-      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock (conditional)
+      { rows: [{ product_id: 1 }], rowCount: 1 }, // UPDATE product_size_stock (conditional)
+      { rows: [], rowCount: 1 }, // UPDATE products stock (aggregate sync)
       { rows: [{ id: 55 }] }, // INSERT order RETURNING id
       { rows: [] }, // INSERT order_items
       { rows: [] }, // DELETE cart_items
@@ -377,7 +392,8 @@ describe('POST /api/checkout/confirm', () => {
     const client = makeClient([
       { rows: [] }, // BEGIN
       { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE
-      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock
+      { rows: [{ product_id: 1 }], rowCount: 1 }, // UPDATE product_size_stock (conditional)
+      { rows: [], rowCount: 1 }, // UPDATE products stock (aggregate sync)
       { rows: [{ id: 77 }] }, // INSERT order RETURNING id
       { rows: [] }, // INSERT order_items
       { rows: [] }, // DELETE cart_items

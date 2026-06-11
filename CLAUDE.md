@@ -154,7 +154,7 @@ Route files in `backend/routes/`:
 - `admin-orders.js` — order management at `/api/admin/orders`
 - `admin-settings.js` — system settings + dashboard stats at `/api/admin/settings`
 - `sales-manager-products.js` — `GET /api/sales-manager/products` (`?category=`, `?q=`), `GET /api/sales-manager/products/categories`, `PATCH /api/sales-manager/products/:id/price`, `POST /api/sales-manager/products/discount`, `DELETE /api/sales-manager/products/:id/discount`
-- `product-manager.js` — `GET /api/product-manager/me`, product CRUD at `/api/product-manager/products`, categories at `/api/product-manager/categories`, orders at `/api/product-manager/orders`, comments at `/api/product-manager/comments`
+- `product-manager.js` — `GET /api/product-manager/me`, product CRUD at `/api/product-manager/products`, per-size stock at `GET/PUT /api/product-manager/products/:id/size-stock` (PUT body `{ stocks: { S: 10, M: 5 } }`; validates sizes against `products.sizes`, syncs `products.stock` to the per-size sum), categories at `/api/product-manager/categories`, orders at `/api/product-manager/orders`, comments at `/api/product-manager/comments`
 - `product-manager-invoices.js` — invoices at `/api/product-manager/invoices` (separate file from `product-manager.js`)
 - `sales-manager-invoices.js` — `GET /api/sales-manager/invoices` (`?startDate=`, `?endDate=`), `GET /api/sales-manager/invoices/:orderId`, `GET /api/sales-manager/invoices/:orderId/pdf`, `GET /api/sales-manager/invoices/export/pdf`
 - `sales-manager-refunds.js` — `GET /api/sales-manager/refunds` (`?status=`, `?page=`, `?limit=`), `PATCH /api/sales-manager/refunds/:id/approve`, `PATCH /api/sales-manager/refunds/:id/reject`; approve is transactional (stock restore + credit_balance update); both endpoints fire-and-forget a customer notification after commit
@@ -207,7 +207,7 @@ Pages live in `src/pages/<section>/`. Key pages:
 ### Database schema
 
 Auth schema: `auth.users`, `auth.customers`, `auth.sales_managers`, `auth.product_managers`.
-Public schema: `products`, `orders`, `order_items`, `system_settings`, `cart_items`, `stock_reservations`, `wishlist_items`, `product_discounts`, `notifications`, `product_reviews`.
+Public schema: `products`, `orders`, `order_items`, `system_settings`, `cart_items`, `stock_reservations`, `wishlist_items`, `product_discounts`, `notifications`, `product_reviews`, `product_size_stock`.
 Role enum: `auth.user_role` — `customer`, `sales_manager`, `product_manager`, `admin`.
 
 `orders.total` stores the product subtotal only (excluding shipping). `orders.shipping_cost` is a separate column (added in migration 26); calculated server-side from `system_settings.free_shipping_threshold`.
@@ -217,6 +217,8 @@ Role enum: `auth.user_role` — `customer`, `sales_manager`, `product_manager`, 
 `notifications` has `type varchar(30) NOT NULL DEFAULT 'price_drop'` and `message text` (migration 28); `product_id`, `original_price`, `discounted_price`, `discount_percent` are nullable to support non-price-drop notification types (e.g. `refund_decision`). There is also a `refunds` table (migration 19) used by customer-facing refund requests.
 
 `products.cost_price` is nullable `numeric(10,2)` (migration 27); used for profit calculations in the revenue report. Admin and PM product CRUD accept and validate this field. `seed-products.js` seeds it at 60 % of retail; `seed-revenue-demo.js` creates a demo customer (`democustomer@example.com`) and ~80 backdated orders over 180 days for chart development.
+
+`product_size_stock` (migration 30) tracks per-size stock for products with `sizes` defined: `(product_id, size)` unique, `stock >= 0` check. **Invariant:** `products.stock` always stores the aggregate total — for sized products it must equal `SUM(product_size_stock.stock)`. Checkout confirm, order cancel, and refund approve update both tables for sized items; the PM size-stock PUT resyncs the aggregate. Public routes (`products.js`) read availability from `products.stock` only.
 
 `products.price` is nullable. `NULL` price means the product is unpublished — hidden from all public routes (`/api/products`, search, cart add, wishlist add). Only the sales manager can set a price via `PATCH /api/sales-manager/products/:id/price`, which publishes the product.
 
