@@ -1,5 +1,4 @@
 const express = require('express')
-const cors = require('cors')
 
 const authRouter = require('./routes/auth')
 const cartRouter = require('./routes/cart')
@@ -22,11 +21,11 @@ const ordersRouter = require('./routes/orders')
 const notificationsRouter = require('./routes/notifications')
 const invoicesRouter = require('./routes/invoices')
 const refundsRouter = require('./routes/refunds')
+const { configureSecurity } = require('./middleware/security')
 
 const app = express()
 
-app.use(cors())
-app.use(express.json())
+configureSecurity(app)
 
 app.use('/api/auth', authRouter)
 app.use('/api/cart', cartRouter)
