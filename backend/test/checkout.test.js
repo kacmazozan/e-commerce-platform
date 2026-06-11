@@ -389,7 +389,8 @@ describe('POST /api/checkout/confirm', () => {
     const client = makeClient([
       { rows: [] }, // BEGIN
       { rows: [{ id: 1 }] }, // SELECT products FOR UPDATE
-      { rows: [{ id: 1 }], rowCount: 1 }, // UPDATE products stock
+      { rows: [{ product_id: 1 }], rowCount: 1 }, // UPDATE product_size_stock (conditional)
+      { rows: [], rowCount: 1 }, // UPDATE products stock (aggregate sync)
       { rows: [{ id: 56 }] }, // INSERT order RETURNING id
       { rows: [] }, // INSERT order_items
       { rows: [] }, // DELETE cart_items
