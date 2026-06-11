@@ -103,7 +103,7 @@ function PMProducts({ token }) {
     fetchProducts(1)
   }
 
-  async function handleCreate(formData, sizeStocks) {
+  async function handleCreate(formData, sizeStocks, imageChanges) {
     const res = await fetch(API, {
       method: 'POST',
       headers: authHeaders,
@@ -122,11 +122,18 @@ function PMProducts({ token }) {
         throw new Error(stockData.error || 'Product created but size stocks failed to save')
       }
     }
+    for (const img of imageChanges?.toAdd ?? []) {
+      await fetch(`${API}/${data.product.id}/images`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ url: img.url, alt: img.alt }),
+      })
+    }
     setModal(null)
     fetchProducts(pagination.page)
   }
 
-  async function handleUpdate(productId, formData, sizeStocks) {
+  async function handleUpdate(productId, formData, sizeStocks, imageChanges) {
     const res = await fetch(`${API}/${productId}`, {
       method: 'PUT',
       headers: authHeaders,
@@ -144,6 +151,19 @@ function PMProducts({ token }) {
         const stockData = await stockRes.json().catch(() => ({}))
         throw new Error(stockData.error || 'Product updated but size stocks failed to save')
       }
+    }
+    for (const imageId of imageChanges?.toDelete ?? []) {
+      await fetch(`${API}/${productId}/images/${imageId}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      })
+    }
+    for (const img of imageChanges?.toAdd ?? []) {
+      await fetch(`${API}/${productId}/images`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ url: img.url, alt: img.alt }),
+      })
     }
     setModal(null)
     fetchProducts(pagination.page)
@@ -321,6 +341,7 @@ function PMProducts({ token }) {
           mode={modal.mode}
           product={modal.product}
           categories={categories}
+          token={token}
           onClose={() => setModal(null)}
           onCreate={handleCreate}
           onUpdate={handleUpdate}
@@ -372,7 +393,7 @@ function Field({ label, children, hint }) {
   )
 }
 
-function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }) {
+function ProductModal({ mode, product, categories, token, onClose, onCreate, onUpdate }) {
   const [name, setName] = useState(product?.name || '')
   const [description, setDescription] = useState(product?.description || '')
   const [stock, setStock] = useState(product?.stock ?? 0)
@@ -399,8 +420,56 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
   const [costPrice, setCostPrice] = useState(
     product?.cost_price != null ? String(product.cost_price) : ''
   )
+  const [images, setImages] = useState([])
+  const [deletedImageIds, setDeletedImageIds] = useState([])
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (mode !== 'edit' || !product?.id) return
+    fetch(`${API}/${product.id}/images`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) =>
+        setImages(
+          (data.images || []).map((img) => ({ id: img.id, url: img.url, alt: img.alt || '' }))
+        )
+      )
+      .catch(() => {})
+  }, [mode, product?.id, token])
+
+  async function handleFileSelect(e) {
+    const files = Array.from(e.target.files)
+    e.target.value = ''
+    if (!files.length) return
+    setUploading(true)
+    setError('')
+    try {
+      for (const file of files) {
+        const formData = new FormData()
+        formData.append('image', file)
+        const res = await fetch(`${API_BASE}/api/product-manager/upload`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Upload failed')
+        setImages((prev) => [...prev, { id: null, url: data.url, alt: '' }])
+      }
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function removeImage(img) {
+    if (img.id !== null) setDeletedImageIds((prev) => [...prev, img.id])
+    setImages((prev) => prev.filter((i) => i !== img))
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -435,10 +504,15 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
         body.stock = parseInt(stock, 10) || 0
       }
 
+      const imageChanges = {
+        toAdd: images.filter((img) => img.id === null),
+        toDelete: deletedImageIds,
+      }
+
       if (mode === 'create') {
-        await onCreate(body, sizeStocksToSave)
+        await onCreate(body, sizeStocksToSave, imageChanges)
       } else {
-        await onUpdate(product.id, body, sizeStocksToSave)
+        await onUpdate(product.id, body, sizeStocksToSave, imageChanges)
       }
     } catch (err) {
       setError(err.message)
@@ -563,6 +637,59 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
               placeholder="XS, S, M, L, XL, XXL"
             />
           </Field>
+
+          <p className={sectionLabel}>Product Images</p>
+          <div className="mb-4">
+            <label className="mb-3 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[var(--border)] px-4 py-3 text-sm text-[var(--text)] transition-colors hover:border-emerald-400 hover:text-emerald-400">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+                disabled={uploading}
+              />
+              {uploading ? 'Uploading…' : 'Click to upload images (JPG, PNG, WebP — max 5 MB each)'}
+            </label>
+            {images.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {images.map((img, i) => (
+                  <div key={img.id ?? `new-${i}`} className="group relative">
+                    <img
+                      src={img.url}
+                      alt={img.alt || 'Product image'}
+                      className="h-24 w-full rounded-lg border border-[var(--border)] object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                    <div
+                      className="hidden h-24 w-full items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] text-xs text-[var(--text)]"
+                      style={{ display: 'none' }}
+                    >
+                      Invalid URL
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeImage(img)}
+                      className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/80 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      ×
+                    </button>
+                    {img.id === null && (
+                      <span className="absolute bottom-1 left-1 rounded bg-emerald-500/80 px-1 py-0.5 text-[10px] text-white">
+                        new
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {images.length === 0 && (
+              <p className="text-xs text-[var(--text)] opacity-60">No images added yet.</p>
+            )}
+          </div>
 
           <p className={sectionLabel}>Product Details</p>
           <div className="grid grid-cols-2 gap-4">

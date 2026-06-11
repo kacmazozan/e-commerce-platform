@@ -1,4 +1,5 @@
 const express = require('express')
+const path = require('path')
 
 const authRouter = require('./routes/auth')
 const cartRouter = require('./routes/cart')
@@ -26,6 +27,7 @@ const { configureSecurity } = require('./middleware/security')
 const app = express()
 
 configureSecurity(app)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 
 app.use('/api/auth', authRouter)
 app.use('/api/cart', cartRouter)

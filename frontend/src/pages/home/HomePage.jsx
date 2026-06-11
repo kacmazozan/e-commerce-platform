@@ -339,7 +339,7 @@ export default function HomePage({
                     src={getProductImageUrl(product)}
                     alt={product.name}
                     containerClassName="h-full w-full"
-                    imageClassName="object-contain p-3"
+                    imageClassName="object-cover"
                     placeholder={
                       <span
                         className="text-[56px] font-bold opacity-40 select-none"
