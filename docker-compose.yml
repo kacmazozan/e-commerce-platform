@@ -20,6 +20,7 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@db:5432/ecommerce
       JWT_SECRET: dev-secret-change-in-production
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:-dev-encryption-key-change-in-production}
       MIGRATION_CHECK_ORDER: ${MIGRATION_CHECK_ORDER:-false}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       SMTP_HOST: ${SMTP_HOST:-mailserver}

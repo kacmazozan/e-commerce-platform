@@ -1,6 +1,7 @@
 const express = require('express')
 const authenticate = require('../middleware/auth')
 const pool = require('../db')
+const { decryptField } = require('../services/secure-fields')
 
 const router = express.Router()
 router.use(authenticate)
@@ -61,6 +62,7 @@ router.get('/', async (req, res) => {
 
     const orders = ordersResult.rows.map((order) => ({
       ...order,
+      address: decryptField(order.address),
       items: itemsByOrder[order.id] || [],
     }))
 

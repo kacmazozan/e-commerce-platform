@@ -3,8 +3,16 @@ const bcrypt = require('bcrypt')
 const authenticate = require('../middleware/auth')
 const requireAdmin = require('../middleware/admin')
 const pool = require('../db')
+const { decryptField, encryptField } = require('../services/secure-fields')
 
 const router = express.Router()
+
+function serializeUser(user) {
+  return {
+    ...user,
+    tax_id: decryptField(user.tax_id),
+  }
+}
 
 // All admin routes require authentication + admin role
 router.use(authenticate)
@@ -68,7 +76,7 @@ router.get('/users', async (req, res) => {
   )
 
   res.json({
-    users: dataResult.rows,
+    users: dataResult.rows.map(serializeUser),
     pagination: {
       page,
       limit,
@@ -92,7 +100,7 @@ router.get('/users/:id', async (req, res) => {
     return res.status(404).json({ error: 'User not found' })
   }
 
-  res.json({ user: result.rows[0] })
+  res.json({ user: serializeUser(result.rows[0]) })
 })
 
 // POST /api/admin/users — create a new user
@@ -220,7 +228,7 @@ router.put('/users/:id', async (req, res) => {
     // not a customer so admin UIs can post the same payload regardless of role.
     if (taxIdProvided && userRow.role === 'customer') {
       await client.query('UPDATE auth.customers SET tax_id = $1 WHERE customer_id = $2', [
-        taxIdValue,
+        taxIdValue == null ? null : encryptField(taxIdValue),
         userId,
       ])
     }
@@ -234,7 +242,7 @@ router.put('/users/:id', async (req, res) => {
     )
 
     await client.query('COMMIT')
-    res.json({ user: finalResult.rows[0] })
+    res.json({ user: serializeUser(finalResult.rows[0]) })
   } catch (err) {
     await client.query('ROLLBACK')
     throw err

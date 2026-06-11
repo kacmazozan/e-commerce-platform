@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken')
 const pool = require('../db')
 const authenticate = require('../middleware/auth')
 const { sendMail } = require('../services/mailer')
+const { decryptField, encryptField } = require('../services/secure-fields')
 
 const router = express.Router()
 
@@ -47,6 +48,14 @@ function createJwt(user) {
   return jwt.sign({ userId: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: '7d',
   })
+}
+
+function serializeProfile(profile) {
+  return {
+    ...profile,
+    home_address: decryptField(profile.home_address),
+    tax_id: decryptField(profile.tax_id),
+  }
 }
 
 function appUrl(path, token) {
@@ -230,7 +239,7 @@ router.post('/register', async (req, res) => {
     displayName = (name && name.trim()) || email.split('@')[0]
     await client.query(
       'INSERT INTO auth.customers (customer_id, name, tax_id, home_address) VALUES ($1, $2, $3, $4)',
-      [user.id, displayName, null, '']
+      [user.id, displayName, null, encryptField('')]
     )
     await client.query('COMMIT')
   } catch (err) {
@@ -397,7 +406,7 @@ router.get('/me', authenticate, async (req, res) => {
     return res.status(404).json({ error: 'User not found' })
   }
 
-  res.json(profile)
+  res.json(serializeProfile(profile))
 })
 
 // Update the signed-in customer's profile (display name + tax id)
@@ -433,14 +442,16 @@ router.put('/me', authenticate, async (req, res) => {
     const current = await pool.query('SELECT tax_id FROM auth.customers WHERE customer_id = $1', [
       req.user.userId,
     ])
-    taxId = current.rows[0]?.tax_id ?? null
+    taxId = current.rows[0]?.tax_id ? decryptField(current.rows[0].tax_id) : null
   }
+
+  const encryptedTaxId = taxId == null ? null : encryptField(taxId)
 
   const result = await pool.query(
     `UPDATE auth.customers SET name = $1, tax_id = $2
      WHERE customer_id = $3
      RETURNING customer_id, name, home_address, tax_id`,
-    [name, taxId, req.user.userId]
+    [name, encryptedTaxId, req.user.userId]
   )
 
   if (result.rows.length === 0) {
@@ -452,8 +463,46 @@ router.put('/me', authenticate, async (req, res) => {
     email: req.user.email,
     role: req.user.role,
     name: result.rows[0].name,
-    home_address: result.rows[0].home_address,
-    tax_id: result.rows[0].tax_id,
+    home_address: decryptField(result.rows[0].home_address),
+    tax_id: decryptField(result.rows[0].tax_id),
+  })
+})
+
+// Update the signed-in customer's default shipping address.
+router.put('/me/address', authenticate, async (req, res) => {
+  if (req.user.role !== 'customer') {
+    return res.status(403).json({ error: 'Only customers can update their address here' })
+  }
+
+  const rawAddress = req.body.home_address ?? req.body.address
+  if (typeof rawAddress !== 'string') {
+    return res.status(400).json({ error: 'Address must be a string' })
+  }
+
+  const homeAddress = rawAddress.trim()
+  if (homeAddress.length > 1000) {
+    return res.status(400).json({ error: 'Address must be 1000 characters or fewer' })
+  }
+
+  const result = await pool.query(
+    `UPDATE auth.customers
+     SET home_address = $1
+     WHERE customer_id = $2
+     RETURNING customer_id, name, home_address, tax_id`,
+    [encryptField(homeAddress), req.user.userId]
+  )
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ error: 'Customer profile not found' })
+  }
+
+  res.json({
+    id: req.user.userId,
+    email: req.user.email,
+    role: req.user.role,
+    name: result.rows[0].name,
+    home_address: decryptField(result.rows[0].home_address),
+    tax_id: decryptField(result.rows[0].tax_id),
   })
 })
 

@@ -2,6 +2,7 @@ const express = require('express')
 const authenticate = require('../middleware/auth')
 const requireAdmin = require('../middleware/admin')
 const pool = require('../db')
+const { decryptField } = require('../services/secure-fields')
 
 const router = express.Router()
 
@@ -9,6 +10,13 @@ router.use(authenticate)
 router.use(requireAdmin)
 
 const VALID_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+
+function serializeOrder(order) {
+  return {
+    ...order,
+    address: decryptField(order.address),
+  }
+}
 
 // GET /api/admin/orders — list with pagination, status filter, search by user email
 router.get('/', async (req, res) => {
@@ -54,7 +62,7 @@ router.get('/', async (req, res) => {
   )
 
   res.json({
-    orders: dataResult.rows,
+    orders: dataResult.rows.map(serializeOrder),
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   })
 })
@@ -81,7 +89,7 @@ router.get('/:id', async (req, res) => {
     [req.params.id]
   )
 
-  res.json({ order: orderResult.rows[0], items: itemsResult.rows })
+  res.json({ order: serializeOrder(orderResult.rows[0]), items: itemsResult.rows })
 })
 
 // PUT /api/admin/orders/:id — update order status
@@ -100,7 +108,7 @@ router.put('/:id', async (req, res) => {
 
   if (result.rows.length === 0) return res.status(404).json({ error: 'Order not found' })
 
-  res.json({ order: result.rows[0] })
+  res.json({ order: serializeOrder(result.rows[0]) })
 })
 
 // DELETE /api/admin/orders/:id — delete order (and cascades items)
