@@ -34,6 +34,7 @@ function PMProducts({ token }) {
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 })
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('')
+  const [showMissingCost, setShowMissingCost] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [modal, setModal] = useState(null)
@@ -172,9 +173,22 @@ function PMProducts({ token }) {
             Search
           </button>
         </form>
-        <button type="button" className={btnCreate} onClick={() => setModal({ mode: 'create' })}>
-          + New Product
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowMissingCost((v) => !v)}
+            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+              showMissingCost
+                ? 'border-amber-500/50 bg-amber-500/15 text-amber-400'
+                : 'border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)]'
+            }`}
+          >
+            {showMissingCost ? 'Showing: missing cost' : 'Filter: missing cost'}
+          </button>
+          <button type="button" className={btnCreate} onClick={() => setModal({ mode: 'create' })}>
+            + New Product
+          </button>
+        </div>
       </div>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
@@ -187,6 +201,7 @@ function PMProducts({ token }) {
               <th className={thClass}>Name</th>
               <th className={thClass}>Category</th>
               <th className={thClass}>Price</th>
+              <th className={thClass}>Cost</th>
               <th className={thClass}>Stock</th>
               <th className={thClass}>Created</th>
               <th className={thClass}>Actions</th>
@@ -195,48 +210,63 @@ function PMProducts({ token }) {
           <tbody className="divide-y divide-[var(--border)]">
             {loading ? (
               <tr>
-                <td colSpan="7" className={emptyClass}>
+                <td colSpan="8" className={emptyClass}>
                   Loading…
                 </td>
               </tr>
             ) : products.length === 0 ? (
               <tr>
-                <td colSpan="7" className={emptyClass}>
+                <td colSpan="8" className={emptyClass}>
                   No products found
                 </td>
               </tr>
             ) : (
-              products.map((p) => (
-                <tr key={p.id} className="transition-colors hover:bg-[var(--card-bg)]/60">
-                  <td className={tdClass}>{p.id}</td>
-                  <td className={tdClass}>{p.name}</td>
-                  <td className={tdClass}>{p.category || '—'}</td>
-                  <td className={tdClass}>${parseFloat(p.price).toFixed(2)}</td>
-                  <td className={tdClass}>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(p.total_stock ?? p.stock)}`}
-                    >
-                      {p.total_stock ?? p.stock}
-                      {p.sizes && p.sizes.length > 0 && (
-                        <span className="ml-1 opacity-60">total</span>
+              (showMissingCost ? products.filter((p) => p.cost_price == null) : products).map(
+                (p) => (
+                  <tr key={p.id} className="transition-colors hover:bg-[var(--card-bg)]/60">
+                    <td className={tdClass}>{p.id}</td>
+                    <td className={tdClass}>{p.name}</td>
+                    <td className={tdClass}>{p.category || '—'}</td>
+                    <td className={tdClass}>${parseFloat(p.price).toFixed(2)}</td>
+                    <td className={tdClass}>
+                      {p.cost_price != null ? (
+                        <span>${parseFloat(p.cost_price).toFixed(2)}</span>
+                      ) : (
+                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-400">
+                          No cost
+                        </span>
                       )}
-                    </span>
-                  </td>
-                  <td className={tdClass}>{new Date(p.created_at).toLocaleDateString()}</td>
-                  <td className={`${tdClass} flex gap-2`}>
-                    <button
-                      type="button"
-                      className={btnEdit}
-                      onClick={() => setModal({ mode: 'edit', product: p })}
-                    >
-                      Edit
-                    </button>
-                    <button type="button" className={btnDelete} onClick={() => setDeleteConfirm(p)}>
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className={tdClass}>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(p.total_stock ?? p.stock)}`}
+                      >
+                        {p.total_stock ?? p.stock}
+                        {p.sizes && p.sizes.length > 0 && (
+                          <span className="ml-1 opacity-60">total</span>
+                        )}
+                      </span>
+                    </td>
+                    <td className={tdClass}>{new Date(p.created_at).toLocaleDateString()}</td>
+                    <td className={`${tdClass} flex gap-2`}>
+                      <button
+                        type="button"
+                        className={btnEdit}
+                        onClick={() => setModal({ mode: 'edit', product: p })}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={btnDelete}
+                        onClick={() => setDeleteConfirm(p)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                )
+              )
             )}
           </tbody>
         </table>
@@ -346,6 +376,9 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
   const [sizesInput, setSizesInput] = useState(
     Array.isArray(product?.sizes) ? product.sizes.join(', ') : ''
   )
+  const [costPrice, setCostPrice] = useState(
+    product?.cost_price != null ? String(product.cost_price) : ''
+  )
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -366,6 +399,7 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
         category,
         country_of_origin: countryOfOrigin,
         material,
+        cost_price: costPrice !== '' ? costPrice : null,
         model_height: modelHeight,
         model_chest: modelChest,
         model_waist: modelWaist,
@@ -471,6 +505,17 @@ function ProductModal({ mode, product, categories, onClose, onCreate, onUpdate }
               </Field>
             )
           })()}
+          <Field label="Cost Price ($)" hint="(purchasing / wholesale cost)">
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className={fieldInputClass}
+              value={costPrice}
+              onChange={(e) => setCostPrice(e.target.value)}
+              placeholder="e.g. 45.00"
+            />
+          </Field>
           <Field label="Category">
             {categories.length > 0 ? (
               <select

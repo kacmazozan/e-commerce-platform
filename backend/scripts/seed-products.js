@@ -992,12 +992,13 @@ async function seed() {
   console.log(`Inserting ${PRODUCTS.length} products…`)
 
   for (const p of PRODUCTS) {
+    const costPrice = Math.round(p.price * 0.6 * 100) / 100
     const result = await pool.query(
       `INSERT INTO products
          (name, description, price, category, stock, sizes, material, country_of_origin,
           model_height, model_chest, model_waist, model_hips, model_size,
-          serial_number, warranty_status, distributor_info)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+          serial_number, warranty_status, distributor_info, cost_price)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
        RETURNING id`,
       [
         p.name,
@@ -1016,18 +1017,22 @@ async function seed() {
         p.serial_number ?? null,
         p.warranty_status ?? null,
         p.distributor_info ?? null,
+        costPrice,
       ]
     )
 
     if (p.sizes && p.sizes.length > 0) {
       const productId = result.rows[0].id
       const perSize = Math.floor(p.stock / p.sizes.length)
-      for (const size of p.sizes) {
+      const remainder = p.stock % p.sizes.length
+      for (let i = 0; i < p.sizes.length; i++) {
+        // First `remainder` sizes get one extra unit so the sum equals p.stock
+        const sizeStock = perSize + (i < remainder ? 1 : 0)
         await pool.query(
           `INSERT INTO product_size_stock (product_id, size, stock)
            VALUES ($1, $2, $3)
            ON CONFLICT (product_id, size) DO UPDATE SET stock = EXCLUDED.stock`,
-          [productId, size, perSize]
+          [productId, p.sizes[i], sizeStock]
         )
       }
     }
