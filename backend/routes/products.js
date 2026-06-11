@@ -8,8 +8,7 @@ const VALID_SORTS = ['newest', 'price_asc', 'price_desc', 'popularity']
 
 const PUBLIC_PRODUCT_COLUMNS = `
   p.id, p.name, p.description, p.price, p.stock, p.category, p.created_at,
-  p.model, p.serial_number, p.warranty_status, p.distributor_info,
-  (SELECT url FROM product_images WHERE product_id = p.id ORDER BY id ASC LIMIT 1) AS image_url`
+  p.model, p.serial_number, p.warranty_status, p.distributor_info`
 
 function getSortClause(sort) {
   const key = VALID_SORTS.includes(sort) ? sort : 'newest'
