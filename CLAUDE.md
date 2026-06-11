@@ -114,6 +114,11 @@ To add a new migration, create `backend/migrations/<N>_description.js` (incremen
 
 Never edit a migration file that has already been applied — write a new one instead.
 
+**node-pg-migrate conventions:**
+- Use `pgm.addColumns()` (plural, 2-arg form) when adding columns to `auth`-schema tables — matches migrations 22, 23, 27.
+- Pass **unquoted** string values to `default` (e.g. `default: 'price_drop'`). node-pg-migrate wraps strings in SQL quotes automatically; passing a pre-quoted value like `"'price_drop'"` produces the literal `'''price_drop'''` in the DB.
+- After adding columns via migration, update every SELECT query that should return them or the frontend will receive `undefined`.
+
 ### Manually re-seeding individual accounts
 
 Seeds run automatically on startup, but individual scripts can be invoked directly if needed:
@@ -152,7 +157,10 @@ Route files in `backend/routes/`:
 - `product-manager.js` — `GET /api/product-manager/me`, product CRUD at `/api/product-manager/products`, categories at `/api/product-manager/categories`, orders at `/api/product-manager/orders`, comments at `/api/product-manager/comments`
 - `product-manager-invoices.js` — invoices at `/api/product-manager/invoices` (separate file from `product-manager.js`)
 - `sales-manager-invoices.js` — `GET /api/sales-manager/invoices` (`?startDate=`, `?endDate=`), `GET /api/sales-manager/invoices/:orderId`, `GET /api/sales-manager/invoices/:orderId/pdf`, `GET /api/sales-manager/invoices/export/pdf`
-- `notifications.js` — authenticated; `GET /api/notifications`, `PATCH /api/notifications/:id/read`, `PATCH /api/notifications/read-all`, `DELETE /api/notifications`
+- `sales-manager-refunds.js` — `GET /api/sales-manager/refunds` (`?status=`, `?page=`, `?limit=`), `PATCH /api/sales-manager/refunds/:id/approve`, `PATCH /api/sales-manager/refunds/:id/reject`; approve is transactional (stock restore + credit_balance update); both endpoints fire-and-forget a customer notification after commit
+- `sales-manager-stats.js` — `GET /api/sales-manager/stats`; returns published_products, unpriced_products, active_discounts, pending_refunds, revenue_this_month, orders_this_month
+- `sales-manager-revenue.js` — `GET /api/sales-manager/revenue` (`?startDate=YYYY-MM-DD`, `?endDate=YYYY-MM-DD`; defaults to current month); returns `summary` (total_revenue, total_cost, net_profit_loss, missing_cost_products) and `daily` array; excludes cancelled orders
+- `notifications.js` — authenticated; `GET /api/notifications` (returns `type` and `message`), `PATCH /api/notifications/:id/read`, `PATCH /api/notifications/read-all`, `DELETE /api/notifications`
 - `wishlist.js` — authenticated; `GET/POST /api/wishlist`, `DELETE /api/wishlist/:productId`
 - `invoices.js` — `GET /api/invoices/health`, `POST /api/invoices/generate`; checkout confirmation also queues invoice email delivery automatically
 
@@ -188,8 +196,12 @@ Pages live in `src/pages/<section>/`. Key pages:
 
 - `DiscountManagement` (`src/pages/sales-manager/DiscountManagement.jsx`) — paginated product table with category filter, search bar, and bulk discount apply/remove
 - `PriceManagement` (`src/pages/sales-manager/PriceManagement.jsx`) — per-product price editor; shows amber banner listing unpriced products by name
+- `RevenueChart` (`src/pages/sales-manager/RevenueChart.jsx`) — gradient area chart (Revenue + Cost) with date range filter, custom profit tooltip, and summary cards; wired as "Revenue" tab in `SalesManagerDashboard`
+- SM dashboard tabs: overview, products, discounts, invoices, refunds, revenue; PM dashboard tabs: overview, products, categories, inventory, orders, deliveries, invoices, comments; both persist active tab via `?tab=` URL param (`useSearchParams`)
 - `PMLoginPage` (`src/pages/product-manager/PMLoginPage.jsx`) — standalone PM login at `/product-manager/login`, issues `pmToken`
-- `NotificationBell` (`src/pages/home/components/NotificationBell.jsx`) — price-drop notifications for logged-in customers; mark-read, mark-all-read, clear-all
+- `NotificationBell` (`src/pages/home/components/NotificationBell.jsx`) — notifications for logged-in customers; checks `n.type === 'refund_decision'` to render `n.message` vs. price-drop format; mark-read, mark-all-read, clear-all
+- `RefundsManagement` (`src/pages/sales-manager/RefundsManagement.jsx`) — SM refund list with status filter; approve/reject actions
+- `SMOverview` (`src/pages/sales-manager/SMOverview.jsx`) — SM dashboard overview; fetches `/api/sales-manager/stats`
 - `MyReviewsPage` (`src/pages/reviews/MyReviewsPage.jsx`) — customer's review list at `/my-reviews`; edit reviews in place; accessible from Navbar user dropdown
 
 ### Database schema
@@ -199,6 +211,12 @@ Public schema: `products`, `orders`, `order_items`, `system_settings`, `cart_ite
 Role enum: `auth.user_role` — `customer`, `sales_manager`, `product_manager`, `admin`.
 
 `orders.total` stores the product subtotal only (excluding shipping). `orders.shipping_cost` is a separate column (added in migration 26); calculated server-side from `system_settings.free_shipping_threshold`.
+
+`auth.customers` has `credit_balance numeric(10,2) NOT NULL DEFAULT 0` (migration 27); this is the store-credit balance refunded when a SM approves a return.
+
+`notifications` has `type varchar(30) NOT NULL DEFAULT 'price_drop'` and `message text` (migration 28); `product_id`, `original_price`, `discounted_price`, `discount_percent` are nullable to support non-price-drop notification types (e.g. `refund_decision`). There is also a `refunds` table (migration 19) used by customer-facing refund requests.
+
+`products.cost_price` is nullable `numeric(10,2)` (migration 27); used for profit calculations in the revenue report. Admin and PM product CRUD accept and validate this field. `seed-products.js` seeds it at 60 % of retail; `seed-revenue-demo.js` creates a demo customer (`democustomer@example.com`) and ~80 backdated orders over 180 days for chart development.
 
 `products.price` is nullable. `NULL` price means the product is unpublished — hidden from all public routes (`/api/products`, search, cart add, wishlist add). Only the sales manager can set a price via `PATCH /api/sales-manager/products/:id/price`, which publishes the product.
 

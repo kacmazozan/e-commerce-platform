@@ -66,7 +66,7 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/admin/products
 router.post('/', async (req, res) => {
-  const { name, description, price, stock, category } = req.body
+  const { name, description, price, stock, category, cost_price } = req.body
 
   if (!name || price == null) {
     return res.status(400).json({ error: 'Name and price are required' })
@@ -76,9 +76,17 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Price must be non-negative' })
   }
 
+  let parsedCostPrice = null
+  if (cost_price !== undefined && cost_price !== null && cost_price !== '') {
+    parsedCostPrice = parseFloat(cost_price)
+    if (isNaN(parsedCostPrice) || parsedCostPrice < 0) {
+      return res.status(400).json({ error: 'cost_price must be a non-negative number' })
+    }
+  }
+
   const result = await pool.query(
-    `INSERT INTO products (name, description, price, stock, category)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO products (name, description, price, stock, category, cost_price)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
     [
       name,
@@ -86,6 +94,7 @@ router.post('/', async (req, res) => {
       price,
       Number.isFinite(parseInt(stock)) ? parseInt(stock) : 0,
       category || null,
+      parsedCostPrice,
     ]
   )
 
@@ -94,7 +103,7 @@ router.post('/', async (req, res) => {
 
 // PUT /api/admin/products/:id
 router.put('/:id', async (req, res) => {
-  const { name, description, price, stock, category } = req.body
+  const { name, description, price, stock, category, cost_price } = req.body
   const productId = req.params.id
 
   const existing = await pool.query('SELECT id FROM products WHERE id = $1', [productId])
@@ -129,6 +138,21 @@ router.put('/:id', async (req, res) => {
     sets.push(`category = $${idx}`)
     params.push(category)
     idx++
+  }
+  if (cost_price !== undefined) {
+    if (cost_price === null || cost_price === '') {
+      sets.push(`cost_price = $${idx}`)
+      params.push(null)
+      idx++
+    } else {
+      const parsedCostPrice = parseFloat(cost_price)
+      if (isNaN(parsedCostPrice) || parsedCostPrice < 0) {
+        return res.status(400).json({ error: 'cost_price must be a non-negative number' })
+      }
+      sets.push(`cost_price = $${idx}`)
+      params.push(parsedCostPrice)
+      idx++
+    }
   }
   if (sets.length === 0) return res.status(400).json({ error: 'No fields to update' })
 
