@@ -1,5 +1,4 @@
 const express = require('express')
-const cors = require('cors')
 const path = require('path')
 
 const authRouter = require('./routes/auth')
@@ -23,11 +22,11 @@ const ordersRouter = require('./routes/orders')
 const notificationsRouter = require('./routes/notifications')
 const invoicesRouter = require('./routes/invoices')
 const refundsRouter = require('./routes/refunds')
+const { configureSecurity } = require('./middleware/security')
 
 const app = express()
 
-app.use(cors())
-app.use(express.json())
+configureSecurity(app)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 
 app.use('/api/auth', authRouter)
