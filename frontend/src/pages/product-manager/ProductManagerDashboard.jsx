@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import API_BASE from '../../api'
 import { decodeJwtPayload } from '../../utils/jwt'
 import DashboardLayout from '../../components/DashboardLayout'
@@ -98,10 +99,31 @@ function PMOverview({ token, onNavigate }) {
   )
 }
 
+const PM_SECTIONS = [
+  { key: 'overview', label: 'Overview', icon: <DashboardIcon /> },
+  { key: 'products', label: 'Products', icon: <ProductsIcon /> },
+  { key: 'categories', label: 'Categories', icon: <CategoriesIcon /> },
+  { key: 'inventory', label: 'Inventory', icon: <InventoryIcon /> },
+  { key: 'orders', label: 'Orders', icon: <OrdersIcon /> },
+  { key: 'deliveries', label: 'Deliveries', icon: <DeliveriesIcon /> },
+  { key: 'invoices', label: 'Invoices', icon: <InvoicesIcon /> },
+  { key: 'comments', label: 'Comments', icon: <CommentsIcon /> },
+]
+const PM_VALID_KEYS = PM_SECTIONS.map((s) => s.key)
+
 function ProductManagerDashboard({ token, onLogout }) {
   const tokenPayload = decodeJwtPayload(token)
   const [pmUser, setPmUser] = useState(tokenPayload ? { email: tokenPayload.email } : null)
-  const [activeSection, setActiveSection] = useState('overview')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab')
+  const [activeSection, setActiveSection] = useState(
+    PM_VALID_KEYS.includes(initialTab) ? initialTab : 'overview'
+  )
+
+  function handleSectionChange(key) {
+    setActiveSection(key)
+    setSearchParams({ tab: key }, { replace: true })
+  }
 
   useEffect(() => {
     async function fetchUser() {
@@ -125,27 +147,18 @@ function ProductManagerDashboard({ token, onLogout }) {
     fetchUser()
   }, [token, onLogout])
 
-  const sections = [
-    { key: 'overview', label: 'Overview', icon: <DashboardIcon /> },
-    { key: 'products', label: 'Products', icon: <ProductsIcon /> },
-    { key: 'categories', label: 'Categories', icon: <CategoriesIcon /> },
-    { key: 'inventory', label: 'Inventory', icon: <InventoryIcon /> },
-    { key: 'orders', label: 'Orders', icon: <OrdersIcon /> },
-    { key: 'deliveries', label: 'Deliveries', icon: <DeliveriesIcon /> },
-    { key: 'invoices', label: 'Invoices', icon: <InvoicesIcon /> },
-    { key: 'comments', label: 'Comments', icon: <CommentsIcon /> },
-  ]
-
   return (
     <DashboardLayout
       title="FIER Manager"
-      sections={sections}
+      sections={PM_SECTIONS}
       activeSection={activeSection}
-      onSectionChange={setActiveSection}
+      onSectionChange={handleSectionChange}
       onLogout={onLogout}
       userEmail={pmUser?.email}
     >
-      {activeSection === 'overview' && <PMOverview token={token} onNavigate={setActiveSection} />}
+      {activeSection === 'overview' && (
+        <PMOverview token={token} onNavigate={handleSectionChange} />
+      )}
       {activeSection === 'products' && <PMProducts token={token} />}
       {activeSection === 'categories' && <PMCategories token={token} />}
       {activeSection === 'inventory' && <PMInventory token={token} />}

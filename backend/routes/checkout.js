@@ -72,14 +72,14 @@ router.post('/reserve', async (req, res) => {
     return res.status(400).json({ error: 'Cart is empty' })
   }
 
-  // 1. Group items by product_id to check total requested against stock
+  // 1. Group items by (product_id, size) to check per-size stock
   const aggregated = cartResult.rows.reduce((acc, item) => {
-    const pid = item.product_id
-    if (!acc[pid]) {
-      acc[pid] = { id: pid, totalQuantity: 0, items: [] }
+    const key = `${item.product_id}:${item.size ?? ''}`
+    if (!acc[key]) {
+      acc[key] = { id: item.product_id, size: item.size ?? '', totalQuantity: 0, items: [] }
     }
-    acc[pid].totalQuantity += item.quantity
-    acc[pid].items.push(item)
+    acc[key].totalQuantity += item.quantity
+    acc[key].items.push(item)
     return acc
   }, {})
 
@@ -90,8 +90,8 @@ router.post('/reserve', async (req, res) => {
   try {
     await client.query('BEGIN')
 
-    for (const pid in aggregated) {
-      const product = aggregated[pid]
+    for (const key in aggregated) {
+      const product = aggregated[key]
       // Purge stale reservations for this product then lock the row
       await client.query(
         'DELETE FROM stock_reservations WHERE product_id = $1 AND expires_at < NOW()',
@@ -99,7 +99,7 @@ router.post('/reserve', async (req, res) => {
       )
 
       const productResult = await client.query(
-        'SELECT name, stock FROM products WHERE id = $1 FOR UPDATE',
+        'SELECT name, stock, sizes FROM products WHERE id = $1 FOR UPDATE',
         [product.id]
       )
 
@@ -113,13 +113,28 @@ router.post('/reserve', async (req, res) => {
         continue
       }
 
-      const { name, stock } = productResult.rows[0]
+      const { name } = productResult.rows[0]
+
+      let stock
+      if (product.size) {
+        const sizeStockResult = await client.query(
+          'SELECT stock FROM product_size_stock WHERE product_id = $1 AND size = $2 FOR UPDATE',
+          [product.id, product.size]
+        )
+        stock = sizeStockResult.rows.length > 0 ? sizeStockResult.rows[0].stock : 0
+      } else if (productResult.rows[0].sizes?.length > 0) {
+        // Sized product reserved without a size (API misuse) — never fall back to
+        // the aggregate, that could oversell an individual size at confirm.
+        stock = 0
+      } else {
+        stock = productResult.rows[0].stock
+      }
 
       const reservedResult = await client.query(
         `SELECT COALESCE(SUM(quantity), 0) AS reserved
            FROM stock_reservations
-           WHERE product_id = $1 AND user_id != $2`,
-        [product.id, userId]
+           WHERE product_id = $1 AND size = $2 AND user_id != $3`,
+        [product.id, product.size, userId]
       )
       const reservedByOthers = parseInt(reservedResult.rows[0].reserved)
       const available = stock - reservedByOthers
@@ -215,14 +230,32 @@ router.post('/confirm', async (req, res) => {
     ])
 
     for (const r of orderedRows) {
-      const upd = await client.query(
-        'UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2 AND stock >= $1 RETURNING id',
-        [r.quantity, r.product_id]
-      )
+      let upd
+      if (r.size) {
+        upd = await client.query(
+          `UPDATE product_size_stock SET stock = stock - $1
+           WHERE product_id = $2 AND size = $3 AND stock >= $1
+           RETURNING product_id`,
+          [r.quantity, r.product_id, r.size]
+        )
+        // Keep the aggregate products.stock in sync — public routes derive
+        // availability from it (see products.js available_stock).
+        if (upd.rowCount > 0) {
+          await client.query(
+            'UPDATE products SET stock = GREATEST(0, stock - $1), updated_at = NOW() WHERE id = $2',
+            [r.quantity, r.product_id]
+          )
+        }
+      } else {
+        upd = await client.query(
+          'UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2 AND stock >= $1 RETURNING id',
+          [r.quantity, r.product_id]
+        )
+      }
       if (upd.rowCount === 0) {
         await client.query('ROLLBACK')
         return res.status(409).json({
-          error: `Insufficient stock for ${r.name}. Please return to your cart and try again.`,
+          error: `Insufficient stock for ${r.name}${r.size ? ` (size ${r.size})` : ''}. Please return to your cart and try again.`,
           productId: r.product_id,
           productName: r.name,
         })

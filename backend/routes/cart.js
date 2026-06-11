@@ -8,10 +8,17 @@ router.use(authenticate)
 async function fetchCart(userId) {
   const result = await pool.query(
     `SELECT ci.product_id AS id, p.name, p.price, p.category, ci.quantity, ci.size,
-            GREATEST(0, p.stock - COALESCE(
-              (SELECT SUM(sr.quantity) FROM stock_reservations sr
-               WHERE sr.product_id = p.id AND sr.expires_at > NOW()), 0
-            )) AS available_stock,
+            GREATEST(0,
+              CASE
+                WHEN ci.size != ''
+                THEN COALESCE(pss.stock, 0) - COALESCE(
+                  (SELECT SUM(sr.quantity) FROM stock_reservations sr
+                   WHERE sr.product_id = p.id AND sr.size = ci.size AND sr.expires_at > NOW()), 0)
+                ELSE p.stock - COALESCE(
+                  (SELECT SUM(sr.quantity) FROM stock_reservations sr
+                   WHERE sr.product_id = p.id AND sr.expires_at > NOW()), 0)
+              END
+            ) AS available_stock,
             pd.discount_percent,
             CASE WHEN pd.discount_percent IS NOT NULL
                  THEN ROUND(p.price * (1 - pd.discount_percent / 100.0), 2)
@@ -19,6 +26,7 @@ async function fetchCart(userId) {
             END AS discounted_price
      FROM cart_items ci
      JOIN products p ON p.id = ci.product_id
+     LEFT JOIN product_size_stock pss ON pss.product_id = p.id AND pss.size = ci.size
      LEFT JOIN product_discounts pd ON pd.product_id = p.id
        AND pd.start_at <= NOW()
        AND (pd.end_at IS NULL OR pd.end_at > NOW())
