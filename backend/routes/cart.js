@@ -55,7 +55,7 @@ router.post('/', async (req, res) => {
   ])
   if (product.rows.length === 0) return res.status(404).json({ error: 'Product not found' })
 
-  const sizeVal = (size || '').trim().toUpperCase() || ''
+  const sizeVal = (size || '').trim() || ''
 
   await pool.query(
     `INSERT INTO cart_items (user_id, product_id, quantity, size)
@@ -75,7 +75,7 @@ router.put('/:productId', async (req, res) => {
   if (!Number.isInteger(quantity) || quantity < 1)
     return res.status(400).json({ error: 'quantity must be a positive integer' })
 
-  const sizeVal = ((req.query.size || '') + '').trim().toUpperCase() || ''
+  const sizeVal = ((req.query.size || '') + '').trim() || ''
 
   await pool.query(
     `UPDATE cart_items SET quantity = $1 WHERE user_id = $2 AND product_id = $3 AND size = $4`,
@@ -88,7 +88,7 @@ router.put('/:productId', async (req, res) => {
 
 // DELETE /api/cart/:productId — remove one item; ?size= to identify the row
 router.delete('/:productId', async (req, res) => {
-  const sizeVal = ((req.query.size || '') + '').trim().toUpperCase() || ''
+  const sizeVal = ((req.query.size || '') + '').trim() || ''
 
   await pool.query(`DELETE FROM cart_items WHERE user_id = $1 AND product_id = $2 AND size = $3`, [
     req.user.userId,
