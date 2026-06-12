@@ -264,7 +264,7 @@ export default function ProductPage({
                 alt={galleryImages[activeImg]?.alt || product.name}
                 loading="eager"
                 containerClassName="aspect-[3/4] w-full"
-                imageClassName="object-contain"
+                imageClassName="object-cover"
                 placeholder={
                   <span
                     className="text-[120px] font-bold opacity-30 select-none"
@@ -354,7 +354,7 @@ export default function ProductPage({
                       src={img.url}
                       alt={img.alt || `View ${i + 1}`}
                       containerClassName="h-full w-full"
-                      imageClassName="object-contain"
+                      imageClassName="object-cover"
                       placeholder={
                         <span
                           className="text-2xl font-bold opacity-30 select-none"

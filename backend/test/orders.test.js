@@ -148,6 +148,87 @@ describe('GET /api/orders', () => {
   })
 })
 
+describe('GET /api/orders/:id', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns 401 when no token provided', async () => {
+    const res = await request(app).get('/api/orders/10')
+
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 400 for an invalid order ID', async () => {
+    const res = await request(app)
+      .get('/api/orders/abc')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('Invalid order ID')
+  })
+
+  it('returns 404 when order does not exist or belongs to another user', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] })
+
+    const res = await request(app)
+      .get('/api/orders/999')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Order not found')
+  })
+
+  it('returns order detail with items and decrypted address', async () => {
+    pool.query
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 10,
+            status: 'processing',
+            total: '59.99',
+            shipping_cost: '4.99',
+            address: '123 Main St',
+            created_at: new Date('2024-01-01'),
+            payment_method_id: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            order_id: 10,
+            quantity: 2,
+            price: '19.99',
+            size: 'M',
+            product_id: 1,
+            product_name: 'Widget',
+            refund_id: null,
+            refund_status: null,
+            refund_amount: null,
+            requested_at: null,
+          },
+        ],
+      })
+
+    const res = await request(app).get('/api/orders/10').set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.order.id).toBe(10)
+    expect(res.body.order.address).toBe('123 Main St')
+    expect(res.body.order.shipping_cost).toBe('4.99')
+    expect(res.body.order.items).toHaveLength(1)
+    expect(res.body.order.items[0].product_name).toBe('Widget')
+  })
+
+  it('returns 500 on database error', async () => {
+    pool.query.mockRejectedValueOnce(new Error('db error'))
+
+    const res = await request(app).get('/api/orders/10').set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(500)
+  })
+})
+
 function makeClient(queryResponses = []) {
   let callCount = 0
   const client = {

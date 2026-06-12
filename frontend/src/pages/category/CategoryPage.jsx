@@ -150,7 +150,7 @@ export default function CategoryPage({
                     })}
                     alt={product.name}
                     containerClassName="h-full w-full"
-                    imageClassName="object-contain p-3"
+                    imageClassName="object-cover"
                     placeholder={
                       <span className="text-[64px] font-bold text-purple-400 opacity-35 select-none">
                         {product.name[0]}

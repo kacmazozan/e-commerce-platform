@@ -701,7 +701,7 @@ describe('DELETE /api/product-manager/products/:id/images/:imageId', () => {
 describe('POST /api/product-manager/products — detail fields', () => {
   beforeEach(() => jest.clearAllMocks())
 
-  it('creates product with all detail fields and passes 13 parameters to pool.query', async () => {
+  it('creates product with all detail fields and passes 14 parameters to pool.query', async () => {
     pool.query.mockResolvedValueOnce({
       rows: [
         {
@@ -744,7 +744,7 @@ describe('POST /api/product-manager/products — detail fields', () => {
     expect(res.body).toHaveProperty('product')
 
     const [, params] = pool.query.mock.calls[0]
-    expect(params).toHaveLength(13)
+    expect(params).toHaveLength(14)
   })
 })
 

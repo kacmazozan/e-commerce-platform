@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { Fragment, useState, useEffect, useCallback } from 'react'
 import API_BASE from '../../api'
 import {
   btnBase,
@@ -32,7 +32,10 @@ function PMInventory({ token }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [editingId, setEditingId] = useState(null)
+  // For sizeless products
   const [draftStock, setDraftStock] = useState('')
+  // For sized products: { [size]: stockString }
+  const [draftSizeStocks, setDraftSizeStocks] = useState({})
   const [saving, setSaving] = useState(false)
 
   const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
@@ -71,12 +74,26 @@ function PMInventory({ token }) {
 
   function startEdit(product) {
     setEditingId(product.id)
-    setDraftStock(String(product.stock))
+    setError('')
+    if (product.sizes && product.sizes.length > 0) {
+      const initial = {}
+      const sizeStocks = product.size_stocks || []
+      for (const sz of product.sizes) {
+        const found = sizeStocks.find((s) => s.size === sz)
+        initial[sz] = String(found ? found.stock : 0)
+      }
+      setDraftSizeStocks(initial)
+      setDraftStock('')
+    } else {
+      setDraftStock(String(product.total_stock ?? product.stock ?? 0))
+      setDraftSizeStocks({})
+    }
   }
 
   function cancelEdit() {
     setEditingId(null)
     setDraftStock('')
+    setDraftSizeStocks({})
   }
 
   async function saveStock(productId) {
@@ -97,9 +114,10 @@ function PMInventory({ token }) {
       if (!res.ok) throw new Error(data.error || 'Failed to update stock')
       setEditingId(null)
       setDraftStock('')
-      // update local state without full refetch for snappy UX
       setProducts((prev) =>
-        prev.map((p) => (p.id === productId ? { ...p, stock: parsedStock } : p))
+        prev.map((p) =>
+          p.id === productId ? { ...p, stock: parsedStock, total_stock: parsedStock } : p
+        )
       )
     } catch (err) {
       setError(err.message)
@@ -107,6 +125,50 @@ function PMInventory({ token }) {
       setSaving(false)
     }
   }
+
+  async function saveSizeStocks(productId) {
+    setSaving(true)
+    setError('')
+    try {
+      const stocks = {}
+      for (const [size, val] of Object.entries(draftSizeStocks)) {
+        const parsed = parseInt(val, 10)
+        if (Number.isNaN(parsed) || parsed < 0) {
+          setError(`Invalid stock value for size ${size}`)
+          return
+        }
+        stocks[size] = parsed
+      }
+      const res = await fetch(`${API}/${productId}/size-stock`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({ stocks }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update stock')
+
+      const newTotal = Object.values(stocks).reduce((s, v) => s + v, 0)
+      setEditingId(null)
+      setDraftSizeStocks({})
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId
+            ? {
+                ...p,
+                total_stock: newTotal,
+                size_stocks: data.size_stocks,
+              }
+            : p
+        )
+      )
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const isSized = (p) => p.sizes && p.sizes.length > 0
 
   return (
     <div>
@@ -119,7 +181,7 @@ function PMInventory({ token }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="button" type="submit" className={btnSearch}>
+          <button type="submit" className={btnSearch}>
             Search
           </button>
         </form>
@@ -154,30 +216,57 @@ function PMInventory({ token }) {
               </tr>
             ) : (
               products.map((p) => (
-                <tr key={p.id} className="transition-colors hover:bg-[var(--card-bg)]/60">
-                  <td className={tdClass}>{p.id}</td>
-                  <td className={tdClass}>{p.name}</td>
-                  <td className={tdClass}>{p.category || '—'}</td>
-                  <td className={tdClass}>${parseFloat(p.price).toFixed(2)}</td>
-                  <td className={tdClass}>
-                    {editingId === p.id ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          className="w-20 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-sm text-[var(--text-h)] outline-none focus:border-emerald-400"
-                          value={draftStock}
-                          onChange={(e) => setDraftStock(e.target.value)}
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          className={`${btnCreate} px-2.5 py-1 text-xs`}
-                          disabled={saving}
-                          onClick={() => saveStock(p.id)}
+                <Fragment key={p.id}>
+                  <tr key={p.id} className="transition-colors hover:bg-[var(--card-bg)]/60">
+                    <td className={tdClass}>{p.id}</td>
+                    <td className={tdClass}>{p.name}</td>
+                    <td className={tdClass}>{p.category || '—'}</td>
+                    <td className={tdClass}>
+                      {p.price != null ? `$${parseFloat(p.price).toFixed(2)}` : '—'}
+                    </td>
+                    <td className={tdClass}>
+                      {editingId === p.id && !isSized(p) ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-20 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-sm text-[var(--text-h)] outline-none focus:border-emerald-400"
+                            value={draftStock}
+                            onChange={(e) => setDraftStock(e.target.value)}
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            className={`${btnCreate} px-2.5 py-1 text-xs`}
+                            disabled={saving}
+                            onClick={() => saveStock(p.id)}
+                          >
+                            {saving ? '…' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            className={`${btnBase} px-2.5 py-1 text-xs`}
+                            onClick={cancelEdit}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(p.total_stock ?? p.stock)}`}
                         >
-                          {saving ? '…' : 'Save'}
+                          {p.total_stock ?? p.stock}
+                          {isSized(p) && <span className="ml-1 opacity-60">total</span>}
+                        </span>
+                      )}
+                    </td>
+                    <td className={tdClass}>
+                      {editingId !== p.id && (
+                        <button type="button" className={btnEdit} onClick={() => startEdit(p)}>
+                          Edit Stock
                         </button>
+                      )}
+                      {editingId === p.id && isSized(p) && (
                         <button
                           type="button"
                           className={`${btnBase} px-2.5 py-1 text-xs`}
@@ -185,23 +274,44 @@ function PMInventory({ token }) {
                         >
                           Cancel
                         </button>
-                      </div>
-                    ) : (
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadgeClass(p.stock)}`}
-                      >
-                        {p.stock}
-                      </span>
-                    )}
-                  </td>
-                  <td className={tdClass}>
-                    {editingId !== p.id && (
-                      <button type="button" className={btnEdit} onClick={() => startEdit(p)}>
-                        Edit Stock
-                      </button>
-                    )}
-                  </td>
-                </tr>
+                      )}
+                    </td>
+                  </tr>
+
+                  {/* Per-size edit row */}
+                  {editingId === p.id && isSized(p) && (
+                    <tr key={`${p.id}-sizes`} className="bg-[var(--card-bg)]/40">
+                      <td colSpan="6" className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                          {p.sizes.map((sz) => (
+                            <div key={sz} className="flex items-center gap-1.5">
+                              <span className="w-10 text-center text-xs font-semibold text-[var(--text)]">
+                                {sz}
+                              </span>
+                              <input
+                                type="number"
+                                min="0"
+                                className="w-16 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-sm text-[var(--text-h)] outline-none focus:border-emerald-400"
+                                value={draftSizeStocks[sz] ?? '0'}
+                                onChange={(e) =>
+                                  setDraftSizeStocks((prev) => ({ ...prev, [sz]: e.target.value }))
+                                }
+                              />
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            className={`${btnCreate} px-3 py-1 text-xs`}
+                            disabled={saving}
+                            onClick={() => saveSizeStocks(p.id)}
+                          >
+                            {saving ? '…' : 'Save All'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))
             )}
           </tbody>

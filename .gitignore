@@ -1,4 +1,6 @@
 node_modules/
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # Local environment files can contain secrets.
 .env

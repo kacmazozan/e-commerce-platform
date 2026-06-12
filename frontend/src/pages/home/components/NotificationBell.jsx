@@ -163,15 +163,21 @@ export default function NotificationBell({ token }) {
                     </span>
                   </div>
                   <span className="text-[11px] text-[var(--text)]">
-                    Price dropped from{' '}
-                    <span className="line-through opacity-60">
-                      ${parseFloat(n.original_price).toFixed(2)}
-                    </span>{' '}
-                    to{' '}
-                    <span className="font-semibold text-green-400">
-                      ${parseFloat(n.discounted_price).toFixed(2)}
-                    </span>{' '}
-                    <span className="text-green-400">(-{n.discount_percent}%)</span>
+                    {n.type === 'refund_decision' ? (
+                      n.message
+                    ) : (
+                      <>
+                        Price dropped from{' '}
+                        <span className="line-through opacity-60">
+                          ${parseFloat(n.original_price).toFixed(2)}
+                        </span>{' '}
+                        to{' '}
+                        <span className="font-semibold text-green-400">
+                          ${parseFloat(n.discounted_price).toFixed(2)}
+                        </span>{' '}
+                        <span className="text-green-400">(-{n.discount_percent}%)</span>
+                      </>
+                    )}
                   </span>
                 </button>
               ))}

@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import API_BASE from '../../api'
 import { getInitial } from '../../utils/avatar'
+
+const TABS = [
+  { key: 'profile', label: 'Profile' },
+  { key: 'address', label: 'Address' },
+  { key: 'payment', label: 'Payment Cards' },
+  { key: 'notifications', label: 'Notifications' },
+  { key: 'security', label: 'Security' },
+]
 
 function Section({ title, description, children }) {
   return (
@@ -37,8 +46,75 @@ function Toggle({ checked, onChange, label }) {
   )
 }
 
+function formatCardNumber(value) {
+  const raw = value.replace(/\D/g, '')
+  const isAmex = /^3[47]/.test(raw)
+  if (isAmex) {
+    const digits = raw.slice(0, 15)
+    return digits.replace(/^(\d{0,4})(\d{0,6})(\d{0,5})$/, (_, a, b, c) =>
+      [a, b, c].filter(Boolean).join(' ')
+    )
+  }
+  return raw
+    .slice(0, 16)
+    .replace(/(.{4})/g, '$1 ')
+    .trim()
+}
+
+function formatExpiry(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 4)
+  if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`
+  return digits
+}
+
+function buildAddressString({ line1, line2, city, postcode, country }) {
+  return [
+    line1.trim(),
+    line2.trim(),
+    [city.trim(), postcode.trim()].filter(Boolean).join(' '),
+    country.trim(),
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+function applyAddressString(address, setters) {
+  const lines = String(address || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  setters.setLine1(lines[0] || '')
+  if (lines.length >= 3) {
+    const hasLine2 = lines.length >= 4
+    const cityLine = (hasLine2 ? lines[2] : lines[1]).split(/\s+/)
+    setters.setLine2(hasLine2 ? lines[1] : '')
+    setters.setPostcode(cityLine.pop() || '')
+    setters.setCity(cityLine.join(' '))
+    setters.setCountry(hasLine2 ? lines[3] || '' : lines[2] || '')
+  } else {
+    setters.setLine2(lines[1] || '')
+    setters.setCity('')
+    setters.setPostcode('')
+    setters.setCountry('')
+  }
+}
+
 export default function AccountSettingsPage({ token, onProfileUpdate }) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = TABS.some((t) => t.key === searchParams.get('tab'))
+    ? searchParams.get('tab')
+    : 'profile'
+
+  function setActiveTab(tab) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', tab)
+      return next
+    })
+  }
+
   // Profile
+  const [customerId, setCustomerId] = useState(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [taxId, setTaxId] = useState('')
@@ -77,6 +153,21 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
   const [postcode, setPostcode] = useState('')
   const [country, setCountry] = useState('')
   const [addressSaved, setAddressSaved] = useState(false)
+  const [addressError, setAddressError] = useState('')
+  const [addressSaving, setAddressSaving] = useState(false)
+
+  // Payment methods
+  const [paymentMethods, setPaymentMethods] = useState([])
+  const [cardsLoading, setCardsLoading] = useState(true)
+  const [cardsSaving, setCardsSaving] = useState(false)
+  const [cardsError, setCardsError] = useState('')
+  const [cardSaved, setCardSaved] = useState(false)
+  const [cardForm, setCardForm] = useState({
+    cardholderName: '',
+    cardNumber: '',
+    expiry: '',
+    makeDefault: false,
+  })
 
   async function loadProfile(signal) {
     setProfileLoading(true)
@@ -88,11 +179,20 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Failed to load profile')
+      setCustomerId(data.id ?? null)
       setName(data.name || '')
       setEmail(data.email || '')
       setTaxId(data.tax_id || '')
       setPendingEmail(data.pending_email || null)
-      if (data.home_address) setLine1(data.home_address)
+      if (data.home_address) {
+        applyAddressString(data.home_address, {
+          setLine1,
+          setLine2,
+          setCity,
+          setPostcode,
+          setCountry,
+        })
+      }
     } catch (err) {
       if (err.name === 'AbortError') return
       setProfileError(err.message || 'Could not connect to server')
@@ -101,13 +201,34 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
     }
   }
 
+  async function loadPaymentMethods(signal) {
+    setCardsLoading(true)
+    setCardsError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/payment-methods`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to load saved cards')
+      setPaymentMethods(data.paymentMethods || [])
+    } catch (err) {
+      if (err.name === 'AbortError') return
+      setCardsError(err.message || 'Could not connect to server')
+    } finally {
+      setCardsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!token) {
       setProfileLoading(false)
+      setCardsLoading(false)
       return
     }
     const controller = new AbortController()
     loadProfile(controller.signal)
+    loadPaymentMethods(controller.signal)
     return () => controller.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
@@ -259,346 +380,646 @@ export default function AccountSettingsPage({ token, onProfileUpdate }) {
     }
   }
 
-  function handleAddressSave(e) {
+  async function handleAddressSave(e) {
     e.preventDefault()
-    setAddressSaved(true)
-    setTimeout(() => setAddressSaved(false), 2500)
+    setAddressError('')
+    setAddressSaving(true)
+    const homeAddress = buildAddressString({ line1, line2, city, postcode, country })
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me/address`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ home_address: homeAddress }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setAddressError(data.error || 'Failed to save address')
+      } else {
+        setAddressSaved(true)
+        setTimeout(() => setAddressSaved(false), 2500)
+      }
+    } catch {
+      setAddressError('Could not connect to server')
+    } finally {
+      setAddressSaving(false)
+    }
+  }
+
+  async function handleCardAdd(e) {
+    e.preventDefault()
+    setCardsError('')
+    setCardSaved(false)
+
+    if (!cardForm.cardholderName.trim() || !cardForm.cardNumber.trim() || !cardForm.expiry.trim()) {
+      setCardsError('Cardholder name, card number, and expiry are required.')
+      return
+    }
+
+    setCardsSaving(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/payment-methods`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(cardForm),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCardsError(data.error || 'Failed to save card')
+      } else {
+        setPaymentMethods((prev) => {
+          const next = prev.map((card) =>
+            data.paymentMethod.isDefault ? { ...card, isDefault: false } : card
+          )
+          return [data.paymentMethod, ...next]
+        })
+        setCardForm({ cardholderName: '', cardNumber: '', expiry: '', makeDefault: false })
+        setCardSaved(true)
+        setTimeout(() => setCardSaved(false), 2500)
+      }
+    } catch {
+      setCardsError('Could not connect to server')
+    } finally {
+      setCardsSaving(false)
+    }
+  }
+
+  async function handleMakeDefault(cardId) {
+    setCardsError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/payment-methods/${cardId}/default`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCardsError(data.error || 'Failed to update default card')
+      } else {
+        setPaymentMethods((prev) =>
+          prev.map((card) => ({ ...card, isDefault: card.id === data.paymentMethod.id }))
+        )
+      }
+    } catch {
+      setCardsError('Could not connect to server')
+    }
+  }
+
+  async function handleDeleteCard(cardId) {
+    setCardsError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/payment-methods/${cardId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCardsError(data.error || 'Failed to delete card')
+      } else {
+        setPaymentMethods((prev) => prev.filter((card) => card.id !== cardId))
+        loadPaymentMethods()
+      }
+    } catch {
+      setCardsError('Could not connect to server')
+    }
   }
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-[var(--bg)] pt-16">
-      <main className="mx-auto box-border w-full max-w-[760px] px-6 pt-12 pb-20">
+      <main className="mx-auto box-border w-full max-w-[1040px] px-6 pt-12 pb-20">
         <h1 className="mb-10 text-[32px] font-extrabold tracking-[-0.5px] text-[var(--text-h)]">
           Account Settings
         </h1>
 
-        {/* Profile */}
-        <Section title="Profile" description="Update your display name and tax ID.">
-          <form onSubmit={handleProfileSave}>
-            <div className="mb-5 flex items-center gap-4 border-b border-[var(--border)] pb-5">
-              <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-purple-400/12 text-[22px] font-bold text-purple-400">
-                {getInitial(name, email)}
-              </div>
-              <div className="min-w-0">
-                <p className="m-0 mb-0.5 text-[15px] font-semibold text-[var(--text-h)]">
-                  {profileLoading ? 'Loading…' : name || 'Your Name'}
-                </p>
-                <p className="m-0 truncate text-[13px] text-[var(--text)]" title={email}>
-                  {profileLoading ? '' : email}
-                </p>
-              </div>
-            </div>
-            <div className="mb-4 flex flex-col gap-1.5">
-              <Label htmlFor="acc-name" className="text-[13px] text-[var(--text-h)]">
-                Full Name
-              </Label>
-              <Input
-                id="acc-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                disabled={profileLoading}
-                className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-              />
-            </div>
-            <div className="mb-4 flex flex-col gap-1.5">
-              <Label htmlFor="acc-tax-id" className="text-[13px] text-[var(--text-h)]">
-                Tax ID <span className="font-normal text-[var(--text)]">(optional)</span>
-              </Label>
-              <Input
-                id="acc-tax-id"
-                type="text"
-                value={taxId}
-                onChange={(e) => setTaxId(e.target.value)}
-                placeholder="e.g. 1234567890"
-                maxLength={50}
-                disabled={profileLoading}
-                className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-              />
-            </div>
-            {profileError && <p className="-mt-2 mb-3 text-[13px] text-red-500">{profileError}</p>}
-            <div className="mt-2 flex items-center justify-end gap-3.5">
-              {profileSaved && (
-                <span className="text-[13px] font-medium text-green-500">Changes saved!</span>
-              )}
+        <div className="flex flex-col gap-8 md:flex-row">
+          <nav className="flex shrink-0 flex-row gap-1 overflow-x-auto md:w-[200px] md:flex-col md:overflow-x-visible">
+            {TABS.map((tab) => (
               <button
-                type="submit"
-                disabled={profileLoading || profileSaving}
-                className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {profileSaving ? 'Saving…' : 'Save Profile'}
-              </button>
-            </div>
-          </form>
-        </Section>
-
-        {/* Email change */}
-        <Section
-          title="Email Address"
-          description="Changing your email requires confirmation from both your current and new address."
-        >
-          <div className="mb-4 flex flex-col gap-1.5">
-            <Label className="text-[13px] text-[var(--text-h)]">Current Email</Label>
-            <p
-              className="m-0 truncate rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[13px] text-[var(--text-h)] opacity-80"
-              title={email}
-            >
-              {profileLoading ? 'Loading…' : email}
-            </p>
-          </div>
-
-          {pendingEmail && (
-            <div className="mb-5 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4">
-              <p className="m-0 mb-1 text-[13px] font-semibold text-yellow-500">
-                Pending change to {pendingEmail}
-              </p>
-              <p className="m-0 mb-3 text-[12px] text-[var(--text)]">
-                Both verification links must be clicked within 1 hour. Check both inboxes.
-              </p>
-              <button
+                key={tab.key}
                 type="button"
-                onClick={handleEmailChangeCancel}
-                disabled={cancelSubmitting}
-                className="cursor-pointer rounded-md border border-yellow-500/60 bg-transparent px-3 py-1.5 text-[12px] font-semibold text-yellow-500 transition-colors hover:bg-yellow-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => setActiveTab(tab.key)}
+                className={`cursor-pointer rounded-lg border-none px-4 py-2.5 text-left text-[14px] font-medium whitespace-nowrap transition-colors ${
+                  activeTab === tab.key
+                    ? 'bg-purple-400/15 text-purple-400'
+                    : 'bg-transparent text-[var(--text)] hover:bg-[var(--card-bg)] hover:text-[var(--text-h)]'
+                }`}
               >
-                {cancelSubmitting ? 'Cancelling…' : 'Cancel pending change'}
+                {tab.label}
               </button>
-            </div>
-          )}
+            ))}
+          </nav>
 
-          <form onSubmit={handleEmailChangeRequest}>
-            <div className="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1">
-              <div className="mb-4 flex flex-col gap-1.5">
-                <Label htmlFor="acc-new-email" className="text-[13px] text-[var(--text-h)]">
-                  New Email
-                </Label>
-                <Input
-                  id="acc-new-email"
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  disabled={profileLoading}
-                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-                />
-              </div>
-              <div className="mb-4 flex flex-col gap-1.5">
-                <Label htmlFor="acc-email-pw" className="text-[13px] text-[var(--text-h)]">
-                  Current Password
-                </Label>
-                <Input
-                  id="acc-email-pw"
-                  type="password"
-                  value={emailChangePassword}
-                  onChange={(e) => setEmailChangePassword(e.target.value)}
-                  placeholder="••••••••"
-                  disabled={profileLoading}
-                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-                />
-              </div>
-            </div>
-            {emailChangeError && (
-              <p className="-mt-2 mb-3 text-[13px] text-red-500">{emailChangeError}</p>
+          <div className="max-w-[760px] min-w-0 flex-1">
+            {activeTab === 'profile' && (
+              <>
+                {/* Profile */}
+                <Section
+                  title="Profile"
+                  description="Update your display name, tax ID, and email address."
+                >
+                  <form onSubmit={handleProfileSave}>
+                    <div className="mb-5 flex items-center gap-4 border-b border-[var(--border)] pb-5">
+                      <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-purple-400/12 text-[22px] font-bold text-purple-400">
+                        {getInitial(name, email)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="m-0 mb-0.5 text-[15px] font-semibold text-[var(--text-h)]">
+                          {profileLoading ? 'Loading…' : name || 'Your Name'}
+                        </p>
+                        <p className="m-0 truncate text-[13px] text-[var(--text)]" title={email}>
+                          {profileLoading ? '' : email}
+                        </p>
+                        {customerId != null && (
+                          <p className="m-0 mt-0.5 text-[12px] text-[var(--text)]">
+                            Customer ID: {customerId}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mb-4 flex flex-col gap-1.5">
+                      <Label htmlFor="acc-name" className="text-[13px] text-[var(--text-h)]">
+                        Full Name
+                      </Label>
+                      <Input
+                        id="acc-name"
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Your name"
+                        disabled={profileLoading}
+                        className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                      />
+                    </div>
+                    <div className="mb-4 flex flex-col gap-1.5">
+                      <Label htmlFor="acc-tax-id" className="text-[13px] text-[var(--text-h)]">
+                        Tax ID <span className="font-normal text-[var(--text)]">(optional)</span>
+                      </Label>
+                      <Input
+                        id="acc-tax-id"
+                        type="text"
+                        value={taxId}
+                        onChange={(e) => setTaxId(e.target.value)}
+                        placeholder="e.g. 1234567890"
+                        maxLength={50}
+                        disabled={profileLoading}
+                        className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                      />
+                    </div>
+                    {profileError && (
+                      <p className="-mt-2 mb-3 text-[13px] text-red-500">{profileError}</p>
+                    )}
+                    <div className="mt-2 flex items-center justify-end gap-3.5">
+                      {profileSaved && (
+                        <span className="text-[13px] font-medium text-green-500">
+                          Changes saved!
+                        </span>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={profileLoading || profileSaving}
+                        className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {profileSaving ? 'Saving…' : 'Save Profile'}
+                      </button>
+                    </div>
+                  </form>
+
+                  <div className="my-6 border-t border-[var(--border)]" />
+
+                  <div>
+                    <h3 className="m-0 mb-1 text-[15px] font-semibold text-[var(--text-h)]">
+                      Email Address
+                    </h3>
+                    <p className="m-0 mb-4 text-[13px] text-[var(--text)]">
+                      Changing your email requires confirmation from both your current and new
+                      address.
+                    </p>
+
+                    <div className="mb-4 flex flex-col gap-1.5">
+                      <Label className="text-[13px] text-[var(--text-h)]">Current Email</Label>
+                      <p
+                        className="m-0 truncate rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[13px] text-[var(--text-h)] opacity-80"
+                        title={email}
+                      >
+                        {profileLoading ? 'Loading…' : email}
+                      </p>
+                    </div>
+
+                    {pendingEmail && (
+                      <div className="mb-5 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4">
+                        <p className="m-0 mb-1 text-[13px] font-semibold text-yellow-500">
+                          Pending change to {pendingEmail}
+                        </p>
+                        <p className="m-0 mb-3 text-[12px] text-[var(--text)]">
+                          Both verification links must be clicked within 1 hour. Check both inboxes.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleEmailChangeCancel}
+                          disabled={cancelSubmitting}
+                          className="cursor-pointer rounded-md border border-yellow-500/60 bg-transparent px-3 py-1.5 text-[12px] font-semibold text-yellow-500 transition-colors hover:bg-yellow-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {cancelSubmitting ? 'Cancelling…' : 'Cancel pending change'}
+                        </button>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleEmailChangeRequest}>
+                      <div className="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1">
+                        <div className="mb-4 flex flex-col gap-1.5">
+                          <Label
+                            htmlFor="acc-new-email"
+                            className="text-[13px] text-[var(--text-h)]"
+                          >
+                            New Email
+                          </Label>
+                          <Input
+                            id="acc-new-email"
+                            type="email"
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            placeholder="you@example.com"
+                            disabled={profileLoading}
+                            className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                          />
+                        </div>
+                        <div className="mb-4 flex flex-col gap-1.5">
+                          <Label
+                            htmlFor="acc-email-pw"
+                            className="text-[13px] text-[var(--text-h)]"
+                          >
+                            Current Password
+                          </Label>
+                          <Input
+                            id="acc-email-pw"
+                            type="password"
+                            value={emailChangePassword}
+                            onChange={(e) => setEmailChangePassword(e.target.value)}
+                            placeholder="••••••••"
+                            disabled={profileLoading}
+                            className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                          />
+                        </div>
+                      </div>
+                      {emailChangeError && (
+                        <p className="-mt-2 mb-3 text-[13px] text-red-500">{emailChangeError}</p>
+                      )}
+                      <div className="mt-2 flex items-center justify-end gap-3.5">
+                        {emailChangeSent && (
+                          <span className="text-[13px] font-medium text-green-500">
+                            Verification emails sent — check both inboxes.
+                          </span>
+                        )}
+                        <button
+                          type="submit"
+                          disabled={profileLoading || emailChangeSubmitting}
+                          className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {emailChangeSubmitting ? 'Sending…' : 'Request Email Change'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </Section>
+              </>
             )}
-            <div className="mt-2 flex items-center justify-end gap-3.5">
-              {emailChangeSent && (
-                <span className="text-[13px] font-medium text-green-500">
-                  Verification emails sent — check both inboxes.
-                </span>
-              )}
-              <button
-                type="submit"
-                disabled={profileLoading || emailChangeSubmitting}
-                className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-60"
+
+            {activeTab === 'security' && (
+              <Section
+                title="Password"
+                description="Choose a strong password you don't use elsewhere."
               >
-                {emailChangeSubmitting ? 'Sending…' : 'Request Email Change'}
-              </button>
-            </div>
-          </form>
-        </Section>
+                <form onSubmit={handlePasswordSave}>
+                  <div className="mb-4 flex flex-col gap-1.5">
+                    <Label htmlFor="pw-current" className="text-[13px] text-[var(--text-h)]">
+                      Current Password
+                    </Label>
+                    <Input
+                      id="pw-current"
+                      type="password"
+                      value={currentPw}
+                      onChange={(e) => setCurrentPw(e.target.value)}
+                      placeholder="••••••••"
+                      className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1">
+                    <div className="mb-4 flex flex-col gap-1.5">
+                      <Label htmlFor="pw-new" className="text-[13px] text-[var(--text-h)]">
+                        New Password
+                      </Label>
+                      <Input
+                        id="pw-new"
+                        type="password"
+                        value={newPw}
+                        onChange={(e) => setNewPw(e.target.value)}
+                        placeholder="••••••••"
+                        className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                      />
+                    </div>
+                    <div className="mb-4 flex flex-col gap-1.5">
+                      <Label htmlFor="pw-confirm" className="text-[13px] text-[var(--text-h)]">
+                        Confirm New Password
+                      </Label>
+                      <Input
+                        id="pw-confirm"
+                        type="password"
+                        value={confirmPw}
+                        onChange={(e) => setConfirmPw(e.target.value)}
+                        placeholder="••••••••"
+                        className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                      />
+                    </div>
+                  </div>
+                  {pwError && <p className="-mt-2 mb-3 text-[13px] text-red-500">{pwError}</p>}
+                  <div className="mt-2 flex items-center justify-end gap-3.5">
+                    {pwSaved && (
+                      <span className="text-[13px] font-medium text-green-500">
+                        Password updated!
+                      </span>
+                    )}
+                    <button
+                      type="submit"
+                      className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:opacity-60"
+                      disabled={pwLoading}
+                    >
+                      {pwLoading ? 'Updating…' : 'Update Password'}
+                    </button>
+                  </div>
+                </form>
+              </Section>
+            )}
 
-        {/* Password */}
-        <Section title="Password" description="Choose a strong password you don't use elsewhere.">
-          <form onSubmit={handlePasswordSave}>
-            <div className="mb-4 flex flex-col gap-1.5">
-              <Label htmlFor="pw-current" className="text-[13px] text-[var(--text-h)]">
-                Current Password
-              </Label>
-              <Input
-                id="pw-current"
-                type="password"
-                value={currentPw}
-                onChange={(e) => setCurrentPw(e.target.value)}
-                placeholder="••••••••"
-                className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1">
-              <div className="mb-4 flex flex-col gap-1.5">
-                <Label htmlFor="pw-new" className="text-[13px] text-[var(--text-h)]">
-                  New Password
-                </Label>
-                <Input
-                  id="pw-new"
-                  type="password"
-                  value={newPw}
-                  onChange={(e) => setNewPw(e.target.value)}
-                  placeholder="••••••••"
-                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-                />
-              </div>
-              <div className="mb-4 flex flex-col gap-1.5">
-                <Label htmlFor="pw-confirm" className="text-[13px] text-[var(--text-h)]">
-                  Confirm New Password
-                </Label>
-                <Input
-                  id="pw-confirm"
-                  type="password"
-                  value={confirmPw}
-                  onChange={(e) => setConfirmPw(e.target.value)}
-                  placeholder="••••••••"
-                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-                />
-              </div>
-            </div>
-            {pwError && <p className="-mt-2 mb-3 text-[13px] text-red-500">{pwError}</p>}
-            <div className="mt-2 flex items-center justify-end gap-3.5">
-              {pwSaved && (
-                <span className="text-[13px] font-medium text-green-500">Password updated!</span>
-              )}
-              <button
-                type="submit"
-                className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:opacity-60"
-                disabled={pwLoading}
+            {activeTab === 'payment' && (
+              <Section
+                title="Payment Cards"
+                description="Manage cards you can use during checkout."
               >
-                {pwLoading ? 'Updating…' : 'Update Password'}
-              </button>
-            </div>
-          </form>
-        </Section>
+                <div className="mb-5 grid gap-2">
+                  {cardsLoading && (
+                    <p className="m-0 text-[13px] text-[var(--text)]">Loading cards…</p>
+                  )}
+                  {!cardsLoading && paymentMethods.length === 0 && (
+                    <p className="m-0 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-[13px] text-[var(--text)]">
+                      No saved cards yet.
+                    </p>
+                  )}
+                  {paymentMethods.map((card) => (
+                    <div
+                      key={card.id}
+                      className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 max-[600px]:flex-col max-[600px]:items-start"
+                    >
+                      <div className="min-w-0">
+                        <p className="m-0 text-[14px] font-semibold text-[var(--text-h)]">
+                          {card.brand} ending in {card.last4}
+                          {card.isDefault && (
+                            <span className="ml-2 rounded-full bg-purple-400/12 px-2 py-0.5 text-[11px] text-purple-400">
+                              Default
+                            </span>
+                          )}
+                        </p>
+                        <p className="m-0 mt-0.5 text-[12px] text-[var(--text)]">
+                          {card.cardholderName} · Expires {card.expiry}
+                          {card.expired ? ' · Expired' : ''}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {!card.isDefault && (
+                          <button
+                            type="button"
+                            onClick={() => handleMakeDefault(card.id)}
+                            className="cursor-pointer rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-[12px] font-semibold text-[var(--text)] transition-colors hover:border-purple-400/40 hover:text-purple-400"
+                          >
+                            Make Default
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCard(card.id)}
+                          className="cursor-pointer rounded-md border border-red-500/50 bg-transparent px-3 py-1.5 text-[12px] font-semibold text-red-500 transition-colors hover:bg-red-500 hover:text-white"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
-        {/* Notifications */}
-        <Section title="Notifications" description="Choose what you'd like to hear about.">
-          <Toggle
-            label="Order updates & shipping"
-            checked={notifOrderUpdates}
-            onChange={setNotifOrderUpdates}
-          />
-          <Toggle
-            label="Promotions & discounts"
-            checked={notifPromotions}
-            onChange={setNotifPromotions}
-          />
-          <Toggle
-            label="New arrivals & collections"
-            checked={notifNewArrivals}
-            onChange={setNotifNewArrivals}
-          />
-          <Toggle label="SMS notifications" checked={notifSMS} onChange={setNotifSMS} />
-        </Section>
+                <form onSubmit={handleCardAdd}>
+                  <div className="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1">
+                    <div className="col-span-2 flex flex-col gap-1.5 max-[600px]:col-span-1">
+                      <Label htmlFor="cardholder-name" className="text-[13px] text-[var(--text-h)]">
+                        Cardholder Name
+                      </Label>
+                      <Input
+                        id="cardholder-name"
+                        value={cardForm.cardholderName}
+                        onChange={(e) =>
+                          setCardForm((prev) => ({ ...prev, cardholderName: e.target.value }))
+                        }
+                        placeholder="Jane Smith"
+                        className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                      />
+                    </div>
+                    <div className="col-span-2 flex flex-col gap-1.5 max-[600px]:col-span-1">
+                      <Label htmlFor="card-number" className="text-[13px] text-[var(--text-h)]">
+                        Card Number
+                      </Label>
+                      <Input
+                        id="card-number"
+                        value={cardForm.cardNumber}
+                        inputMode="numeric"
+                        onChange={(e) =>
+                          setCardForm((prev) => ({
+                            ...prev,
+                            cardNumber: formatCardNumber(e.target.value),
+                          }))
+                        }
+                        placeholder="4242 4242 4242 4242"
+                        className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="card-expiry" className="text-[13px] text-[var(--text-h)]">
+                        Expiry
+                      </Label>
+                      <Input
+                        id="card-expiry"
+                        value={cardForm.expiry}
+                        inputMode="numeric"
+                        maxLength={5}
+                        onChange={(e) =>
+                          setCardForm((prev) => ({ ...prev, expiry: formatExpiry(e.target.value) }))
+                        }
+                        placeholder="MM/YY"
+                        className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                      />
+                    </div>
+                    <label className="mt-6 flex cursor-pointer items-center gap-2 text-[13px] text-[var(--text-h)] max-[600px]:mt-0">
+                      <input
+                        type="checkbox"
+                        checked={cardForm.makeDefault}
+                        onChange={(e) =>
+                          setCardForm((prev) => ({ ...prev, makeDefault: e.target.checked }))
+                        }
+                      />
+                      Make default
+                    </label>
+                  </div>
+                  {cardsError && <p className="mt-3 mb-0 text-[13px] text-red-500">{cardsError}</p>}
+                  <div className="mt-4 flex items-center justify-end gap-3.5">
+                    {cardSaved && (
+                      <span className="text-[13px] font-medium text-green-500">Card saved!</span>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={cardsSaving}
+                      className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {cardsSaving ? 'Saving…' : 'Save Card'}
+                    </button>
+                  </div>
+                </form>
+              </Section>
+            )}
 
-        {/* Shipping Address */}
-        <Section title="Shipping Address" description="Your default delivery address.">
-          <form onSubmit={handleAddressSave}>
-            <div className="mb-4 flex flex-col gap-1.5">
-              <Label htmlFor="addr-line1" className="text-[13px] text-[var(--text-h)]">
-                Address Line 1
-              </Label>
-              <Input
-                id="addr-line1"
-                type="text"
-                value={line1}
-                onChange={(e) => setLine1(e.target.value)}
-                placeholder="123 Example Street"
-                className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-              />
-            </div>
-            <div className="mb-4 flex flex-col gap-1.5">
-              <Label htmlFor="addr-line2" className="text-[13px] text-[var(--text-h)]">
-                Address Line 2 <span className="font-normal text-[var(--text)]">(optional)</span>
-              </Label>
-              <Input
-                id="addr-line2"
-                type="text"
-                value={line2}
-                onChange={(e) => setLine2(e.target.value)}
-                placeholder="Apartment, suite, etc."
-                className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1">
-              <div className="mb-4 flex flex-col gap-1.5">
-                <Label htmlFor="addr-city" className="text-[13px] text-[var(--text-h)]">
-                  City
-                </Label>
-                <Input
-                  id="addr-city"
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="London"
-                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+            {activeTab === 'notifications' && (
+              <Section title="Notifications" description="Choose what you'd like to hear about.">
+                <Toggle
+                  label="Order updates & shipping"
+                  checked={notifOrderUpdates}
+                  onChange={setNotifOrderUpdates}
                 />
-              </div>
-              <div className="mb-4 flex flex-col gap-1.5">
-                <Label htmlFor="addr-postcode" className="text-[13px] text-[var(--text-h)]">
-                  Postcode
-                </Label>
-                <Input
-                  id="addr-postcode"
-                  type="text"
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value)}
-                  placeholder="SW1A 1AA"
-                  className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                <Toggle
+                  label="Promotions & discounts"
+                  checked={notifPromotions}
+                  onChange={setNotifPromotions}
                 />
-              </div>
-            </div>
-            <div className="mb-4 flex flex-col gap-1.5">
-              <Label htmlFor="addr-country" className="text-[13px] text-[var(--text-h)]">
-                Country
-              </Label>
-              <Input
-                id="addr-country"
-                type="text"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                placeholder="United Kingdom"
-                className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
-              />
-            </div>
-            <div className="mt-2 flex items-center justify-end gap-3.5">
-              {addressSaved && (
-                <span className="text-[13px] font-medium text-green-500">Address saved!</span>
-              )}
-              <button
-                type="submit"
-                className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88"
-              >
-                Save Address
-              </button>
-            </div>
-          </form>
-        </Section>
+                <Toggle
+                  label="New arrivals & collections"
+                  checked={notifNewArrivals}
+                  onChange={setNotifNewArrivals}
+                />
+                <Toggle label="SMS notifications" checked={notifSMS} onChange={setNotifSMS} />
+              </Section>
+            )}
 
-        {/* Danger zone */}
-        <Section title="Danger Zone">
-          <div className="flex items-center justify-between gap-6 max-[600px]:flex-col max-[600px]:items-start">
-            <div>
-              <p className="m-0 mb-1 text-sm font-semibold text-red-500">Delete Account</p>
-              <p className="m-0 text-[13px] text-[var(--text)]">
-                Permanently remove your account and all associated data. This cannot be undone.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="shrink-0 cursor-pointer rounded-lg border border-red-500 bg-transparent px-4.5 py-2.5 text-[13px] font-semibold text-red-500 transition-colors hover:bg-red-500 hover:text-white"
-            >
-              Delete Account
-            </button>
+            {activeTab === 'address' && (
+              <Section title="Shipping Address" description="Your default delivery address.">
+                <form onSubmit={handleAddressSave}>
+                  <div className="mb-4 flex flex-col gap-1.5">
+                    <Label htmlFor="addr-line1" className="text-[13px] text-[var(--text-h)]">
+                      Address Line 1
+                    </Label>
+                    <Input
+                      id="addr-line1"
+                      type="text"
+                      value={line1}
+                      onChange={(e) => setLine1(e.target.value)}
+                      placeholder="123 Example Street"
+                      className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                    />
+                  </div>
+                  <div className="mb-4 flex flex-col gap-1.5">
+                    <Label htmlFor="addr-line2" className="text-[13px] text-[var(--text-h)]">
+                      Address Line 2{' '}
+                      <span className="font-normal text-[var(--text)]">(optional)</span>
+                    </Label>
+                    <Input
+                      id="addr-line2"
+                      type="text"
+                      value={line2}
+                      onChange={(e) => setLine2(e.target.value)}
+                      placeholder="Apartment, suite, etc."
+                      className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1">
+                    <div className="mb-4 flex flex-col gap-1.5">
+                      <Label htmlFor="addr-city" className="text-[13px] text-[var(--text-h)]">
+                        City
+                      </Label>
+                      <Input
+                        id="addr-city"
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="London"
+                        className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                      />
+                    </div>
+                    <div className="mb-4 flex flex-col gap-1.5">
+                      <Label htmlFor="addr-postcode" className="text-[13px] text-[var(--text-h)]">
+                        Postcode
+                      </Label>
+                      <Input
+                        id="addr-postcode"
+                        type="text"
+                        value={postcode}
+                        onChange={(e) => setPostcode(e.target.value)}
+                        placeholder="SW1A 1AA"
+                        className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-4 flex flex-col gap-1.5">
+                    <Label htmlFor="addr-country" className="text-[13px] text-[var(--text-h)]">
+                      Country
+                    </Label>
+                    <Input
+                      id="addr-country"
+                      type="text"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      placeholder="United Kingdom"
+                      className="border-[var(--border)] bg-[var(--bg)] text-[var(--text-h)] placeholder:text-[var(--text)]/40 focus-visible:border-purple-400 focus-visible:ring-purple-400/40"
+                    />
+                  </div>
+                  {addressError && (
+                    <p className="-mt-2 mb-3 text-[13px] text-red-500">{addressError}</p>
+                  )}
+                  <div className="mt-2 flex items-center justify-end gap-3.5">
+                    {addressSaved && (
+                      <span className="text-[13px] font-medium text-green-500">Address saved!</span>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={addressSaving}
+                      className="cursor-pointer rounded-lg border-none bg-purple-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-88 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {addressSaving ? 'Saving…' : 'Save Address'}
+                    </button>
+                  </div>
+                </form>
+              </Section>
+            )}
+
+            {activeTab === 'security' && (
+              <Section title="Danger Zone">
+                <div className="flex items-center justify-between gap-6 max-[600px]:flex-col max-[600px]:items-start">
+                  <div>
+                    <p className="m-0 mb-1 text-sm font-semibold text-red-500">Delete Account</p>
+                    <p className="m-0 text-[13px] text-[var(--text)]">
+                      Permanently remove your account and all associated data. This cannot be
+                      undone.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="shrink-0 cursor-pointer rounded-lg border border-red-500 bg-transparent px-4.5 py-2.5 text-[13px] font-semibold text-red-500 transition-colors hover:bg-red-500 hover:text-white"
+                  >
+                    Delete Account
+                  </button>
+                </div>
+              </Section>
+            )}
           </div>
-        </Section>
+        </div>
       </main>
     </div>
   )

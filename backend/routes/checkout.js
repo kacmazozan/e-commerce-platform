@@ -3,11 +3,59 @@ const authenticate = require('../middleware/auth')
 const pool = require('../db')
 const { inferCustomerName } = require('../services/invoice')
 const { queueInvoiceRequest } = require('../services/invoice-workflow')
+const { decryptField, encryptField } = require('../services/secure-fields')
+const {
+  ensureSavedPaymentMethod,
+  isExpired,
+  normalizeCardPayload,
+} = require('../services/payment-methods')
 
 const router = express.Router()
 router.use(authenticate)
 
 const RESERVATION_MINUTES = 10
+
+async function resolveStoredPaymentMethod(userId, paymentMethodId) {
+  const id = Number(paymentMethodId)
+  if (!Number.isInteger(id) || id <= 0) {
+    return { error: 'Invalid saved card selected' }
+  }
+
+  const result = await pool.query(
+    `SELECT id, expiry_month_enc, expiry_year_enc
+     FROM customer_payment_methods
+     WHERE id = $1 AND user_id = $2`,
+    [id, userId]
+  )
+
+  const row = result.rows[0]
+  if (!row) return { error: 'Saved card not found' }
+
+  // The UI disables expired saved cards, but enforce it server-side too
+  const expiryMonth = Number(decryptField(row.expiry_month_enc))
+  const expiryYear = Number(decryptField(row.expiry_year_enc))
+  if (isExpired(expiryMonth, expiryYear)) {
+    return { error: 'Saved card is expired. Please choose another card or enter a new one.' }
+  }
+
+  return { paymentMethodId: id }
+}
+
+async function resolveCheckoutPayment(req, userId) {
+  const savedPaymentMethodId = req.body.paymentMethodId ?? req.body.payment_method_id
+  if (savedPaymentMethodId) {
+    return resolveStoredPaymentMethod(userId, savedPaymentMethodId)
+  }
+
+  const paymentPayload = req.body.paymentMethod ?? req.body.payment_method ?? req.body.payment
+  const normalized = normalizeCardPayload(paymentPayload, { requireCvv: true })
+  if (normalized.error) return { error: normalized.error }
+
+  return {
+    newCard: normalized.card,
+    savePaymentMethod: Boolean(req.body.savePaymentMethod ?? req.body.save_payment_method),
+  }
+}
 
 // POST /api/checkout/reserve
 // Soft-locks stock for every item in the user's cart.
@@ -24,14 +72,14 @@ router.post('/reserve', async (req, res) => {
     return res.status(400).json({ error: 'Cart is empty' })
   }
 
-  // 1. Group items by product_id to check total requested against stock
+  // 1. Group items by (product_id, size) to check per-size stock
   const aggregated = cartResult.rows.reduce((acc, item) => {
-    const pid = item.product_id
-    if (!acc[pid]) {
-      acc[pid] = { id: pid, totalQuantity: 0, items: [] }
+    const key = `${item.product_id}:${item.size ?? ''}`
+    if (!acc[key]) {
+      acc[key] = { id: item.product_id, size: item.size ?? '', totalQuantity: 0, items: [] }
     }
-    acc[pid].totalQuantity += item.quantity
-    acc[pid].items.push(item)
+    acc[key].totalQuantity += item.quantity
+    acc[key].items.push(item)
     return acc
   }, {})
 
@@ -42,8 +90,8 @@ router.post('/reserve', async (req, res) => {
   try {
     await client.query('BEGIN')
 
-    for (const pid in aggregated) {
-      const product = aggregated[pid]
+    for (const key in aggregated) {
+      const product = aggregated[key]
       // Purge stale reservations for this product then lock the row
       await client.query(
         'DELETE FROM stock_reservations WHERE product_id = $1 AND expires_at < NOW()',
@@ -51,7 +99,7 @@ router.post('/reserve', async (req, res) => {
       )
 
       const productResult = await client.query(
-        'SELECT name, stock FROM products WHERE id = $1 FOR UPDATE',
+        'SELECT name, stock, sizes FROM products WHERE id = $1 FOR UPDATE',
         [product.id]
       )
 
@@ -65,13 +113,28 @@ router.post('/reserve', async (req, res) => {
         continue
       }
 
-      const { name, stock } = productResult.rows[0]
+      const { name } = productResult.rows[0]
+
+      let stock
+      if (product.size) {
+        const sizeStockResult = await client.query(
+          'SELECT stock FROM product_size_stock WHERE product_id = $1 AND size = $2 FOR UPDATE',
+          [product.id, product.size]
+        )
+        stock = sizeStockResult.rows.length > 0 ? sizeStockResult.rows[0].stock : 0
+      } else if (productResult.rows[0].sizes?.length > 0) {
+        // Sized product reserved without a size (API misuse) — never fall back to
+        // the aggregate, that could oversell an individual size at confirm.
+        stock = 0
+      } else {
+        stock = productResult.rows[0].stock
+      }
 
       const reservedResult = await client.query(
         `SELECT COALESCE(SUM(quantity), 0) AS reserved
            FROM stock_reservations
-           WHERE product_id = $1 AND user_id != $2`,
-        [product.id, userId]
+           WHERE product_id = $1 AND size = $2 AND user_id != $3`,
+        [product.id, product.size, userId]
       )
       const reservedByOthers = parseInt(reservedResult.rows[0].reserved)
       const available = stock - reservedByOthers
@@ -123,7 +186,11 @@ router.delete('/reserve', async (req, res) => {
 // Body: { address } — verifies reservation still valid, hard-decrements stock, creates order, clears cart.
 router.post('/confirm', async (req, res) => {
   const userId = req.user.userId
-  const address = (req.body.address || '').trim() || null
+  const address = typeof req.body.address === 'string' ? req.body.address.trim() || null : null
+  const payment = await resolveCheckoutPayment(req, userId)
+  if (payment.error) {
+    return res.status(400).json({ error: payment.error })
+  }
 
   // Use reservations joined with products as the single source of truth for both
   // stock decrement and order item creation — avoids cart/reservation divergence.
@@ -163,14 +230,32 @@ router.post('/confirm', async (req, res) => {
     ])
 
     for (const r of orderedRows) {
-      const upd = await client.query(
-        'UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2 AND stock >= $1 RETURNING id',
-        [r.quantity, r.product_id]
-      )
+      let upd
+      if (r.size) {
+        upd = await client.query(
+          `UPDATE product_size_stock SET stock = stock - $1
+           WHERE product_id = $2 AND size = $3 AND stock >= $1
+           RETURNING product_id`,
+          [r.quantity, r.product_id, r.size]
+        )
+        // Keep the aggregate products.stock in sync — public routes derive
+        // availability from it (see products.js available_stock).
+        if (upd.rowCount > 0) {
+          await client.query(
+            'UPDATE products SET stock = GREATEST(0, stock - $1), updated_at = NOW() WHERE id = $2',
+            [r.quantity, r.product_id]
+          )
+        }
+      } else {
+        upd = await client.query(
+          'UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2 AND stock >= $1 RETURNING id',
+          [r.quantity, r.product_id]
+        )
+      }
       if (upd.rowCount === 0) {
         await client.query('ROLLBACK')
         return res.status(409).json({
-          error: `Insufficient stock for ${r.name}. Please return to your cart and try again.`,
+          error: `Insufficient stock for ${r.name}${r.size ? ` (size ${r.size})` : ''}. Please return to your cart and try again.`,
           productId: r.product_id,
           productName: r.name,
         })
@@ -188,9 +273,23 @@ router.post('/confirm', async (req, res) => {
     const threshold = parseFloat(thresholdResult.rows[0]?.value ?? '100')
     const shippingCost = total >= threshold ? 0 : 4.99
 
+    let paymentMethodId = payment.paymentMethodId ?? null
+    if (!paymentMethodId && payment.savePaymentMethod) {
+      const savedPaymentMethod = await ensureSavedPaymentMethod(client, userId, payment.newCard)
+      paymentMethodId = savedPaymentMethod.id
+    }
+
     const orderResult = await client.query(
-      `INSERT INTO orders (user_id, status, total, address, shipping_cost) VALUES ($1, 'processing', $2, $3, $4) RETURNING id`,
-      [userId, total.toFixed(2), address, shippingCost.toFixed(2)]
+      `INSERT INTO orders (user_id, status, total, address, shipping_cost, payment_method_id)
+       VALUES ($1, 'processing', $2, $3, $4, $5)
+       RETURNING id`,
+      [
+        userId,
+        total.toFixed(2),
+        address ? encryptField(address) : null,
+        shippingCost.toFixed(2),
+        paymentMethodId,
+      ]
     )
     const orderId = orderResult.rows[0].id
 

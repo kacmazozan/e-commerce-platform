@@ -86,6 +86,7 @@ On every `docker compose up`, the backend entrypoint (`backend/entrypoint.sh`) a
 | Admin           | `admin@example.com`          | `admin123456`          |
 | Sales Manager   | `salesmanager@example.com`   | `salesmanager123456`   |
 | Product Manager | `productmanager@example.com` | `productmanager123456` |
+| Demo Customer   | `demo.customer@example.com`  | `demo123456`           |
 
 Products (56 items across 8 categories) are also seeded automatically.
 
@@ -114,6 +115,11 @@ To add a new migration, create `backend/migrations/<N>_description.js` (incremen
 
 Never edit a migration file that has already been applied — write a new one instead.
 
+**node-pg-migrate conventions:**
+- Use `pgm.addColumns()` (plural, 2-arg form) when adding columns to `auth`-schema tables — matches migrations 22, 23, 27.
+- Pass **unquoted** string values to `default` (e.g. `default: 'price_drop'`). node-pg-migrate wraps strings in SQL quotes automatically; passing a pre-quoted value like `"'price_drop'"` produces the literal `'''price_drop'''` in the DB.
+- After adding columns via migration, update every SELECT query that should return them or the frontend will receive `undefined`.
+
 ### Manually re-seeding individual accounts
 
 Seeds run automatically on startup, but individual scripts can be invoked directly if needed:
@@ -123,6 +129,7 @@ docker compose exec backend node scripts/seed-admin.js
 docker compose exec backend node scripts/seed-sales-manager.js
 docker compose exec backend node scripts/seed-product-manager.js
 docker compose exec backend node scripts/seed-products.js
+docker compose exec backend node scripts/seed-demo.js   # demo customer + orders for presentation
 ```
 
 To wipe and re-seed products:
@@ -149,11 +156,15 @@ Route files in `backend/routes/`:
 - `admin-orders.js` — order management at `/api/admin/orders`
 - `admin-settings.js` — system settings + dashboard stats at `/api/admin/settings`
 - `sales-manager-products.js` — `GET /api/sales-manager/products` (`?category=`, `?q=`), `GET /api/sales-manager/products/categories`, `PATCH /api/sales-manager/products/:id/price`, `POST /api/sales-manager/products/discount`, `DELETE /api/sales-manager/products/:id/discount`
-- `product-manager.js` — `GET /api/product-manager/me`, product CRUD at `/api/product-manager/products`, categories at `/api/product-manager/categories`, orders at `/api/product-manager/orders`, comments at `/api/product-manager/comments`
+- `product-manager.js` — `GET /api/product-manager/me`, product CRUD at `/api/product-manager/products`, per-size stock at `GET/PUT /api/product-manager/products/:id/size-stock` (PUT body `{ stocks: { S: 10, M: 5 } }`; validates sizes against `products.sizes`, syncs `products.stock` to the per-size sum), categories at `/api/product-manager/categories`, orders at `/api/product-manager/orders`, comments at `/api/product-manager/comments`
 - `product-manager-invoices.js` — invoices at `/api/product-manager/invoices` (separate file from `product-manager.js`)
 - `sales-manager-invoices.js` — `GET /api/sales-manager/invoices` (`?startDate=`, `?endDate=`), `GET /api/sales-manager/invoices/:orderId`, `GET /api/sales-manager/invoices/:orderId/pdf`, `GET /api/sales-manager/invoices/export/pdf`
-- `notifications.js` — authenticated; `GET /api/notifications`, `PATCH /api/notifications/:id/read`, `PATCH /api/notifications/read-all`, `DELETE /api/notifications`
+- `sales-manager-refunds.js` — `GET /api/sales-manager/refunds` (`?status=`, `?page=`, `?limit=`), `PATCH /api/sales-manager/refunds/:id/approve`, `PATCH /api/sales-manager/refunds/:id/reject`; approve is transactional (stock restore + credit_balance update); both endpoints fire-and-forget a customer notification after commit
+- `sales-manager-stats.js` — `GET /api/sales-manager/stats`; returns published_products, unpriced_products, active_discounts, pending_refunds, revenue_this_month, orders_this_month
+- `sales-manager-revenue.js` — `GET /api/sales-manager/revenue` (`?startDate=YYYY-MM-DD`, `?endDate=YYYY-MM-DD`; defaults to current month); returns `summary` (total_revenue, total_cost, net_profit_loss, missing_cost_products) and `daily` array; excludes cancelled orders
+- `notifications.js` — authenticated; `GET /api/notifications` (returns `type` and `message`), `PATCH /api/notifications/:id/read`, `PATCH /api/notifications/read-all`, `DELETE /api/notifications`
 - `wishlist.js` — authenticated; `GET/POST /api/wishlist`, `DELETE /api/wishlist/:productId`
+- `payment-methods.js` — customer-only; `GET/POST /api/payment-methods`, `PATCH /api/payment-methods/:id/default`, `DELETE /api/payment-methods/:id`; card data stored AES-256-GCM encrypted, responses expose only brand/last4/expiry/cardholder; expired cards are rejected on save and at checkout
 - `invoices.js` — `GET /api/invoices/health`, `POST /api/invoices/generate`; checkout confirmation also queues invoice email delivery automatically
 
 Middleware in `backend/middleware/`:
@@ -162,6 +173,10 @@ Middleware in `backend/middleware/`:
 - `admin.js` — requires `role === 'admin'`; stack with `auth.js` on all admin routes
 - `sales-manager.js` — requires `role === 'sales_manager'`; stack with `auth.js` on all SM routes
 - `product-manager.js` — requires `role === 'product_manager'`; stack with `auth.js` on all PM routes
+
+### Sensitive data at rest
+
+`backend/services/secure-fields.js` provides `encryptField`/`decryptField` (AES-256-GCM, `enc:v1:` envelope prefix) and `fingerprintField` (HMAC-SHA256, used for card de-duplication). Key comes from `DATA_ENCRYPTION_KEY` (32-byte base64 or 64-char hex; passphrases are scrypt-derived); falls back to `JWT_SECRET` outside production. Encrypted at rest: `orders.address`, `auth.customers.tax_id`, `auth.customers.home_address`, and all card fields in `customer_payment_methods` (migration 32 backfills existing rows). `decryptField` passes through non-encrypted values, so plaintext legacy rows still read correctly. CVV is never stored.
 
 ### Invoice service
 
@@ -188,19 +203,33 @@ Pages live in `src/pages/<section>/`. Key pages:
 
 - `DiscountManagement` (`src/pages/sales-manager/DiscountManagement.jsx`) — paginated product table with category filter, search bar, and bulk discount apply/remove
 - `PriceManagement` (`src/pages/sales-manager/PriceManagement.jsx`) — per-product price editor; shows amber banner listing unpriced products by name
+- `RevenueChart` (`src/pages/sales-manager/RevenueChart.jsx`) — gradient area chart (Revenue + Cost) with date range filter, custom profit tooltip, and summary cards; wired as "Revenue" tab in `SalesManagerDashboard`
+- SM dashboard tabs: overview, products, discounts, invoices, refunds, revenue; PM dashboard tabs: overview, products, categories, inventory, orders, deliveries, invoices, comments; both persist active tab via `?tab=` URL param (`useSearchParams`)
 - `PMLoginPage` (`src/pages/product-manager/PMLoginPage.jsx`) — standalone PM login at `/product-manager/login`, issues `pmToken`
-- `NotificationBell` (`src/pages/home/components/NotificationBell.jsx`) — price-drop notifications for logged-in customers; mark-read, mark-all-read, clear-all
+- `NotificationBell` (`src/pages/home/components/NotificationBell.jsx`) — notifications for logged-in customers; checks `n.type === 'refund_decision'` to render `n.message` vs. price-drop format; mark-read, mark-all-read, clear-all
+- `RefundsManagement` (`src/pages/sales-manager/RefundsManagement.jsx`) — SM refund list with status filter; approve/reject actions
+- `SMOverview` (`src/pages/sales-manager/SMOverview.jsx`) — SM dashboard overview; fetches `/api/sales-manager/stats`
 - `MyReviewsPage` (`src/pages/reviews/MyReviewsPage.jsx`) — customer's review list at `/my-reviews`; edit reviews in place; accessible from Navbar user dropdown
 
 ### Database schema
 
 Auth schema: `auth.users`, `auth.customers`, `auth.sales_managers`, `auth.product_managers`.
-Public schema: `products`, `orders`, `order_items`, `system_settings`, `cart_items`, `stock_reservations`, `wishlist_items`, `product_discounts`, `notifications`, `product_reviews`.
+Public schema: `products`, `orders`, `order_items`, `system_settings`, `cart_items`, `stock_reservations`, `wishlist_items`, `product_discounts`, `notifications`, `product_reviews`, `product_size_stock`, `customer_payment_methods`.
 Role enum: `auth.user_role` — `customer`, `sales_manager`, `product_manager`, `admin`.
 
 `orders.total` stores the product subtotal only (excluding shipping). `orders.shipping_cost` is a separate column (added in migration 26); calculated server-side from `system_settings.free_shipping_threshold`.
 
+`auth.customers` has `credit_balance numeric(10,2) NOT NULL DEFAULT 0` (migration 27); this is the store-credit balance refunded when a SM approves a return.
+
+`notifications` has `type varchar(30) NOT NULL DEFAULT 'price_drop'` and `message text` (migration 28); `product_id`, `original_price`, `discounted_price`, `discount_percent` are nullable to support non-price-drop notification types (e.g. `refund_decision`). There is also a `refunds` table (migration 19) used by customer-facing refund requests.
+
+`products.cost_price` is nullable `numeric(10,2)` (migration 27); used for profit calculations in the revenue report. Admin and PM product CRUD accept and validate this field. `seed-products.js` seeds it at 60 % of retail; `seed-revenue-demo.js` creates a demo customer (`democustomer@example.com`) and ~80 backdated orders over 180 days for chart development.
+
+`product_size_stock` (migration 30) tracks per-size stock for products with `sizes` defined: `(product_id, size)` unique, `stock >= 0` check. **Invariant:** `products.stock` always stores the aggregate total — for sized products it must equal `SUM(product_size_stock.stock)`. Checkout confirm, order cancel, and refund approve update both tables for sized items; the PM size-stock PUT resyncs the aggregate. Public routes (`products.js`) read availability from `products.stock` only.
+
 `products.price` is nullable. `NULL` price means the product is unpublished — hidden from all public routes (`/api/products`, search, cart add, wishlist add). Only the sales manager can set a price via `PATCH /api/sales-manager/products/:id/price`, which publishes the product.
+
+`customer_payment_methods` (migration 31) stores saved cards: `brand`/`last4` plaintext for display, cardholder/PAN/expiry AES-encrypted (`*_enc` columns), `fingerprint_hash` unique per `(user_id, fingerprint_hash)` for de-duplication. `orders.payment_method_id` references it (`SET NULL` on delete).
 
 ### Testing
 
@@ -218,6 +247,8 @@ Role enum: `auth.user_role` — `customer`, `sales_manager`, `product_manager`, 
 PORT=3000
 DATABASE_URL=postgres://postgres:password@localhost:5432/ecommerce
 JWT_SECRET=your_secret_here
+# 32 random bytes, base64 — encrypts sensitive fields at rest (falls back to JWT_SECRET in dev)
+DATA_ENCRYPTION_KEY=replace-with-32-byte-base64-key
 ```
 
 `frontend/.env` (optional, for deployment):
