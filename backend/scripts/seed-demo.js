@@ -195,8 +195,27 @@ async function seedDemo() {
           p.cost_price,
         ]
       )
-      productIds[p.name] = rows[0].id
-      console.log(`  ✓ ${rows[0].name} (id: ${rows[0].id}, stock: ${p.stock})`)
+      const productId = rows[0].id
+      productIds[p.name] = productId
+
+      // Populate per-size stock so the size-aware cart/checkout path can find
+      // availability (mirrors seed-products.js). Without this, sized products read
+      // 0 stock at add-to-cart and checkout even though products.stock is set.
+      if (p.sizes && p.sizes.length > 0) {
+        const perSize = Math.floor(p.stock / p.sizes.length)
+        const remainder = p.stock % p.sizes.length
+        for (let i = 0; i < p.sizes.length; i++) {
+          const sizeStock = perSize + (i < remainder ? 1 : 0)
+          await client.query(
+            `INSERT INTO product_size_stock (product_id, size, stock)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (product_id, size) DO UPDATE SET stock = EXCLUDED.stock`,
+            [productId, p.sizes[i], sizeStock]
+          )
+        }
+      }
+
+      console.log(`  ✓ ${rows[0].name} (id: ${productId}, stock: ${p.stock})`)
     }
 
     // ── Customer account ──────────────────────────────────────────────────────
