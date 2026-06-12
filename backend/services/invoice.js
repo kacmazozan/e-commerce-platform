@@ -1,4 +1,18 @@
+const path = require('path')
 const PDFDocument = require('pdfkit')
+
+// pdfkit's built-in Helvetica only covers WinAnsi (Latin-1), which lacks
+// Turkish letters like ı, İ, ğ, ş — they render as blanks/tofu (issue #124).
+// DejaVu Sans is embedded instead for full Latin Extended coverage.
+const FONTS_DIR = path.join(__dirname, '..', 'assets', 'fonts')
+const FONT_REGULAR = 'Invoice'
+const FONT_BOLD = 'Invoice-Bold'
+
+function registerInvoiceFonts(doc) {
+  doc.registerFont(FONT_REGULAR, path.join(FONTS_DIR, 'DejaVuSans.ttf'))
+  doc.registerFont(FONT_BOLD, path.join(FONTS_DIR, 'DejaVuSans-Bold.ttf'))
+  return { regular: FONT_REGULAR, bold: FONT_BOLD }
+}
 
 const DEFAULT_TAX_RATE = 0
 const INVOICE_NUMBER_PATTERN = /^[A-Za-z0-9._-]+$/
@@ -206,6 +220,8 @@ function generateInvoicePdf(invoice) {
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
 
+    registerInvoiceFonts(doc)
+
     const colors = {
       primary: '#9d7cff',
       text: '#1e1e2d',
@@ -214,24 +230,26 @@ function generateInvoicePdf(invoice) {
     }
 
     doc.rect(60, 48, 60, 6).fill(colors.primary)
-    doc.fillColor(colors.text).fontSize(28).font('Helvetica-Bold').text('FIER', 60, 70)
+    doc.fillColor(colors.text).fontSize(28).font(FONT_BOLD).text('FIER', 60, 70)
     doc
       .fontSize(10)
       .fillColor(colors.muted)
-      .font('Helvetica')
+      .font(FONT_REGULAR)
       .text('Premium Fashion for Every Individual', 60, 102)
 
     doc
       .fillColor(colors.primary)
       .fontSize(11)
-      .font('Helvetica-Bold')
+      .font(FONT_BOLD)
       .text('INVOICE', 390, 72, { align: 'right', width: 150 })
+    // Wider box than the other header lines: DejaVu Sans is wider than
+    // Helvetica and INV-YYYY-NNNNNN invoice numbers wrap at 150pt.
     doc
       .fillColor(colors.text)
       .fontSize(16)
-      .text(`#${invoice.number}`, 390, 90, { align: 'right', width: 150 })
+      .text(`#${invoice.number}`, 320, 90, { align: 'right', width: 220 })
     doc
-      .font('Helvetica')
+      .font(FONT_REGULAR)
       .fontSize(10)
       .fillColor(colors.muted)
       .text(`Order No: ${invoice.order_id}`, 390, 114, { align: 'right', width: 150 })
@@ -242,7 +260,7 @@ function generateInvoicePdf(invoice) {
     doc
       .fillColor(colors.muted)
       .fontSize(9)
-      .font('Helvetica-Bold')
+      .font(FONT_BOLD)
       .text('BILLED TO', 60, 175)
       .text('ISSUED BY', 350, 175, { width: 185, align: 'right' })
 
@@ -251,7 +269,7 @@ function generateInvoicePdf(invoice) {
     const customerNameY = 192
     const customerGap = 4
 
-    doc.fillColor(colors.text).fontSize(11).font('Helvetica-Bold')
+    doc.fillColor(colors.text).fontSize(11).font(FONT_BOLD)
     const customerNameHeight = doc.heightOfString(invoice.customer_name, {
       width: customerSectionWidth,
     })
@@ -259,7 +277,7 @@ function generateInvoicePdf(invoice) {
       width: customerSectionWidth,
     })
 
-    doc.font('Helvetica').fontSize(10)
+    doc.font(FONT_REGULAR).fontSize(10)
     const customerAddressY = customerNameY + customerNameHeight + customerGap
     const customerAddressHeight = doc.heightOfString(invoice.customer_address, {
       width: customerSectionWidth,
@@ -281,14 +299,14 @@ function generateInvoicePdf(invoice) {
     const issuerSectionWidth = 185
     const issuerNameY = 192
 
-    doc.font('Helvetica-Bold').fontSize(11)
+    doc.font(FONT_BOLD).fontSize(11)
     const issuerNameHeight = doc.heightOfString('FIER Store', { width: issuerSectionWidth })
     doc.text('FIER Store', issuerSectionX, issuerNameY, {
       width: issuerSectionWidth,
       align: 'right',
     })
 
-    doc.font('Helvetica').fontSize(10)
+    doc.font(FONT_REGULAR).fontSize(10)
     const issuerEmailY = issuerNameY + issuerNameHeight + customerGap
     const issuerEmailHeight = doc.heightOfString('support@fier.com', { width: issuerSectionWidth })
     doc.text('support@fier.com', issuerSectionX, issuerEmailY, {
@@ -319,7 +337,7 @@ function generateInvoicePdf(invoice) {
       .stroke()
 
     doc
-      .font('Helvetica-Bold')
+      .font(FONT_BOLD)
       .fontSize(9)
       .fillColor(colors.text)
       .text('DESCRIPTION', descriptionX, tableTop)
@@ -328,7 +346,7 @@ function generateInvoicePdf(invoice) {
       .text('AMOUNT', amountX, tableTop, { width: 70, align: 'right' })
 
     let y = tableTop + 24
-    doc.font('Helvetica').fontSize(10)
+    doc.font(FONT_REGULAR).fontSize(10)
 
     if (invoice.items.length === 0) {
       doc
@@ -358,7 +376,7 @@ function generateInvoicePdf(invoice) {
     const totalsWidth = 180
 
     doc
-      .font('Helvetica')
+      .font(FONT_REGULAR)
       .fillColor(colors.muted)
       .fontSize(10)
       .text('Subtotal', totalsX, y + 20, { width: 80 })
@@ -386,7 +404,7 @@ function generateInvoicePdf(invoice) {
       .stroke()
 
     doc
-      .font('Helvetica-Bold')
+      .font(FONT_BOLD)
       .fontSize(15)
       .fillColor(colors.primary)
       .text('Total', totalsX, y + 76, { width: 80 })
@@ -394,7 +412,7 @@ function generateInvoicePdf(invoice) {
 
     doc.moveTo(60, 730).lineTo(535, 730).strokeColor(colors.border).lineWidth(1).stroke()
     doc
-      .font('Helvetica')
+      .font(FONT_REGULAR)
       .fontSize(9)
       .fillColor(colors.muted)
       .text('Thank you for choosing FIER. We hope you enjoy your purchase!', 60, 744, {
@@ -415,5 +433,6 @@ module.exports = {
   createInvoiceEmailBody,
   generateInvoicePdf,
   inferCustomerName,
+  registerInvoiceFonts,
   validateInvoiceRequest,
 }
