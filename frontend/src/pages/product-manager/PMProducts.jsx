@@ -123,11 +123,15 @@ function PMProducts({ token }) {
       }
     }
     for (const img of imageChanges?.toAdd ?? []) {
-      await fetch(`${API}/${data.product.id}/images`, {
+      const imgRes = await fetch(`${API}/${data.product.id}/images`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({ url: img.url, alt: img.alt }),
       })
+      if (!imgRes.ok) {
+        const imgData = await imgRes.json().catch(() => ({}))
+        throw new Error(imgData.error || 'Product created but an image failed to save')
+      }
     }
     setModal(null)
     fetchProducts(pagination.page)
@@ -153,17 +157,25 @@ function PMProducts({ token }) {
       }
     }
     for (const imageId of imageChanges?.toDelete ?? []) {
-      await fetch(`${API}/${productId}/images/${imageId}`, {
+      const delRes = await fetch(`${API}/${productId}/images/${imageId}`, {
         method: 'DELETE',
         headers: authHeaders,
       })
+      if (!delRes.ok) {
+        const delData = await delRes.json().catch(() => ({}))
+        throw new Error(delData.error || 'Product updated but an image failed to delete')
+      }
     }
     for (const img of imageChanges?.toAdd ?? []) {
-      await fetch(`${API}/${productId}/images`, {
+      const imgRes = await fetch(`${API}/${productId}/images`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({ url: img.url, alt: img.alt }),
       })
+      if (!imgRes.ok) {
+        const imgData = await imgRes.json().catch(() => ({}))
+        throw new Error(imgData.error || 'Product updated but an image failed to save')
+      }
     }
     setModal(null)
     fetchProducts(pagination.page)

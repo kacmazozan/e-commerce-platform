@@ -93,16 +93,28 @@ router.patch('/:id/approve', async (req, res) => {
     await client.query(`UPDATE refunds SET status = 'approved', updated_at = NOW() WHERE id = $1`, [
       refundId,
     ])
-    await client.query(`UPDATE products SET stock = stock + $1 WHERE id = $2`, [
-      refund.quantity,
-      refund.product_id,
-    ])
     if (refund.size) {
-      // Sized products track per-size stock as well — restore the size row too
+      // Sized products track per-size stock as well. Upsert so a missing
+      // (product_id, size) row can't silently no-op, then resync the aggregate
+      // to keep products.stock == SUM(product_size_stock.stock).
       await client.query(
-        `UPDATE product_size_stock SET stock = stock + $1 WHERE product_id = $2 AND size = $3`,
-        [refund.quantity, refund.product_id, refund.size]
+        `INSERT INTO product_size_stock (product_id, size, stock)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (product_id, size)
+         DO UPDATE SET stock = product_size_stock.stock + EXCLUDED.stock`,
+        [refund.product_id, refund.size, refund.quantity]
       )
+      await client.query(
+        `UPDATE products
+         SET stock = (SELECT COALESCE(SUM(stock), 0) FROM product_size_stock WHERE product_id = $1)
+         WHERE id = $1`,
+        [refund.product_id]
+      )
+    } else {
+      await client.query(`UPDATE products SET stock = stock + $1 WHERE id = $2`, [
+        refund.quantity,
+        refund.product_id,
+      ])
     }
     await client.query(
       `UPDATE auth.customers SET credit_balance = credit_balance + $1 WHERE customer_id = $2`,

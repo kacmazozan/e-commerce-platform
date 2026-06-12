@@ -2,6 +2,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') })
 
 const bcrypt = require('bcrypt')
 const pool = require('../db')
+const { encryptField } = require('../services/secure-fields')
 
 const CUSTOMER_EMAIL = 'demo.customer@example.com'
 const CUSTOMER_PASSWORD = 'demo123456'
@@ -238,10 +239,11 @@ async function seedDemo() {
       )
       userId = userRows[0].id
 
+      // tax_id and home_address are encrypted at rest, matching runtime writes
       await client.query(
         `INSERT INTO auth.customers (customer_id, name, tax_id, home_address)
          VALUES ($1, $2, $3, $4)`,
-        [userId, CUSTOMER_NAME, CUSTOMER_TAX_ID, CUSTOMER_ADDRESS]
+        [userId, CUSTOMER_NAME, encryptField(CUSTOMER_TAX_ID), encryptField(CUSTOMER_ADDRESS)]
       )
       console.log(`  ✓ ${CUSTOMER_EMAIL} (id: ${userId})`)
     }
@@ -276,7 +278,16 @@ async function seedDemo() {
         `INSERT INTO orders (user_id, status, total, shipping_cost, address, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id`,
-        [userId, o.status, product.price, shippingCost, CUSTOMER_ADDRESS, o.createdAt, o.updatedAt]
+        [
+          userId,
+          o.status,
+          product.price,
+          shippingCost,
+          // orders.address is encrypted at rest, matching checkout writes
+          encryptField(CUSTOMER_ADDRESS),
+          o.createdAt,
+          o.updatedAt,
+        ]
       )
       const orderId = orderRows[0].id
 

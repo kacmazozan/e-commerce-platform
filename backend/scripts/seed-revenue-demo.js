@@ -1,8 +1,10 @@
 require('dotenv').config()
 const bcrypt = require('bcrypt')
 const pool = require('../db')
+const { encryptField } = require('../services/secure-fields')
 
 const DEMO_EMAIL = 'democustomer@example.com'
+const DEMO_ADDRESS = '123 Demo Street, Istanbul, TR'
 const DEMO_PASSWORD = 'democustomer123456'
 const DAYS_BACK = 180
 // ~45% of days get an order — results in ~80 historical data points
@@ -26,10 +28,11 @@ async function seedRevenueDemoData() {
         [DEMO_EMAIL, hash]
       )
       userId = userResult.rows[0].id
+      // home_address is encrypted at rest, matching runtime writes
       await client.query(
         `INSERT INTO auth.customers (customer_id, name, home_address)
          VALUES ($1, $2, $3)`,
-        [userId, 'Demo Customer', '123 Demo Street, Istanbul, TR']
+        [userId, 'Demo Customer', encryptField(DEMO_ADDRESS)]
       )
     }
 
@@ -84,7 +87,8 @@ async function seedRevenueDemoData() {
           userId,
           status,
           subtotal.toFixed(2),
-          '123 Demo Street, Istanbul, TR',
+          // orders.address is encrypted at rest, matching checkout writes
+          encryptField(DEMO_ADDRESS),
           shippingCost.toFixed(2),
           orderDateStr,
         ]

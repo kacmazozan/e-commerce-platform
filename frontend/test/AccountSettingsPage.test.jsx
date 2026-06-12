@@ -15,9 +15,15 @@ function renderAccountSettings(props = {}, initialEntries = ['/account-settings'
   )
 }
 
+// vi.unstubAllGlobals() does not undo direct `globalThis.fetch = ...`
+// assignments, so restore the original manually to avoid leaking the mock
+// into other test files.
+const originalFetch = globalThis.fetch
+
 describe('AccountSettingsPage payment cards and address', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    globalThis.fetch = originalFetch
   })
 
   it('saves a new payment card from account settings', async () => {

@@ -177,17 +177,29 @@ router.patch('/:id/cancel', async (req, res) => {
 
     for (const item of itemsResult.rows) {
       if (item.size) {
+        // Upsert so a missing (product_id, size) row can't silently no-op,
+        // then resync the aggregate from the per-size sum to keep the
+        // products.stock == SUM(product_size_stock.stock) invariant.
         await client.query(
-          'UPDATE product_size_stock SET stock = stock + $1 WHERE product_id = $2 AND size = $3',
-          [item.quantity, item.product_id, item.size]
+          `INSERT INTO product_size_stock (product_id, size, stock)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (product_id, size)
+           DO UPDATE SET stock = product_size_stock.stock + EXCLUDED.stock`,
+          [item.product_id, item.size, item.quantity]
+        )
+        await client.query(
+          `UPDATE products
+           SET stock = (SELECT COALESCE(SUM(stock), 0) FROM product_size_stock WHERE product_id = $1),
+               updated_at = NOW()
+           WHERE id = $1`,
+          [item.product_id]
+        )
+      } else {
+        await client.query(
+          'UPDATE products SET stock = stock + $1, updated_at = NOW() WHERE id = $2',
+          [item.quantity, item.product_id]
         )
       }
-      // products.stock is the aggregate total and must be restored either way —
-      // public routes derive availability from it.
-      await client.query(
-        'UPDATE products SET stock = stock + $1, updated_at = NOW() WHERE id = $2',
-        [item.quantity, item.product_id]
-      )
     }
 
     const updateResult = await client.query(

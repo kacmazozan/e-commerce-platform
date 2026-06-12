@@ -10,18 +10,28 @@ const { decryptField } = require('../services/secure-fields')
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads')
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true })
 
+// Allowlist of accepted image mimetypes; the stored extension is derived from
+// the mimetype rather than the client-supplied filename, which can be spoofed.
+const IMAGE_MIME_EXTENSIONS = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'image/avif': '.avif',
+}
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
     filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || '.jpg'
+      const ext = IMAGE_MIME_EXTENSIONS[file.mimetype] || '.jpg'
       cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`)
     },
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true)
-    else cb(new Error('Only image files are allowed'))
+    if (IMAGE_MIME_EXTENSIONS[file.mimetype]) cb(null, true)
+    else cb(new Error('Only JPEG, PNG, GIF, WebP, or AVIF images are allowed'))
   },
 })
 

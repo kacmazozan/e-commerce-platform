@@ -19,6 +19,11 @@ vi.mock('../src/hooks/useLiveCart', () => ({
 
 const { liveCartItems, refetchCart } = mocks
 
+// vi.unstubAllGlobals() does not undo direct `globalThis.fetch = ...`
+// assignments, so restore the original manually to avoid leaking the mock
+// into other test files.
+const originalFetch = globalThis.fetch
+
 function renderCheckout(props = {}) {
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
   return render(
@@ -47,6 +52,7 @@ function renderCheckout(props = {}) {
 describe('CheckoutPage payment methods', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    globalThis.fetch = originalFetch
     refetchCart.mockReset()
   })
 
