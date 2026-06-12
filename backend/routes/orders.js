@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
 
     const itemsResult = await pool.query(
       `SELECT oi.id, oi.order_id, oi.quantity, oi.price, oi.size,
-              p.id AS product_id, p.name AS product_name,
+              p.id AS product_id, p.name AS product_name, p.category AS product_category,
               r.id AS refund_id, r.status AS refund_status,
               r.refund_amount, r.requested_at
        FROM order_items oi
@@ -48,6 +48,7 @@ router.get('/', async (req, res) => {
         size: item.size,
         product_id: item.product_id,
         product_name: item.product_name,
+        product_category: item.product_category,
         refund: item.refund_id
           ? {
               id: item.refund_id,
@@ -67,6 +68,72 @@ router.get('/', async (req, res) => {
     }))
 
     res.json({ orders })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// GET /api/orders/:id — single order detail with items and refund state
+router.get('/:id', async (req, res) => {
+  const userId = req.user.userId
+  const orderId = parseInt(req.params.id, 10)
+
+  if (isNaN(orderId) || orderId <= 0) {
+    return res.status(400).json({ error: 'Invalid order ID' })
+  }
+
+  try {
+    const orderResult = await pool.query(
+      `SELECT id, status, total, shipping_cost, address, created_at, payment_method_id
+       FROM orders
+       WHERE id = $1 AND user_id = $2`,
+      [orderId, userId]
+    )
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' })
+    }
+
+    const itemsResult = await pool.query(
+      `SELECT oi.id, oi.order_id, oi.quantity, oi.price, oi.size,
+              p.id AS product_id, p.name AS product_name, p.category AS product_category,
+              r.id AS refund_id, r.status AS refund_status,
+              r.refund_amount, r.requested_at
+       FROM order_items oi
+       JOIN products p ON p.id = oi.product_id
+       LEFT JOIN refunds r ON r.order_item_id = oi.id
+       WHERE oi.order_id = $1
+       ORDER BY oi.id`,
+      [orderId]
+    )
+
+    const items = itemsResult.rows.map((item) => ({
+      id: item.id,
+      order_id: item.order_id,
+      quantity: item.quantity,
+      price: item.price,
+      size: item.size,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      product_category: item.product_category,
+      refund: item.refund_id
+        ? {
+            id: item.refund_id,
+            status: item.refund_status,
+            refund_amount: item.refund_amount,
+            requested_at: item.requested_at,
+          }
+        : null,
+    }))
+
+    const order = {
+      ...orderResult.rows[0],
+      address: decryptField(orderResult.rows[0].address),
+      items,
+    }
+
+    res.json({ order })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })
