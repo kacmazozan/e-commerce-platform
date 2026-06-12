@@ -25,6 +25,7 @@ export function formatDate(isoStr) {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+    timeZone: 'UTC',
   })
 }
 

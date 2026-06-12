@@ -86,6 +86,7 @@ On every `docker compose up`, the backend entrypoint (`backend/entrypoint.sh`) a
 | Admin           | `admin@example.com`          | `admin123456`          |
 | Sales Manager   | `salesmanager@example.com`   | `salesmanager123456`   |
 | Product Manager | `productmanager@example.com` | `productmanager123456` |
+| Demo Customer   | `demo.customer@example.com`  | `demo123456`           |
 
 Products (56 items across 8 categories) are also seeded automatically.
 
@@ -128,6 +129,7 @@ docker compose exec backend node scripts/seed-admin.js
 docker compose exec backend node scripts/seed-sales-manager.js
 docker compose exec backend node scripts/seed-product-manager.js
 docker compose exec backend node scripts/seed-products.js
+docker compose exec backend node scripts/seed-demo.js   # demo customer + orders for presentation
 ```
 
 To wipe and re-seed products:
