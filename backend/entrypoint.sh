@@ -29,5 +29,8 @@ node scripts/seed-products.js
 echo "Seeding revenue demo data..."
 node scripts/seed-revenue-demo.js
 
+echo "Seeding demo customer and products..."
+node scripts/seed-demo.js
+
 echo "Starting server..."
 exec npm run dev
