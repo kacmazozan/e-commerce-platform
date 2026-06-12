@@ -1,13 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 import AccountSettingsPage from '../src/pages/account/AccountSettingsPage'
 import { ThemeProvider } from '../src/context/ThemeContext'
 
-function renderAccountSettings(props = {}) {
+function renderAccountSettings(props = {}, initialEntries = ['/account-settings']) {
   return render(
     <ThemeProvider>
-      <AccountSettingsPage token="customer-token" onProfileUpdate={vi.fn()} {...props} />
+      <MemoryRouter initialEntries={initialEntries}>
+        <AccountSettingsPage token="customer-token" onProfileUpdate={vi.fn()} {...props} />
+      </MemoryRouter>
     </ThemeProvider>
   )
 }
@@ -52,7 +55,7 @@ describe('AccountSettingsPage payment cards and address', () => {
       return Promise.resolve({ ok: true, json: async () => ({}) })
     })
 
-    renderAccountSettings()
+    renderAccountSettings({}, ['/account-settings?tab=payment'])
 
     expect(await screen.findByText(/no saved cards yet/i)).toBeInTheDocument()
     await userEvent.type(screen.getByLabelText(/cardholder name/i), 'Jane Smith')
@@ -93,8 +96,8 @@ describe('AccountSettingsPage payment cards and address', () => {
       return Promise.resolve({ ok: true, json: async () => ({}) })
     })
 
-    renderAccountSettings()
-    await screen.findByText(/no saved cards yet/i)
+    renderAccountSettings({}, ['/account-settings?tab=address'])
+    await screen.findByLabelText(/address line 1/i)
 
     await userEvent.type(screen.getByLabelText(/address line 1/i), '123 Main Street')
     await userEvent.type(screen.getByLabelText(/city/i), 'Berlin')
