@@ -153,10 +153,14 @@ function PMProducts({ token }) {
       }
     }
     for (const imageId of imageChanges?.toDelete ?? []) {
-      await fetch(`${API}/${productId}/images/${imageId}`, {
+      const delRes = await fetch(`${API}/${productId}/images/${imageId}`, {
         method: 'DELETE',
         headers: authHeaders,
       })
+      if (!delRes.ok) {
+        const delData = await delRes.json().catch(() => ({}))
+        throw new Error(delData.error || 'Product updated but images failed to delete')
+      }
     }
     for (const img of imageChanges?.toAdd ?? []) {
       await fetch(`${API}/${productId}/images`, {
