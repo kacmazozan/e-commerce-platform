@@ -82,6 +82,19 @@ describe('GET /api/sales-manager/invoices', () => {
     expect(res.body.pagination).toEqual({ page: 1, limit: 15, total: 1, totalPages: 1 })
   })
 
+  it('uses the stored customer name over the email-derived fallback', async () => {
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] })
+      .mockResolvedValueOnce({ rows: [mockOrderRow({ customer_name: 'Janet Q. Public' })] })
+
+    const res = await request(app)
+      .get('/api/sales-manager/invoices?startDate=2026-04-01&endDate=2026-04-30')
+      .set('Authorization', `Bearer ${smToken}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.invoices[0].customer_name).toBe('Janet Q. Public')
+  })
+
   it('returns 400 for invalid date format', async () => {
     const res = await request(app)
       .get('/api/sales-manager/invoices?startDate=not-a-date&endDate=2026-04-30')

@@ -24,7 +24,7 @@ function buildInvoiceFromOrder(order, items) {
     {
       invoice_number: invoiceNumberFor(order),
       order_id: String(order.id),
-      customer_name: inferCustomerName(order.user_email),
+      customer_name: order.customer_name || inferCustomerName(order.user_email),
       customer_email: order.user_email,
       customer_address: address || 'Address not provided',
       shipping_cost: Number(order.shipping_cost ?? 0),
@@ -81,9 +81,10 @@ router.get('/export/pdf', async (req, res) => {
 
   const ordersResult = await pool.query(
     `SELECT o.id, o.status, o.total, o.shipping_cost, o.address, o.created_at,
-            u.email AS user_email
+            u.email AS user_email, c.name AS customer_name
      FROM orders o
      JOIN auth.users u ON u.id = o.user_id
+     LEFT JOIN auth.customers c ON c.customer_id = o.user_id
      WHERE o.created_at >= $1 AND o.created_at < $2
      ORDER BY o.created_at DESC`,
     [start, end]
@@ -191,13 +192,14 @@ router.get('/', async (req, res) => {
 
   const dataResult = await pool.query(
     `SELECT o.id, o.status, o.total, o.shipping_cost, o.address, o.created_at,
-            u.email AS user_email,
+            u.email AS user_email, c.name AS customer_name,
             COUNT(oi.id) AS item_count
      FROM orders o
      JOIN auth.users u ON u.id = o.user_id
+     LEFT JOIN auth.customers c ON c.customer_id = o.user_id
      LEFT JOIN order_items oi ON oi.order_id = o.id
      WHERE o.created_at >= $1 AND o.created_at < $2
-     GROUP BY o.id, u.email
+     GROUP BY o.id, u.email, c.name
      ORDER BY o.created_at DESC
      LIMIT $3 OFFSET $4`,
     [start, end, limit, offset]
@@ -211,7 +213,7 @@ router.get('/', async (req, res) => {
     return {
       order_id: order.id,
       invoice_number: invoiceNumberFor(order),
-      customer_name: inferCustomerName(order.user_email),
+      customer_name: order.customer_name || inferCustomerName(order.user_email),
       customer_email: order.user_email,
       order_date: order.created_at,
       item_count: parseInt(order.item_count, 10),
@@ -231,9 +233,10 @@ router.get('/', async (req, res) => {
 async function loadOrderAndItems(orderId) {
   const orderResult = await pool.query(
     `SELECT o.id, o.status, o.total, o.shipping_cost, o.address, o.created_at,
-            u.id AS user_id, u.email AS user_email
+            u.id AS user_id, u.email AS user_email, c.name AS customer_name
      FROM orders o
      JOIN auth.users u ON u.id = o.user_id
+     LEFT JOIN auth.customers c ON c.customer_id = o.user_id
      WHERE o.id = $1`,
     [orderId]
   )
