@@ -182,6 +182,8 @@ Middleware in `backend/middleware/`:
 
 Invoice generation and email delivery now live inside the Node backend. `backend/services/invoice.js` handles request validation, totals, and PDF creation with `pdfkit`; `backend/services/mailer.js` sends mail over SMTP (MailHog in local Docker); `backend/services/invoice-workflow.js` ties generation and delivery together. The public API is exposed from `backend/routes/invoices.js`.
 
+PDFs embed DejaVu Sans from `backend/assets/fonts/` (registered via `registerInvoiceFonts(doc)` exported by `services/invoice.js`) — pdfkit's built-in Helvetica is Latin-1 only and renders Turkish characters (ı, İ, ğ, ş) as blanks. Use the embedded fonts, not `'Helvetica'`, in any new PDF code.
+
 ### Frontend
 
 `src/main.jsx` wraps `<App>` in `<BrowserRouter>`. All routing in `src/App.jsx` (React Router v7).

@@ -2,7 +2,12 @@ const express = require('express')
 const authenticate = require('../middleware/auth')
 const requireSalesManager = require('../middleware/sales-manager')
 const pool = require('../db')
-const { buildInvoiceData, generateInvoicePdf, inferCustomerName } = require('../services/invoice')
+const {
+  buildInvoiceData,
+  generateInvoicePdf,
+  inferCustomerName,
+  registerInvoiceFonts,
+} = require('../services/invoice')
 const PDFDocument = require('pdfkit')
 const { decryptField } = require('../services/secure-fields')
 
@@ -126,10 +131,13 @@ router.get('/export/pdf', async (req, res) => {
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
 
+    // Embedded Unicode font — built-in Helvetica can't render Turkish characters
+    const fonts = registerInvoiceFonts(doc)
+
     // Cover page
-    doc.fontSize(22).font('Helvetica-Bold').text('FIER', { align: 'center' })
+    doc.fontSize(22).font(fonts.bold).text('FIER', { align: 'center' })
     doc.moveDown(0.5)
-    doc.fontSize(16).font('Helvetica').text('Invoice Export', { align: 'center' })
+    doc.fontSize(16).font(fonts.regular).text('Invoice Export', { align: 'center' })
     doc.moveDown(0.3)
     doc.fontSize(12).text(`Period: ${startLabel} to ${endLabel}`, { align: 'center' })
     doc.moveDown(0.3)
@@ -139,22 +147,22 @@ router.get('/export/pdf', async (req, res) => {
 
     for (const invoice of invoices) {
       doc.addPage()
-      doc.fontSize(14).font('Helvetica-Bold').text(`Invoice ${invoice.number}`)
-      doc.fontSize(10).font('Helvetica')
+      doc.fontSize(14).font(fonts.bold).text(`Invoice ${invoice.number}`)
+      doc.fontSize(10).font(fonts.regular)
       doc.text(`Order ID: ${invoice.order_id}`)
       doc.text(`Date: ${invoice.date_str}`)
       doc.text(`Customer: ${invoice.customer_name} <${invoice.customer_email}>`)
       doc.moveDown(0.5)
 
-      doc.font('Helvetica-Bold').text('Items:')
-      doc.font('Helvetica')
+      doc.font(fonts.bold).text('Items:')
+      doc.font(fonts.regular)
       for (const item of invoice.items) {
         doc.text(
           `  ${item.description}  ×${item.quantity}  @ $${item.unit_price.toFixed(2)}  =  $${item.total.toFixed(2)}`
         )
       }
       doc.moveDown(0.5)
-      doc.font('Helvetica-Bold').text(`Total: $${invoice.total.toFixed(2)}`)
+      doc.font(fonts.bold).text(`Total: $${invoice.total.toFixed(2)}`)
       doc
         .moveTo(50, doc.y + 10)
         .lineTo(545, doc.y + 10)

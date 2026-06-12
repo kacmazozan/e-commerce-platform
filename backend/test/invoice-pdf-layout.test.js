@@ -39,6 +39,10 @@ class MockPDFDocument {
     return this
   }
 
+  registerFont() {
+    return this
+  }
+
   heightOfString(value, options = {}) {
     const text = String(value ?? '')
     const width = options.width || 220
